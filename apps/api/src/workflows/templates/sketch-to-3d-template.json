@@ -1,0 +1,191 @@
+{
+  "id": "sketch_to_3d_workflow",
+  "name": "草图转3D白模",
+  "description": "将手绘草图识别并转换为SketchUp 3D白模",
+  "category": "modeling",
+  "icon": "✏️",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "trigger_sketch",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "label": "草图上传",
+        "triggerType": "image_upload",
+        "fileTypes": [".jpg", ".png", ".jpeg"],
+        "source": "sketchup_plugin"
+      }
+    },
+    {
+      "id": "preprocess_image",
+      "type": "process",
+      "position": { "x": 300, "y": 200 },
+      "data": {
+        "label": "图像预处理",
+        "engine": "ImagePreprocessor",
+        "config": {
+          "denoise": true,
+          "enhance": true,
+          "binarize": true,
+          "deskew": true
+        }
+      }
+    },
+    {
+      "id": "detect_elements",
+      "type": "process",
+      "position": { "x": 500, "y": 200 },
+      "data": {
+        "label": "建筑元素识别",
+        "engine": "YOLODetector",
+        "config": {
+          "model": "building_elements_v1",
+          "confidence": 0.7,
+          "elements": ["wall", "door", "window", "stair", "column"]
+        }
+      }
+    },
+    {
+      "id": "extract_dimensions",
+      "type": "process",
+      "position": { "x": 700, "y": 200 },
+      "data": {
+        "label": "尺寸提取",
+        "engine": "OCRDimension",
+        "config": {
+          "detectScale": true,
+          "extractNumbers": true,
+          "defaultScale": "1:100"
+        }
+      }
+    },
+    {
+      "id": "query_specs",
+      "type": "process",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "label": "查询建筑规范",
+        "engine": "Neo4jQuery",
+        "config": {
+          "query": "MATCH (s:Specification) WHERE s.type = 'building' RETURN s",
+          "database": "knowledge_graph"
+        }
+      }
+    },
+    {
+      "id": "ai_understand",
+      "type": "process",
+      "position": { "x": 900, "y": 300 },
+      "data": {
+        "label": "AI理解意图",
+        "engine": "LLMAnalyzer",
+        "config": {
+          "model": "qwen2.5:72b",
+          "prompt": "分析建筑草图，识别建筑类型和设计意图"
+        }
+      }
+    },
+    {
+      "id": "generate_geometry",
+      "type": "process",
+      "position": { "x": 1100, "y": 200 },
+      "data": {
+        "label": "生成3D几何",
+        "engine": "GeometryGenerator",
+        "config": {
+          "defaultFloorHeight": 3.0,
+          "defaultWallThickness": 0.24,
+          "createGroups": true
+        }
+      }
+    },
+    {
+      "id": "generate_commands",
+      "type": "process",
+      "position": { "x": 1300, "y": 200 },
+      "data": {
+        "label": "生成SketchUp命令",
+        "engine": "CommandGenerator",
+        "config": {
+          "format": "ruby",
+          "commands": ["create_wall", "create_door", "create_window", "push_pull"]
+        }
+      }
+    },
+    {
+      "id": "validate_model",
+      "type": "process",
+      "position": { "x": 1500, "y": 200 },
+      "data": {
+        "label": "模型验证",
+        "engine": "ModelValidator",
+        "config": {
+          "checkScale": true,
+          "checkConnectivity": true,
+          "checkCompliance": true
+        }
+      }
+    },
+    {
+      "id": "output_commands",
+      "type": "output",
+      "position": { "x": 1700, "y": 200 },
+      "data": {
+        "label": "输出命令序列",
+        "outputType": "sketchup_commands",
+        "format": "json",
+        "destination": "plugin_client"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "trigger_sketch", "target": "preprocess_image" },
+    { "id": "e2", "source": "preprocess_image", "target": "detect_elements" },
+    { "id": "e3", "source": "detect_elements", "target": "extract_dimensions" },
+    { "id": "e4", "source": "extract_dimensions", "target": "query_specs" },
+    { "id": "e5", "source": "extract_dimensions", "target": "ai_understand" },
+    { "id": "e6", "source": "query_specs", "target": "generate_geometry" },
+    { "id": "e7", "source": "ai_understand", "target": "generate_geometry" },
+    { "id": "e8", "source": "generate_geometry", "target": "generate_commands" },
+    { "id": "e9", "source": "generate_commands", "target": "validate_model" },
+    { "id": "e10", "source": "validate_model", "target": "output_commands" }
+  ],
+  "variables": {
+    "image_path": "${trigger.image_path}",
+    "user_id": "${context.user_id}",
+    "plugin_session": "${context.plugin_session}"
+  },
+  "sketchup_commands_example": [
+    {
+      "type": "create_wall",
+      "params": {
+        "start_point": [0, 0, 0],
+        "end_point": [10, 0, 0],
+        "height": 3.0,
+        "thickness": 0.24
+      }
+    },
+    {
+      "type": "create_door",
+      "params": {
+        "position": [5, 0, 0],
+        "width": 0.9,
+        "height": 2.1
+      }
+    },
+    {
+      "type": "create_window",
+      "params": {
+        "position": [2, 0, 0.9],
+        "width": 1.5,
+        "height": 1.5
+      }
+    }
+  ],
+  "error_handling": {
+    "retry": 2,
+    "retry_delay": 2000,
+    "fallback": "return_error_to_plugin"
+  }
+}

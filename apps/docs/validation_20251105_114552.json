@@ -1,0 +1,1098 @@
+{
+  "violations": [],
+  "warnings": [
+    {
+      "part": "P-1000",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1001",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1002",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1003",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1004",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1005",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1006",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1007",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1008",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1009",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1010",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1011",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1012",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1013",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1014",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1015",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1016",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1017",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1018",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1019",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1020",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1021",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1022",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1023",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1024",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1025",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1026",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1027",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1028",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1029",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1030",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1031",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1032",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1033",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1034",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1035",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1036",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1037",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1038",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1039",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1040",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1041",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1042",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1043",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1044",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1045",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1046",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1047",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1048",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1049",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1050",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1051",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1052",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1053",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1054",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1055",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1056",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1057",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1058",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1059",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1060",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1061",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1062",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1063",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1064",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1065",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1066",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1067",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1068",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1069",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1070",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1071",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1072",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1073",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1074",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1075",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1076",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1077",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1078",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1079",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1080",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1081",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1082",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1083",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1084",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1085",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1086",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1087",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1088",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1089",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1090",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1091",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1092",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1093",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1094",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1095",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1096",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1097",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1098",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1099",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1100",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1101",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1102",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1103",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1104",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1105",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1106",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1107",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1108",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1109",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1110",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1111",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1112",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1113",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1114",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1115",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1116",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1117",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1118",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1119",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1120",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1121",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1122",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1123",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1124",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1125",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1126",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1127",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1128",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1129",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1130",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1131",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1132",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1133",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1134",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1135",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1136",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1137",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1138",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1139",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1140",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1141",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1142",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1143",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1144",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1145",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1146",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1147",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1148",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1149",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1150",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1151",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1152",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1153",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1154",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1155",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1156",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1157",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1158",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1159",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1160",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1161",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1162",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1163",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1164",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1165",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1166",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1167",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1168",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "P-1169",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1170",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1171",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1172",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1173",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1174",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1175",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1176",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1177",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1178",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1179",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1180",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    },
+    {
+      "part": "E-1181",
+      "type": "material_compatibility_warning",
+      "detail": "材料 carbon_steel 与介质 water 相容性一般",
+      "recommendation": "建议定期检查腐蚀情况"
+    }
+  ],
+  "recommendations": []
+}

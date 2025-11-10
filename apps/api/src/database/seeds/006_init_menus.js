@@ -1,0 +1,503 @@
+/**
+ * 初始化菜单数据，确保部门管理等核心模块在系统菜单中可见
+ */
+exports.seed = async function(knex) {
+  // 清空现有菜单，使用CASCADE确保子菜单一并删除
+  await knex('menus').del()
+
+  const now = new Date()
+
+  const rawMenus = [
+    {
+      id: '1',
+      name: '首页',
+      path: '',
+      component: 'Home',
+      icon: 'HomeOutlined',
+      parent_id: null,
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '2',
+      name: '系统管理',
+      path: 'system',
+      component: null,
+      icon: 'SettingOutlined',
+      parent_id: null,
+      type: 'directory',
+      sort_order: 10,
+      status: 'active',
+      permission_code: 'system:*'
+    },
+    {
+      id: '3',
+      name: '用户管理',
+      path: 'system/users',
+      component: 'UserManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: 'system:user:view'
+    },
+    {
+      id: '4',
+      name: '角色管理',
+      path: 'system/roles',
+      component: 'RoleManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 2,
+      status: 'active',
+      permission_code: 'system:role:view'
+    },
+    {
+      id: '5',
+      name: '组织管理',
+      path: 'system/organizations',
+      component: 'OrganizationManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 3,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '6',
+      name: '部门管理',
+      path: 'system/departments',
+      component: 'DepartmentManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 4,
+      status: 'active',
+      permission_code: 'system:dept:view'
+    },
+    {
+      id: '7',
+      name: '权限管理',
+      path: 'system/permissions',
+      component: 'PermissionManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 5,
+      status: 'active',
+      permission_code: 'system:permission:view'
+    },
+    {
+      id: '20',
+      name: '菜单管理',
+      path: 'system/menus',
+      component: 'MenuManagement',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 6,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '8',
+      name: '系统日志',
+      path: 'system/logs',
+      component: 'SystemLogs',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 7,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '9',
+      name: '系统配置',
+      path: 'system/config',
+      component: 'SystemConfig',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 8,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '19',
+      name: '服务监控',
+      path: 'system/monitor',
+      component: 'ServiceMonitor',
+      icon: null,
+      parent_id: '2',
+      type: 'menu',
+      sort_order: 9,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '10',
+      name: '项目中心',
+      path: 'projects',
+      component: 'ProjectManagement',
+      icon: 'AppstoreOutlined',
+      parent_id: null,
+      type: 'menu',
+      sort_order: 20,
+      status: 'active',
+      permission_code: 'system:project:view'
+    },
+    {
+      id: '11',
+      name: '项目列表',
+      path: 'projects/all',
+      component: 'ProjectManagement',
+      icon: null,
+      parent_id: '10',
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: 'system:project:view'
+    },
+    {
+      id: '12',
+      name: '新建项目',
+      path: 'projects/create',
+      component: 'ProjectManagement',
+      icon: null,
+      parent_id: '10',
+      type: 'menu',
+      sort_order: 2,
+      status: 'active',
+      permission_code: 'system:project:view'
+    },
+    {
+      id: '13',
+      name: '项目分配',
+      path: 'projects/assign',
+      component: 'ProjectManagement',
+      icon: null,
+      parent_id: '10',
+      type: 'menu',
+      sort_order: 3,
+      status: 'active',
+      permission_code: 'system:project:view'
+    },
+    {
+      id: '21',
+      name: 'AI工具',
+      path: 'ai',
+      component: null,
+      icon: 'ApiOutlined',
+      parent_id: null,
+      type: 'directory',
+      sort_order: 30,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '210',
+      name: '我的任务',
+      path: 'workflow',
+      component: 'MyTasks',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '211',
+      name: '工作流编辑',
+      path: 'workflow/editor',
+      component: 'WorkflowEditor',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 2,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '212',
+      name: 'Agent工作流',
+      path: 'workflow/agent',
+      component: 'AgentWorkflow/WorkflowDesigner',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 3,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '213',
+      name: '引擎管理',
+      path: 'engines',
+      component: 'EngineManagement',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 4,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '214',
+      name: '建筑布局引擎',
+      path: 'engines/building-layout',
+      component: 'BuildingLayoutEngine',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 5,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '215',
+      name: '学习仪表板',
+      path: 'learning',
+      component: 'LearningDashboardFixed',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 6,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '216',
+      name: '数据标注',
+      path: 'annotation',
+      component: 'DataAnnotation',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 7,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '217',
+      name: 'LangExtract',
+      path: 'langextract',
+      component: 'LangExtract',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 8,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '218',
+      name: '草图识别',
+      path: 'sketch-recognition',
+      component: 'SketchRecognition',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 9,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '219',
+      name: '模型训练',
+      path: 'training',
+      component: 'ModelTraining',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 10,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '220',
+      name: '调试工具',
+      path: 'debug-menu',
+      component: 'DebugMenu',
+      icon: null,
+      parent_id: '21',
+      type: 'menu',
+      sort_order: 11,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '46',
+      name: '知识中心',
+      path: 'knowledge',
+      component: null,
+      icon: 'DatabaseOutlined',
+      parent_id: null,
+      type: 'directory',
+      sort_order: 40,
+      status: 'active',
+      permission_code: 'knowledge:view'
+    },
+    {
+      id: '47',
+      name: '知识库管理',
+      path: 'knowledge/manage',
+      component: 'KnowledgeManage',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: 'knowledge:view'
+    },
+    {
+      id: '48',
+      name: '我的文档',
+      path: 'knowledge/my-documents',
+      component: 'MyDocuments',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 2,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '49',
+      name: '文档上传',
+      path: 'knowledge/upload',
+      component: 'KnowledgeUpload',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 3,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '50',
+      name: '批量上传',
+      path: 'knowledge/batch-upload',
+      component: 'KnowledgeBatchUpload',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 4,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '51',
+      name: '文档搜索',
+      path: 'knowledge/search',
+      component: 'KnowledgeSearch',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 5,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '52',
+      name: 'AI对话',
+      path: 'knowledge/chat',
+      component: 'KnowledgeChat',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 6,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '53',
+      name: '知识图谱',
+      path: 'knowledge/graph',
+      component: 'KnowledgeGraph',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 7,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '54',
+      name: '知识审核',
+      path: 'knowledge/review',
+      component: 'KnowledgeReview',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 8,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '55',
+      name: '人工审核',
+      path: 'knowledge/human-review',
+      component: 'HumanReview',
+      icon: null,
+      parent_id: '46',
+      type: 'menu',
+      sort_order: 9,
+      status: 'active',
+      permission_code: null
+    },
+    {
+      id: '60',
+      name: '数字工地',
+      path: 'digital-site',
+      component: null,
+      icon: 'EnvironmentOutlined',
+      parent_id: null,
+      type: 'directory',
+      sort_order: 50,
+      status: 'active',
+      permission_code: 'digital_site:view'
+    },
+    {
+      id: '61',
+      name: '数字工地总览',
+      path: 'digital-site/overview',
+      component: 'DigitalSiteOverview',
+      icon: null,
+      parent_id: '60',
+      type: 'menu',
+      sort_order: 1,
+      status: 'active',
+      permission_code: 'digital_site:view'
+    },
+    {
+      id: '62',
+      name: '告警中心',
+      path: 'digital-site/alerts',
+      component: 'DigitalSiteAlerts',
+      icon: null,
+      parent_id: '60',
+      type: 'menu',
+      sort_order: 2,
+      status: 'active',
+      permission_code: 'digital_site:view'
+    }
+  ]
+
+  const menus = rawMenus.map((menu) => ({
+    ...menu,
+    code: menu.code || (menu.path ? menu.path.replace(/\//g, ':') || menu.id : menu.id),
+    permissions: menu.permissions ?? knex.raw("'[]'::jsonb"),
+    visible: menu.visible ?? true,
+    created_at: now,
+    updated_at: now
+  }))
+
+  await knex('menus').insert(menus)
+}

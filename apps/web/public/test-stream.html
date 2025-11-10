@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试SSE流式输出</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>测试流式输出</h1>
+    <button onclick="testStream()">点击测试</button>
+    <div id="output" style="border:1px solid #ccc; padding:10px; margin-top:10px; min-height:100px; white-space: pre-wrap;"></div>
+
+    <script>
+        async function testStream() {
+            const output = document.getElementById('output');
+            output.innerHTML = '正在请求...\n';
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                output.innerHTML = '错误: 未登录,请先访问 http://localhost:8000 登录';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('question', '你好,请简单介绍一下你自己');
+            formData.append('scope', 'all');
+
+            try {
+                const response = await fetch('http://localhost:3000/api/knowledge/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    output.innerHTML = '错误: HTTP ' + response.status;
+                    return;
+                }
+
+                output.innerHTML = '开始接收流式数据:\n\n';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        output.innerHTML += '\n\n[流结束]';
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    console.log('收到chunk:', chunk);
+
+                    const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+
+                    for (const line of lines) {
+                        const data = line.replace('data: ', '').trim();
+                        if (!data) continue;
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            console.log('解析结果:', parsed);
+
+                            if (parsed.type === 'chunk') {
+                                fullContent += parsed.content;
+                                output.innerHTML = '开始接收流式数据:\n\n' + fullContent;
+                            } else if (parsed.type === 'done') {
+                                output.innerHTML += '\n\n✅ 完成!';
+                            } else if (parsed.type === 'error') {
+                                output.innerHTML += '\n\n❌ 错误: ' + parsed.message;
+                            }
+                        } catch (e) {
+                            console.error('解析错误:', e, '原始数据:', data);
+                        }
+                    }
+                }
+            } catch (error) {
+                output.innerHTML = '❌ 错误: ' + error.message;
+                console.error('完整错误:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+require('dotenv').config()
+
+const express = require('express')
+const cors = require('cors')
+const helmet = require('helmet')
+const compression = require('compression')
+const morgan = require('morgan')
+const path = require('path')
+
+// 导入中间件
+const { errorHandler, notFound } = require('./utils/error')
+
+// 导入路由
+const authRoutes = require('./routes/auth')
+const userRoutes = require('./routes/users')
+const departmentRoutes = require('./routes/departments')
+const roleRoutes = require('./routes/roles')
+const organizationRoutes = require('./routes/organizations')
+const permissionRoutes = require('./routes/permissions')
+const projectRoutes = require('./routes/projects')
+const knowledgeRoutes = require('./routes/knowledge')
+const chatRoutes = require('./routes/chat')
+const graphRoutes = require('./routes/graph')
+const learningRoutes = require('./routes/learning')
+const systemRoutes = require('./routes/system')
+const menuRoutes = require('./routes/menus')
+const annotationRoutes = require('./routes/annotations')
+const logRoutes = require('./routes/logs')
+const workflowRoutes = require('./routes/workflow')
+const engineRoutes = require('./routes/engines')
+const workflowTemplateRoutes = require('./routes/workflowTemplate')
+const aiPluginRoutes = require('./routes/ai-plugin')  // AI插件统一接口
+
+const app = express()
+
+// CORS配置必须在其他中间件之前
+app.use(cors({
+  origin: function(origin, callback) {
+    // 允许的源列表
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',
+      'http://localhost:5177',
+      'http://localhost:5178',
+      'http://localhost:5179',
+      'http://localhost:8080', 
+      'http://localhost:8082',
+      'http://localhost:3000'
+    ];
+    // 允许没有origin的请求（比如Postman、本地文件）
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}))
+
+// 基础中间件
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+})) // 安全头设置
+app.use(compression()) // 响应压缩
+
+// 请求日志
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'))
+} else {
+  app.use(morgan('combined'))
+}
+
+// 请求解析
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// 静态文件服务
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
+// API路由前缀
+const API_PREFIX = process.env.API_PREFIX || '/api'
+
+// 健康检查
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version || '1.0.0'
+  })
+})
+
+// API路由
+app.use(`${API_PREFIX}/auth`, authRoutes)
+app.use(`${API_PREFIX}/users`, userRoutes)
+app.use(`${API_PREFIX}/departments`, departmentRoutes)
+app.use(`${API_PREFIX}/roles`, roleRoutes)
+app.use(`${API_PREFIX}/organizations`, organizationRoutes)
+app.use(`${API_PREFIX}/permissions`, permissionRoutes)
+app.use(`${API_PREFIX}/projects`, projectRoutes)
+app.use(`${API_PREFIX}/knowledge`, knowledgeRoutes)
+app.use(`${API_PREFIX}/chat`, chatRoutes)
+app.use(`${API_PREFIX}/graph`, graphRoutes)
+app.use(`${API_PREFIX}/workflow`, workflowRoutes)
+app.use(`${API_PREFIX}/engines`, engineRoutes)
+app.use(`${API_PREFIX}/workflow-template`, workflowTemplateRoutes)
+
+// 节点管理（统一的节点系统）
+const nodesRouter = require('./routes/nodes')
+app.use(`${API_PREFIX}/nodes`, nodesRouter)
+
+// 智能聊天路由（集成GraphRAG）
+const intelligentChatRoutes = require('./routes/intelligentChat')
+app.use(`${API_PREFIX}/intelligent-chat`, intelligentChatRoutes)
+
+// 服务健康检查和诊断路由
+const serviceHealthRoutes = require('./routes/serviceHealth')
+app.use(`${API_PREFIX}/service-health`, serviceHealthRoutes)
+
+// 规则引擎路由
+const rulesRoutes = require('./routes/rules')
+app.use(`${API_PREFIX}/rules`, rulesRoutes)
+
+// 空间引擎路由
+const spatialRoutes = require('./routes/spatial')
+app.use(`${API_PREFIX}/spatial`, spatialRoutes)
+
+// AI审核路由
+const auditRoutes = require('./routes/audit')
+app.use(`${API_PREFIX}/audit`, auditRoutes)
+
+// 视觉识别路由（草图转3D）
+const visionRoutes = require('./routes/vision')
+app.use(`${API_PREFIX}/vision`, visionRoutes)
+
+// AI插件统一接口（插件的唯一入口）
+app.use(`${API_PREFIX}/ai-plugin`, aiPluginRoutes)
+
+// AI建模路由（支持草图转3D）
+const aiModelingRoutes = require('./routes/ai-modeling')
+app.use(`${API_PREFIX}/ai-modeling`, aiModelingRoutes)
+
+// 引擎管理路由已在上面注册，移除重复的
+
+app.use(`${API_PREFIX}/learning`, learningRoutes)
+app.use(`${API_PREFIX}/system`, systemRoutes)
+app.use(`${API_PREFIX}/menus`, menuRoutes)
+app.use(`${API_PREFIX}/annotations`, annotationRoutes)
+app.use(`${API_PREFIX}/logs`, logRoutes)
+
+// 404处理
+app.use(notFound)
+
+// 错误处理中间件
+app.use(errorHandler)
+
+// 初始化引擎系统
+const { getEngineCore } = require('./core/EngineCore')
+const { getWorkflowOrchestrator } = require('./core/WorkflowOrchestrator')
+const { registerRulesEngine } = require('./engines/RulesEngineAdapter')
+const { registerSimpleTarotEngine } = require('./engines/SimpleTarotEngine')
+
+async function initializeEngineSystem() {
+  try {
+    console.log('🔧 正在初始化引擎系统...')
+    
+    // 初始化核心系统
+    const engineCore = getEngineCore()
+    await engineCore.initialize()
+    
+    // 初始化工作流编排器
+    const orchestrator = getWorkflowOrchestrator()
+    await orchestrator.initialize()
+    
+    // 从数据库加载已激活的引擎
+    // 引擎已经在 engineCore.initialize() 中从数据库加载了
+    
+    // 获取统计信息
+    const stats = await engineCore.getStatistics()
+    console.log(`📊 引擎系统就绪: ${stats.engines.total} 个引擎已加载`)
+    
+    // 如果没有引擎，提示用户可以通过API或界面添加
+    if (stats.engines.total === 0) {
+      console.log('💡 提示: 当前没有激活的引擎')
+      console.log('   可以通过以下方式添加引擎:')
+      console.log('   1. POST /api/engines/generate - 从文档生成引擎')
+      console.log('   2. POST /api/engines/register - 注册自定义引擎')
+      console.log('   3. GET /api/engines/marketplace - 从市场下载引擎')
+    }
+    
+  } catch (error) {
+    console.error('❌ 引擎系统初始化失败:', error)
+  }
+}
+
+// 启动服务器
+const PORT = process.env.PORT || 3000
+const HOST = '0.0.0.0'  // 监听所有网络接口，允许远程访问
+const server = app.listen(PORT, HOST, async () => {
+  console.log(`🚀 服务器启动成功`)
+  console.log(`📍 本地地址: http://localhost:${PORT}`)
+  console.log(`📍 网络地址: http://10.10.6.95:${PORT}`)
+  console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`)
+  
+  // 初始化引擎系统
+  await initializeEngineSystem()
+  console.log(`📡 API前缀: ${API_PREFIX}`)
+  console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws/document-process`)
+})
+
+// 初始化WebSocket服务（文档处理进度推送）
+const DocumentProcessWebSocket = require('./services/document/documentProcessWebSocket')
+const wsService = new DocumentProcessWebSocket(server)
+console.log('✅ WebSocket服务已启动')
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+  console.log('👋 收到SIGTERM信号，开始优雅关闭...')
+  server.close(() => {
+    console.log('✅ 服务器已关闭')
+    process.exit(0)
+  })
+})
+
+// 启动Redis队列Worker
+const { startWorker } = require('./workers/documentWorker')
+startWorker()
+
+// 启动GraphRAG自动处理服务（补充处理遗漏的文档）
+const AutoGraphRAGService = require('./services/knowledge/AutoGraphRAGService')
+AutoGraphRAGService.startAutoProcessor()
+
+process.on('SIGINT', () => {
+  console.log('👋 收到SIGINT信号，开始优雅关闭...')
+  server.close(() => {
+    console.log('✅ 服务器已关闭')
+    process.exit(0)
+  })
+})
+
+// 未捕获异常处理
+process.on('uncaughtException', (err) => {
+  console.error('💥 未捕获的异常:', err)
+  process.exit(1)
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 未处理的Promise拒绝:', reason)
+  console.error('Promise:', promise)
+  process.exit(1)
+})
+
+module.exports = app

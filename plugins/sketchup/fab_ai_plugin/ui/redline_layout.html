@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>红线参数化布局生成 - 智能规划系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header-icon {
+            font-size: 28px;
+            animation: rotate 4s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .badge {
+            background: rgba(255,255,255,0.25);
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 24px;
+            height: 100%;
+        }
+        
+        .params-panel {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 28px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .panel-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #f093fb;
+            box-shadow: 0 0 0 4px rgba(240, 147, 251, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .upload-button {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            border: 3px dashed #f093fb;
+            border-radius: 8px;
+            color: #f093fb;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .upload-button:hover {
+            background: #fff5fc;
+            border-style: solid;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(240, 147, 251, 0.2);
+        }
+        
+        .upload-button.uploaded {
+            border-color: #4caf50;
+            color: #4caf50;
+            border-style: solid;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .checkbox-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item label {
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .preview-panel {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 28px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .redline-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 24px;
+            min-height: 320px;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .redline-preview canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .redline-placeholder {
+            text-align: center;
+            color: #ccc;
+        }
+        
+        .redline-placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .redline-placeholder-text {
+            font-size: 15px;
+            color: #999;
+        }
+        
+        .processing {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .spinner {
+            width: 70px;
+            height: 70px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #f093fb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .processing-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .processing-detail {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            max-width: 450px;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            margin: 0 auto 12px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 5px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            color: #f093fb;
+            font-weight: 700;
+        }
+        
+        .layout-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-top: 24px;
+            display: none;
+        }
+        
+        .layout-options.show {
+            display: grid;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .layout-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            border: 3px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .layout-card:hover {
+            border-color: #f093fb;
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.25);
+            transform: translateY(-4px);
+        }
+        
+        .layout-card.selected {
+            border-color: #f093fb;
+            background: linear-gradient(135deg, #fff5fc 0%, #ffffff 100%);
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.3);
+        }
+        
+        .layout-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            background: #f093fb;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .layout-preview {
+            width: 100%;
+            height: 160px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .layout-preview svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .layout-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .layout-stats {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.8;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .stat-good {
+            color: #4caf50;
+            font-weight: 700;
+        }
+        
+        .stat-excellent {
+            color: #f093fb;
+            font-weight: 700;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
+        }
+        
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 5px solid #ffc107;
+            padding: 18px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .info-box-text {
+            font-size: 13px;
+            color: #856404;
+            line-height: 1.8;
+        }
+        
+        .success-box {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 5px solid #28a745;
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .success-box-text {
+            font-size: 13px;
+            color: #155724;
+            line-height: 1.8;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="header-icon">📐</span>
+                红线参数化布局生成 - 智能规划系统
+            </h1>
+            <span class="badge">
+                <span>⚡</span>
+                智能规划
+            </span>
+        </div>
+        
+        <div class="content">
+            <div class="two-column">
+                <!-- 左侧参数面板 -->
+                <div class="params-panel">
+                    <div class="panel-title">
+                        ⚙️ 项目参数配置
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">1. 建筑用地红线</label>
+                        <button class="upload-button" id="uploadBtn" onclick="uploadRedline()">
+                            <span>📁</span>
+                            <span id="uploadText">导入红线 DWG / DXF / PDF</span>
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">2. Fab 工艺类型</label>
+                        <select class="form-select" id="fabType">
+                            <option value="12inch">12寸晶圆产线（300mm）</option>
+                            <option value="8inch">8寸晶圆产线（200mm）</option>
+                            <option value="6inch">6寸晶圆产线（150mm）</option>
+                            <option value="mixed">混合产线</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">3. 洁净室面积需求</label>
+                        <div class="form-row">
+                            <input type="number" class="form-input" value="8000" id="cleanroomArea" placeholder="面积">
+                            <select class="form-select">
+                                <option>平方米（㎡）</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">4. 设计产能规模</label>
+                        <div class="form-row">
+                            <input type="text" class="form-input" placeholder="月产能" value="60,000">
+                            <select class="form-select">
+                                <option>片/月（WSPM）</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">5. 扩展预留空间</label>
+                        <select class="form-select">
+                            <option value="30">预留 30% 扩展空间（标准）</option>
+                            <option value="50">预留 50% 扩展空间（大型）</option>
+                            <option value="0">不预留扩展空间</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">6. 配套设施需求</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" checked id="power">
+                                <label for="power">⚡ 动力站（UPS、冷冻站）</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" checked id="chemical">
+                                <label for="chemical">🧪 化学品库（特气、特材）</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" checked id="gas">
+                                <label for="gas">💨 气体站（N2、O2、Ar）</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" checked id="office">
+                                <label for="office">🏢 综合办公楼</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="storage">
+                                <label for="storage">📦 仓储物流区</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="button" onclick="generateLayout()" id="generateBtn">
+                        <span>🚀</span>
+                        智能生成布局方案
+                    </button>
+                    
+                    <div class="info-box">
+                        <div class="info-box-text">
+                            ✓ 符合 GB50073-2013 洁净厂房设计规范<br>
+                            ✓ 满足半导体产业用地标准<br>
+                            ✓ 优化人流物流分区设计<br>
+                            ✓ 考虑未来产能扩展需求
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧预览面板 -->
+                <div class="preview-panel">
+                    <div class="panel-title">
+                        🗺️ 用地分析与布局预览
+                    </div>
+                    
+                    <div class="redline-preview" id="redlinePreview">
+                        <div class="redline-placeholder">
+                            <div class="redline-placeholder-icon">🏗️</div>
+                            <div class="redline-placeholder-text">
+                                请先导入建筑用地红线边界<br>
+                                支持 DWG、DXF、PDF 格式
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 处理中 -->
+                    <div class="processing" id="processing" style="display: none;">
+                        <div class="spinner"></div>
+                        <div class="processing-text">🧠 AI 正在生成最优布局方案...</div>
+                        <div class="processing-detail">
+                            分析用地条件 • 优化建筑布局 • 计算技术指标 • 生成多方案对比
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="layoutProgress"></div>
+                        </div>
+                        <div class="progress-text" id="layoutProgressText">0%</div>
+                    </div>
+                    
+                    <!-- 布局方案 -->
+                    <div class="layout-options" id="layoutOptions">
+                        <div class="layout-card" onclick="selectLayout(1)">
+                            <div class="layout-preview">
+                                <svg viewBox="0 0 300 160">
+                                    <!-- 方案A：紧凑型布局 -->
+                                    <rect x="20" y="20" width="260" height="120" fill="none" stroke="#f093fb" stroke-width="3" stroke-dasharray="5,5"/>
+                                    <!-- 主厂房 -->
+                                    <rect x="40" y="50" width="120" height="80" fill="#f5f5f5" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 动力站 -->
+                                    <rect x="170" y="60" width="60" height="60" fill="#e8e8e8" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 办公楼 -->
+                                    <rect x="50" y="30" width="50" height="15" fill="#e0e0e0" stroke="#f093fb" stroke-width="2"/>
+                                    <text x="150" y="155" text-anchor="middle" fill="#999" font-size="10">紧凑布局</text>
+                                </svg>
+                            </div>
+                            <div class="layout-title">方案 A - 紧凑型</div>
+                            <div class="layout-stats">
+                                <div class="stat-row">
+                                    <span>面积利用率：</span>
+                                    <span class="stat-good">78%</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>容积率：</span>
+                                    <span>1.2</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>流线优化：</span>
+                                    <span>良好</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="layout-card" onclick="selectLayout(2)">
+                            <div class="layout-preview">
+                                <svg viewBox="0 0 300 160">
+                                    <!-- 方案B：平衡型布局 -->
+                                    <rect x="20" y="20" width="260" height="120" fill="none" stroke="#f093fb" stroke-width="3" stroke-dasharray="5,5"/>
+                                    <!-- 主厂房 -->
+                                    <rect x="60" y="45" width="110" height="75" fill="#f5f5f5" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 动力站 -->
+                                    <rect x="185" y="55" width="55" height="55" fill="#e8e8e8" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 办公楼 -->
+                                    <rect x="70" y="28" width="60" height="12" fill="#e0e0e0" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 仓储 -->
+                                    <rect x="185" y="115" width="55" height="20" fill="#d8d8d8" stroke="#f093fb" stroke-width="2"/>
+                                    <text x="150" y="155" text-anchor="middle" fill="#999" font-size="10">平衡布局</text>
+                                </svg>
+                            </div>
+                            <div class="layout-title">方案 B - 平衡型 ⭐</div>
+                            <div class="layout-stats">
+                                <div class="stat-row">
+                                    <span>面积利用率：</span>
+                                    <span class="stat-excellent">82%</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>容积率：</span>
+                                    <span>1.45</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>流线优化：</span>
+                                    <span class="stat-excellent">优秀</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="layout-card" onclick="selectLayout(3)">
+                            <div class="layout-preview">
+                                <svg viewBox="0 0 300 160">
+                                    <!-- 方案C：扩展型布局 -->
+                                    <rect x="20" y="20" width="260" height="120" fill="none" stroke="#f093fb" stroke-width="3" stroke-dasharray="5,5"/>
+                                    <!-- 主厂房 -->
+                                    <rect x="50" y="45" width="100" height="70" fill="#f5f5f5" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 预留扩展 -->
+                                    <rect x="155" y="45" width="55" height="70" fill="#f5f5f5" stroke="#f093fb" stroke-width="2" stroke-dasharray="3,3" opacity="0.5"/>
+                                    <!-- 动力站 -->
+                                    <rect x="220" y="55" width="45" height="50" fill="#e8e8e8" stroke="#f093fb" stroke-width="2"/>
+                                    <!-- 办公楼 -->
+                                    <rect x="60" y="27" width="55" height="13" fill="#e0e0e0" stroke="#f093fb" stroke-width="2"/>
+                                    <text x="150" y="155" text-anchor="middle" fill="#999" font-size="10">扩展布局</text>
+                                </svg>
+                            </div>
+                            <div class="layout-title">方案 C - 扩展型</div>
+                            <div class="layout-stats">
+                                <div class="stat-row">
+                                    <span>面积利用率：</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>容积率：</span>
+                                    <span>1.3</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>扩展预留：</span>
+                                    <span class="stat-good">50%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="button" id="generate3DBtn" style="display: none; margin-top: 24px;" onclick="generate3D()">
+                        <span>🎨</span>
+                        生成选中方案的 3D 模型
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedLayout = null;
+        let redlineUploaded = false;
+        
+        function uploadRedline() {
+            // 模拟上传红线
+            const btn = document.getElementById('uploadBtn');
+            btn.classList.add('uploaded');
+            document.getElementById('uploadText').innerHTML = '✓ 已导入：fab_redline.dwg';
+            redlineUploaded = true;
+            
+            // 显示红线预览（使用Canvas绘制）
+            const preview = document.getElementById('redlinePreview');
+            preview.innerHTML = `
+                <div class="success-box">
+                    <div class="success-box-text">
+                        ✓ 红线边界导入成功<br><br>
+                        <strong>用地信息：</strong><br>
+                        • 用地面积：15,000 ㎡（1.5 公顷）<br>
+                        • 建筑红线：150m × 100m<br>
+                        • 地块形状：规则矩形<br>
+                        • 周边道路：东西向12m，南北向8m
+                    </div>
+                </div>
+                <svg width="100%" height="200" style="margin-top: 16px;">
+                    <!-- 红线边界 -->
+                    <rect x="50" y="30" width="400" height="140" fill="none" stroke="#f5576c" stroke-width="4" stroke-dasharray="10,5"/>
+                    <text x="250" y="20" text-anchor="middle" fill="#f5576c" font-size="14" font-weight="700">建筑红线 150m×100m</text>
+                    <!-- 尺寸标注 -->
+                    <text x="250" y="185" text-anchor="middle" fill="#999" font-size="12">150m</text>
+                    <text x="30" y="105" text-anchor="middle" fill="#999" font-size="12">100m</text>
+                    <!-- 指北针 -->
+                    <polygon points="470,50 475,40 480,50" fill="#f093fb"/>
+                    <line x1="475" y1="40" x2="475" y2="60" stroke="#f093fb" stroke-width="2"/>
+                    <text x="490" y="50" fill="#999" font-size="10">N</text>
+                </svg>
+            `;
+        }
+        
+        function generateLayout() {
+            if (!redlineUploaded) {
+                alert('⚠️ 请先导入建筑用地红线');
+                return;
+            }
+            
+            // 显示处理中
+            document.getElementById('processing').style.display = 'block';
+            document.getElementById('layoutOptions').classList.remove('show');
+            document.getElementById('generate3DBtn').style.display = 'none';
+            
+            // 模拟进度
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 3;
+                document.getElementById('layoutProgress').style.width = progress + '%';
+                document.getElementById('layoutProgressText').innerHTML = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('processing').style.display = 'none';
+                        document.getElementById('layoutOptions').classList.add('show');
+                    }, 500);
+                }
+            }, 60);
+        }
+        
+        function selectLayout(num) {
+            selectedLayout = num;
+            
+            // 移除所有选中状态
+            document.querySelectorAll('.layout-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // 添加选中状态
+            event.currentTarget.classList.add('selected');
+            
+            // 显示生成3D按钮
+            document.getElementById('generate3DBtn').style.display = 'flex';
+        }
+        
+        function generate3D() {
+            if (!selectedLayout) {
+                alert('请先选择一个布局方案');
+                return;
+            }
+            
+            const schemes = ['A - 紧凑型', 'B - 平衡型', 'C - 扩展型'];
+            
+            // 调用 SketchUp Ruby 方法
+            setTimeout(() => {
+                try {
+                    window.location = 'skp:generate_fab_layout@' + JSON.stringify({
+                        layout: selectedLayout,
+                        fabType: document.getElementById('fabType').value,
+                        area: document.getElementById('cleanroomArea').value
+                    });
+                } catch(e) {
+                    console.log('调用SketchUp:', e);
+                }
+                
+                alert(
+                    '✓ 3D 模型生成中...\n\n' +
+                    '已选择：方案 ' + schemes[selectedLayout-1] + '\n\n' +
+                    '即将在 SketchUp 场景中生成：\n' +
+                    '• 用地红线边界\n' +
+                    '• 内部道路系统\n' +
+                    '• 主厂房及配套建筑\n' +
+                    '• 绿化和景观区域'
+                );
+            }, 100);
+        }
+    </script>
+</body>
+</html>

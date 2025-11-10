@@ -1,0 +1,164 @@
+{
+  "id": "document_knowledge_workflow",
+  "name": "文档知识库构建工作流",
+  "description": "上传→识别→Redis队列→并行消费(向量库+LangExtract知识图谱)",
+  "category": "knowledge",
+  "icon": "📚",
+  "version": "2.0.0",
+  "nodes": [
+    {
+      "id": "upload",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "label": "文档上传",
+        "triggerType": "file_upload",
+        "fileTypes": [".pdf", ".docx", ".txt", ".md", ".pptx", ".xlsx"],
+        "storage": "MinIO"
+      }
+    },
+    {
+      "id": "recognize",
+      "type": "process",
+      "position": { "x": 300, "y": 200 },
+      "data": {
+        "label": "文档识别",
+        "engine": "DocumentRecognition",
+        "service": "http://localhost:8086/api/recognize",
+        "config": {
+          "ocr": true,
+          "yolo": false,
+          "extract_text": true,
+          "extract_images": true,
+          "extract_tables": true
+        }
+      }
+    },
+    {
+      "id": "redis_queue",
+      "type": "queue",
+      "position": { "x": 500, "y": 200 },
+      "data": {
+        "label": "Redis队列",
+        "engine": "RedisQueue",
+        "config": {
+          "queue_name": "document_processing",
+          "priority": "normal",
+          "ttl": 3600
+        }
+      }
+    },
+    {
+      "id": "consumer_split",
+      "type": "parallel",
+      "position": { "x": 700, "y": 200 },
+      "data": {
+        "label": "并行消费",
+        "description": "从Redis队列并行消费"
+      }
+    },
+    {
+      "id": "vector_consumer",
+      "type": "process",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "label": "向量库消费者",
+        "engine": "VectorConsumer",
+        "service": "http://localhost:8085/api/vectorize",
+        "config": {
+          "consumer_name": "vector_consumer",
+          "batch_size": 10,
+          "embedding_model": "nomic-embed-text",
+          "chunk_size": 500,
+          "chunk_overlap": 50,
+          "storage": "Milvus"
+        }
+      }
+    },
+    {
+      "id": "langextract_consumer",
+      "type": "process",
+      "position": { "x": 900, "y": 300 },
+      "data": {
+        "label": "LangExtract消费者",
+        "engine": "LangExtractConsumer",
+        "service": "http://localhost:8092/api/extract",
+        "config": {
+          "consumer_name": "langextract_consumer",
+          "batch_size": 5,
+          "mode": "learn_and_infer",
+          "extract_entities": true,
+          "extract_relations": true,
+          "extract_rules": true,
+          "model": "qwen2.5",
+          "storage": "Neo4j"
+        }
+      }
+    },
+    {
+      "id": "vector_store",
+      "type": "storage",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "label": "Milvus存储",
+        "engine": "MilvusStore",
+        "config": {
+          "collection": "knowledge_base",
+          "index_type": "IVF_FLAT",
+          "metric_type": "L2"
+        }
+      }
+    },
+    {
+      "id": "graph_store",
+      "type": "storage",
+      "position": { "x": 1100, "y": 300 },
+      "data": {
+        "label": "Neo4j存储",
+        "engine": "Neo4jStore",
+        "config": {
+          "database": "knowledge_graph",
+          "create_entities": true,
+          "create_relations": true,
+          "merge_duplicates": true
+        }
+      }
+    },
+    {
+      "id": "status_update",
+      "type": "process",
+      "position": { "x": 1300, "y": 200 },
+      "data": {
+        "label": "状态更新",
+        "engine": "StatusUpdater",
+        "config": {
+          "update_vector_status": true,
+          "update_graph_status": true,
+          "table": "knowledge_documents"
+        }
+      }
+    },
+    {
+      "id": "complete",
+      "type": "output",
+      "position": { "x": 1500, "y": 200 },
+      "data": {
+        "label": "完成通知",
+        "outputType": "notification",
+        "channels": ["websocket", "api_response"]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "upload", "target": "recognize", "label": "文件路径" },
+    { "id": "e2", "source": "recognize", "target": "redis_queue", "label": "识别结果" },
+    { "id": "e3", "source": "redis_queue", "target": "consumer_split", "label": "入队" },
+    { "id": "e4", "source": "consumer_split", "target": "vector_consumer", "label": "消费1" },
+    { "id": "e5", "source": "consumer_split", "target": "langextract_consumer", "label": "消费2" },
+    { "id": "e6", "source": "vector_consumer", "target": "vector_store", "label": "向量化" },
+    { "id": "e7", "source": "langextract_consumer", "target": "graph_store", "label": "知识提取" },
+    { "id": "e8", "source": "vector_store", "target": "status_update", "label": "完成1" },
+    { "id": "e9", "source": "graph_store", "target": "status_update", "label": "完成2" },
+    { "id": "e10", "source": "status_update", "target": "complete", "label": "通知" }
+  ]
+}

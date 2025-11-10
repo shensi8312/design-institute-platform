@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>草图转3D白模 - AI识别系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+        
+        .container {
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-icon {
+            font-size: 28px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .badge {
+            background: rgba(255,255,255,0.25);
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
+        .content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            position: relative;
+        }
+        
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 60px;
+            right: 60px;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+        
+        .step-progress {
+            position: absolute;
+            top: 20px;
+            left: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            z-index: 1;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #999;
+            transition: all 0.4s ease;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .step.active .step-circle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .step.completed .step-circle {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .step.completed .step-circle::after {
+            content: '✓';
+            font-size: 20px;
+        }
+        
+        .step-label {
+            font-size: 13px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .step.active .step-label {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .section {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 20px;
+            display: none;
+            min-height: 450px;
+        }
+        
+        .section.active {
+            display: block;
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 16px;
+            padding: 80px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 200%;
+            border-radius: 16px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            animation: gradientShift 3s ease infinite;
+            z-index: -1;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        }
+        
+        .upload-area:hover::before {
+            opacity: 0.1;
+        }
+        
+        .upload-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            animation: bounce 2s ease infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .upload-text {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        
+        .demo-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .preview-area {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+        }
+        
+        .file-info {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .file-icon {
+            font-size: 32px;
+        }
+        
+        .file-details {
+            text-align: left;
+        }
+        
+        .file-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .processing {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .spinner {
+            width: 70px;
+            height: 70px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .processing-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .processing-detail {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            max-width: 400px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 0 auto 12px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .progress-text {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .multi-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        
+        .view-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+        }
+        
+        .view-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        .view-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .view-canvas {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .view-canvas svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(-1px);
+        }
+        
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-left: 5px solid #2196f3;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+        
+        .info-box-title {
+            font-weight: 700;
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-box-text {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.8;
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: successPop 0.6s ease;
+        }
+        
+        @keyframes successPop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .success-message {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 14px;
+        }
+        
+        .success-detail {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 6px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>
+                    <span class="header-icon">🎨</span>
+                    草图转3D白模 - AI识别系统
+                </h1>
+            </div>
+            <span class="badge">
+                <span class="pulse-dot"></span>
+                AI就绪
+            </span>
+        </div>
+        
+        <div class="content">
+            <!-- 步骤指示器 -->
+            <div class="step-indicator">
+                <div class="step-progress" id="stepProgress"></div>
+                <div class="step active" id="step1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">上传草图</div>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">AI识别</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">生成视图</div>
+                </div>
+                <div class="step" id="step4">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">生成3D</div>
+                </div>
+            </div>
+            
+            <!-- 第一步：上传 -->
+            <div class="section active" id="section1">
+                <div class="upload-area" onclick="startDemo()">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">点击上传 Fab 厂房建筑草图</div>
+                    <div class="upload-hint">支持 JPG、PNG 格式 · 建议手绘透视图</div>
+                    <button class="demo-button" style="margin-top: 16px;">
+                        <span>⚡</span>
+                        使用演示图片
+                    </button>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-box-title">💡 最佳实践建议</div>
+                    <div class="info-box-text">
+                        ✓ 使用清晰的单点或两点透视手绘图<br>
+                        ✓ 确保主要建筑体块清晰可见<br>
+                        ✓ 标注关键尺寸和比例关系<br>
+                        ✓ AI 将自动识别建筑轮廓和相对比例
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 第二步：识别中 -->
+            <div class="section" id="section2">
+                <div class="preview-area" id="previewArea">
+                    <svg width="400" height="300" style="max-width: 100%;">
+                        <!-- 简单的建筑草图示意 -->
+                        <defs>
+                            <linearGradient id="buildingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#667eea;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#764ba2;stop-opacity:0.3" />
+                            </linearGradient>
+                        </defs>
+                        <!-- 主建筑 -->
+                        <polygon points="50,200 180,180 180,100 50,120" fill="url(#buildingGrad)" stroke="#667eea" stroke-width="3"/>
+                        <!-- 辅助建筑 -->
+                        <polygon points="200,210 300,195 300,140 200,155" fill="url(#buildingGrad)" stroke="#667eea" stroke-width="2"/>
+                        <!-- 办公楼 -->
+                        <polygon points="80,250 140,240 140,210 80,220" fill="url(#buildingGrad)" stroke="#667eea" stroke-width="2"/>
+                        <!-- 地面线 -->
+                        <line x1="20" y1="270" x2="380" y2="240" stroke="#999" stroke-width="2"/>
+                        <text x="200" y="290" text-anchor="middle" fill="#999" font-size="12">Fab 厂房建筑草图</text>
+                    </svg>
+                    
+                    <div class="file-info">
+                        <div class="file-icon">📄</div>
+                        <div class="file-details">
+                            <div class="file-name">fab_building_sketch.jpg</div>
+                            <div class="file-size">2.4 MB · 2400×1800 px</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="processing" style="margin-top: 40px;">
+                    <div class="spinner"></div>
+                    <div class="processing-text">🔍 AI 正在智能识别...</div>
+                    <div class="processing-detail">深度学习算法分析中 · 提取透视关系 · 计算建筑比例</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0%</div>
+                </div>
+            </div>
+            
+            <!-- 第三步：多视图 -->
+            <div class="section" id="section3">
+                <h3 style="margin-bottom: 24px; color: #333; font-size: 20px;">✓ 识别完成 - AI 生成的正交视图</h3>
+                
+                <div class="multi-view">
+                    <div class="view-box">
+                        <div class="view-label">📐 正视图 Front View</div>
+                        <div class="view-canvas">
+                            <svg viewBox="0 0 300 220">
+                                <!-- 主建筑正视图 -->
+                                <rect x="40" y="80" width="160" height="120" fill="#f0f0f0" stroke="#667eea" stroke-width="3"/>
+                                <rect x="40" y="60" width="160" height="20" fill="#e0e0e0" stroke="#667eea" stroke-width="2"/>
+                                <!-- 辅助建筑 -->
+                                <rect x="210" y="100" width="70" height="100" fill="#f0f0f0" stroke="#667eea" stroke-width="2"/>
+                                <!-- 入口 -->
+                                <rect x="95" y="170" width="50" height="30" fill="#d0d0d0" stroke="#667eea" stroke-width="2"/>
+                                <text x="150" y="215" text-anchor="middle" fill="#999" font-size="10">80m</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="view-box">
+                        <div class="view-label">📐 侧视图 Side View</div>
+                        <div class="view-canvas">
+                            <svg viewBox="0 0 300 220">
+                                <!-- 主建筑侧视图 -->
+                                <rect x="50" y="90" width="120" height="110" fill="#f0f0f0" stroke="#667eea" stroke-width="3"/>
+                                <rect x="50" y="70" width="120" height="20" fill="#e0e0e0" stroke="#667eea" stroke-width="2"/>
+                                <!-- 连接部分 -->
+                                <rect x="175" y="120" width="50" height="80" fill="#f0f0f0" stroke="#667eea" stroke-width="2"/>
+                                <text x="150" y="215" text-anchor="middle" fill="#999" font-size="10">60m</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="view-box">
+                        <div class="view-label">📐 顶视图 Top View</div>
+                        <div class="view-canvas">
+                            <svg viewBox="0 0 300 220">
+                                <!-- 主建筑顶视图 -->
+                                <rect x="40" y="50" width="140" height="110" fill="#f0f0f0" stroke="#667eea" stroke-width="3"/>
+                                <!-- 辅助建筑 -->
+                                <rect x="190" y="70" width="70" height="60" fill="#f0f0f0" stroke="#667eea" stroke-width="2"/>
+                                <!-- 办公楼 -->
+                                <rect x="50" y="170" width="70" height="40" fill="#f0f0f0" stroke="#667eea" stroke-width="2"/>
+                                <!-- 入口 -->
+                                <rect x="80" y="40" width="60" height="10" fill="#d0d0d0" stroke="#667eea" stroke-width="2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="view-box">
+                        <div class="view-label">📐 轴测图 Axonometric</div>
+                        <div class="view-canvas">
+                            <svg viewBox="0 0 300 220">
+                                <!-- 3D 轴测视图 -->
+                                <polygon points="80,120 180,100 180,60 80,80" fill="#f5f5f5" stroke="#667eea" stroke-width="2"/>
+                                <polygon points="180,100 180,60 200,65 200,105" fill="#e8e8e8" stroke="#667eea" stroke-width="2"/>
+                                <polygon points="80,120 180,100 200,105 100,125" fill="#e0e0e0" stroke="#667eea" stroke-width="2"/>
+                                <polygon points="80,80 180,60 200,65 100,85" fill="#d5d5d5" stroke="#667eea" stroke-width="2"/>
+                                <!-- 辅助建筑 -->
+                                <polygon points="210,130 260,120 260,95 210,105" fill="#f0f0f0" stroke="#667eea" stroke-width="2"/>
+                                <polygon points="260,120 260,95 270,98 270,123" fill="#e0e0e0" stroke="#667eea" stroke-width="2"/>
+                                <text x="150" y="210" text-anchor="middle" fill="#999" font-size="10">3D View</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value">5.3:1</div>
+                        <div class="stat-label">主厂房 宽高比</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">1.33:1</div>
+                        <div class="stat-label">厂房 进深比</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">67%</div>
+                        <div class="stat-label">辅助建筑高度</div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <div class="info-box-title">📊 AI 比例分析结果</div>
+                    <div class="info-box-text">
+                        ✓ 主厂房（洁净室）：80m × 60m × 15m（估算）<br>
+                        ✓ 动力站：30m × 25m × 10m（相对高度67%）<br>
+                        ✓ 办公楼：35m × 18m × 12m（相对高度80%）<br>
+                        ✓ 建筑体块比例关系已准确提取
+                    </div>
+                </div>
+                
+                <button class="button" onclick="generate3D()">
+                    <span>🚀</span>
+                    生成 SketchUp 3D 白模
+                </button>
+            </div>
+            
+            <!-- 第四步：完成 -->
+            <div class="section" id="section4">
+                <div style="text-align: center; padding: 40px 20px;">
+                    <div class="success-icon">✅</div>
+                    <div class="success-message">3D 白模生成成功！</div>
+                    <div class="success-detail">
+                        模型已自动添加到 SketchUp 场景中<br>
+                        包含主厂房、动力站、办公楼等完整建筑<br>
+                        所有建筑均保持原始比例关系
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">6</div>
+                            <div class="stat-label">建筑体块</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">28s</div>
+                            <div class="stat-label">生成耗时</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">100%</div>
+                            <div class="stat-label">比例准确度</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box" style="text-align: left;">
+                        <div class="info-box-title">📦 已生成内容</div>
+                        <div class="info-box-text">
+                            🏢 主厂房（含技术夹层）<br>
+                            ⚡ 动力站（含设备层）<br>
+                            🧪 化学品库<br>
+                            💨 气体站<br>
+                            🏢 综合办公楼（5层）<br>
+                            🌉 连廊
+                        </div>
+                    </div>
+                    
+                    <button class="button" onclick="window.close()" style="margin-top: 24px;">
+                        <span>✓</span>
+                        完成并关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        
+        function startDemo() {
+            showStep(2);
+            
+            // 模拟进度条
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').innerHTML = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        showStep(3);
+                    }, 500);
+                }
+            }, 50);
+        }
+        
+        function generate3D() {
+            showStep(4);
+            
+            // 调用 SketchUp Ruby 生成详细3D模型
+            setTimeout(() => {
+                try {
+                    window.location = 'skp:generate_detailed_3d@';
+                } catch(e) {
+                    console.log('调用SketchUp:', e);
+                }
+            }, 500);
+        }
+        
+        function showStep(step) {
+            currentStep = step;
+            
+            // 更新进度条
+            const progressWidth = ((step - 1) / 3) * 100;
+            document.getElementById('stepProgress').style.width = progressWidth + '%';
+            
+            // 更新步骤状态
+            for(let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById('step' + i);
+                const sectionEl = document.getElementById('section' + i);
+                
+                if(i < step) {
+                    stepEl.classList.remove('active');
+                    stepEl.classList.add('completed');
+                    stepEl.querySelector('.step-circle').innerHTML = '';
+                } else if(i === step) {
+                    stepEl.classList.add('active');
+                    stepEl.classList.remove('completed');
+                    stepEl.querySelector('.step-circle').innerHTML = i;
+                } else {
+                    stepEl.classList.remove('active', 'completed');
+                    stepEl.querySelector('.step-circle').innerHTML = i;
+                }
+                
+                // 显示/隐藏内容
+                if(i === step) {
+                    sectionEl.classList.add('active');
+                } else {
+                    sectionEl.classList.remove('active');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

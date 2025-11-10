@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>工业级装配查看器 - 生产版</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+
+    #container { display: flex; height: 100vh; }
+
+    #sidebar {
+      width: 320px;
+      background: #252526;
+      border-right: 1px solid #3e3e42;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar-header {
+      padding: 16px;
+      background: #2d2d30;
+      border-bottom: 1px solid #3e3e42;
+    }
+
+    #sidebar-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #cccccc;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #4CAF50;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .btn-group { display: flex; gap: 8px; margin-bottom: 8px; }
+
+    .btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: #0e639c;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .btn:hover { background: #1177bb; transform: translateY(-1px); }
+    .btn:active { background: #0d5a8f; }
+    .btn-secondary { background: #3e3e42; }
+    .btn-secondary:hover { background: #505050; }
+
+    #assembly-tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .tree-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .tree-item:hover { background: #2a2d2e; }
+    .tree-item.selected {
+      background: #094771;
+      color: white;
+      box-shadow: 0 2px 8px rgba(9,71,113,0.3);
+    }
+
+    .tree-item-icon { margin-right: 8px; width: 16px; text-align: center; }
+    .tree-item-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 8px;
+      border: 1px solid #555;
+    }
+
+    #viewport { flex: 1; display: flex; flex-direction: column; }
+
+    #toolbar {
+      height: 48px;
+      background: #2d2d30;
+      border-bottom: 1px solid #3e3e42;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+    }
+
+    .toolbar-separator {
+      width: 1px;
+      height: 24px;
+      background: #3e3e42;
+      margin: 0 8px;
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: #cccccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.15s;
+    }
+
+    .tool-btn:hover {
+      background: #3e3e42;
+      border-color: #505050;
+    }
+
+    .tool-btn.active {
+      background: #094771;
+      border-color: #1177bb;
+      color: white;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      background: linear-gradient(180deg, #1e1e1e 0%, #252526 100%);
+    }
+
+    #render-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #statusbar {
+      height: 28px;
+      background: #007acc;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 12px;
+      gap: 16px;
+    }
+
+    .status-item { display: flex; align-items: center; gap: 6px; }
+
+    #loading-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #2d2d30;
+      padding: 32px 48px;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      text-align: center;
+      z-index: 1000;
+      min-width: 320px;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #3e3e42;
+      border-top-color: #007acc;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #loading-text {
+      font-size: 14px;
+      color: #cccccc;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    #loading-progress {
+      font-size: 12px;
+      color: #858585;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #3e3e42;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #007acc, #1177bb);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    #properties {
+      padding: 16px;
+      background: #1e1e1e;
+      border-top: 1px solid #3e3e42;
+      max-height: 250px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .property-row {
+      display: flex;
+      padding: 6px 0;
+      border-bottom: 1px solid #2d2d30;
+      font-size: 12px;
+    }
+
+    .property-label {
+      width: 120px;
+      color: #858585;
+      font-weight: 500;
+    }
+
+    .property-value {
+      flex: 1;
+      color: #cccccc;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb {
+      background: #424242;
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #4e4e4e; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <h2>
+          🏗️ 装配查看器
+          <span class="badge">生产版</span>
+        </h2>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="fitView()">🔍 适配视图</button>
+          <button class="btn btn-secondary" onclick="toggleWireframe()">📐 线框</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="toggleGrid()">⬜ 网格</button>
+          <button class="btn btn-secondary" onclick="takeScreenshot()">📷 截图</button>
+        </div>
+      </div>
+      <div id="assembly-tree">
+        <div class="tree-item">
+          <span class="tree-item-icon">⏳</span>
+          <span>正在加载装配...</span>
+        </div>
+      </div>
+      <div id="properties">
+        <h3 style="font-size: 13px; margin-bottom: 12px; color: #cccccc; font-weight: 600;">零件属性</h3>
+        <div id="property-list"></div>
+      </div>
+    </div>
+
+    <div id="viewport">
+      <div id="toolbar">
+        <div class="tool-btn active" title="选择" onclick="setTool('select')">🖱️</div>
+        <div class="tool-btn" title="测量" onclick="setTool('measure')">📏</div>
+        <div class="toolbar-separator"></div>
+        <div class="tool-btn" title="前视图" onclick="setView('front')">⬜</div>
+        <div class="tool-btn" title="顶视图" onclick="setView('top')">⬛</div>
+        <div class="tool-btn" title="右视图" onclick="setView('right')">⬛</div>
+        <div class="tool-btn" title="等轴测" onclick="setView('iso')">📦</div>
+      </div>
+
+      <div id="canvas-container">
+        <canvas id="render-canvas"></canvas>
+        <div id="loading-panel">
+          <div class="spinner"></div>
+          <div id="loading-text">正在加载装配...</div>
+          <div id="loading-progress">初始化Three.js引擎</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="statusbar">
+        <div class="status-item">
+          <span>📦</span>
+          <span id="part-count">0 个零件</span>
+        </div>
+        <div class="status-item">
+          <span>🎨</span>
+          <span id="render-mode">着色</span>
+        </div>
+        <div class="status-item">
+          <span>📊</span>
+          <span id="fps-counter">-- FPS</span>
+        </div>
+        <div class="status-item" style="margin-left: auto;">
+          <span id="status-text">初始化中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+    let scene, camera, renderer, controls, transformControls;
+    let parts = [];
+    let selectedPart = null;
+    let gridHelper = null;
+    let wireframeMode = false;
+
+    function initScene() {
+      const canvas = document.getElementById('render-canvas');
+      const container = document.getElementById('canvas-container');
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x2a2a2a);
+
+      camera = new THREE.PerspectiveCamera(
+        45,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        100000
+      );
+      camera.position.set(1500, 1200, 1500);
+
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: false
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      transformControls = new TransformControls(camera, canvas);
+      transformControls.addEventListener('dragging-changed', (e) => {
+        controls.enabled = !e.value;
+      });
+      scene.add(transformControls);
+
+      // 照明
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      keyLight.position.set(3000, 3000, 2000);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
+
+      const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.3);
+      fillLight.position.set(-2000, 1500, -1000);
+      scene.add(fillLight);
+
+      gridHelper = new THREE.GridHelper(5000, 100, 0x444444, 0x2a2a2a);
+      scene.add(gridHelper);
+
+      const axesHelper = new THREE.AxesHelper(800);
+      scene.add(axesHelper);
+
+      window.addEventListener('resize', onWindowResize);
+      canvas.addEventListener('click', onCanvasClick);
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('canvas-container');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    async function loadAssembly() {
+      try {
+        updateProgress(5, '加载装配清单...');
+        updateStatus('正在加载装配...');
+
+        // 加载装配JSON
+        const response = await fetch('./assembly.json');
+        const data = await response.json();
+
+        // 加载颜色映射
+        updateProgress(10, '加载颜色映射...');
+        let colorMap = {};
+        try {
+          const colorResponse = await fetch('/uploads/step_colors.json');
+          colorMap = await colorResponse.json();
+        } catch (e) {
+          console.warn('颜色映射加载失败');
+        }
+
+        // 清空场景
+        parts.forEach(p => scene.remove(p.mesh));
+        parts = [];
+
+        const children = data.object.children;
+        const treeHtml = [];
+        const stlLoader = new STLLoader();
+
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const partName = child.name.split('_')[0];
+          const position = new THREE.Vector3(
+            child.matrix[12],
+            child.matrix[13],
+            child.matrix[14]
+          );
+
+          updateProgress(
+            10 + (i / children.length) * 85,
+            `加载零件 ${i+1}/${children.length}: ${partName}`
+          );
+
+          try {
+            // 加载STL
+            const geometry = await new Promise((resolve, reject) => {
+              stlLoader.load(
+                `/stl/${partName}.stl`,
+                (geom) => {
+                  geom.computeVertexNormals();
+                  resolve(geom);
+                },
+                undefined,
+                reject
+              );
+            });
+
+            // 使用真实颜色
+            const stepColor = colorMap[partName]?.hex || '#cad1ee';
+            const material = new THREE.MeshStandardMaterial({
+              color: parseInt(stepColor.replace('#', '0x')),
+              metalness: 0.3,
+              roughness: 0.6
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(position);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { partId: partName, index: i };
+
+            scene.add(mesh);
+            parts.push({ name: child.name, mesh, color: stepColor });
+
+            treeHtml.push(`
+              <div class="tree-item" data-index="${i}" onclick="selectPart(${i})">
+                <span class="tree-item-icon">🔩</span>
+                <div class="tree-item-color" style="background: ${stepColor}"></div>
+                <span>${child.name}</span>
+              </div>
+            `);
+          } catch (error) {
+            console.warn(`加载失败 ${partName}:`, error);
+          }
+        }
+
+        document.getElementById('assembly-tree').innerHTML = treeHtml.join('');
+        document.getElementById('part-count').textContent = `${parts.length} 个零件`;
+
+        fitView();
+
+        updateProgress(100, '加载完成');
+        setTimeout(() => {
+          document.getElementById('loading-panel').style.display = 'none';
+        }, 300);
+        updateStatus(`✅ 装配加载完成: ${parts.length} 个零件`);
+      } catch (error) {
+        console.error('装配加载失败:', error);
+        updateStatus('❌ 装配加载失败');
+        document.getElementById('loading-text').textContent = '加载失败';
+        document.getElementById('loading-progress').textContent = error.message;
+      }
+    }
+
+    window.selectPart = function(index) {
+      if (selectedPart !== null && parts[selectedPart]) {
+        parts[selectedPart].mesh.material.emissive.setHex(0x000000);
+        document.querySelectorAll('.tree-item').forEach(el => {
+          el.classList.remove('selected');
+        });
+      }
+
+      selectedPart = index;
+      const part = parts[index];
+
+      if (part) {
+        part.mesh.material.emissive.setHex(0x555555);
+        document.querySelector(`.tree-item[data-index="${index}"]`)?.classList.add('selected');
+        showProperties(part);
+        transformControls.attach(part.mesh);
+        updateStatus(`已选择: ${part.name}`);
+      }
+    }
+
+    function onCanvasClick(event) {
+      const canvas = document.getElementById('render-canvas');
+      const rect = canvas.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const meshes = parts.map(p => p.mesh);
+      const intersects = raycaster.intersectObjects(meshes, false);
+
+      if (intersects.length > 0) {
+        const index = intersects[0].object.userData.index;
+        selectPart(index);
+      }
+    }
+
+    function showProperties(part) {
+      const props = document.getElementById('properties');
+      props.style.display = 'block';
+
+      const pos = part.mesh.position;
+      const rot = part.mesh.rotation;
+
+      document.getElementById('property-list').innerHTML = `
+        <div class="property-row">
+          <div class="property-label">零件名称</div>
+          <div class="property-value">${part.name}</div>
+        </div>
+        <div class="property-row">
+          <div class="property-label">颜色</div>
+          <div class="property-value">${part.color}</div>
+        </div>
+        <div class="property-row">
+          <div class="property-label">位置 (X,Y,Z)</div>
+          <div class="property-value">${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)} mm</div>
+        </div>
+        <div class="property-row">
+          <div class="property-label">旋转 (X,Y,Z)</div>
+          <div class="property-value">${(rot.x*180/Math.PI).toFixed(1)}°, ${(rot.y*180/Math.PI).toFixed(1)}°, ${(rot.z*180/Math.PI).toFixed(1)}°</div>
+        </div>
+      `;
+    }
+
+    window.setTool = function(tool) {
+      updateStatus(`工具: ${tool}`);
+    }
+
+    window.setView = function(view) {
+      const dist = 1800;
+      const views = {
+        front: [0, 0, dist],
+        top: [0, dist, 0],
+        right: [dist, 0, 0],
+        iso: [dist, dist*0.8, dist]
+      };
+      camera.position.set(...views[view]);
+      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+
+    window.fitView = function() {
+      if (parts.length === 0) return;
+
+      const box = new THREE.Box3();
+      parts.forEach(p => box.expandByObject(p.mesh));
+
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+
+      const size = new THREE.Vector3();
+      box.getSize(size);
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const dist = maxDim * 1.8;
+
+      camera.position.set(center.x + dist, center.y + dist*0.7, center.z + dist);
+      camera.lookAt(center);
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    window.toggleGrid = function() {
+      gridHelper.visible = !gridHelper.visible;
+    }
+
+    window.toggleWireframe = function() {
+      wireframeMode = !wireframeMode;
+      parts.forEach(p => {
+        p.mesh.material.wireframe = wireframeMode;
+      });
+      document.getElementById('render-mode').textContent = wireframeMode ? '线框' : '着色';
+    }
+
+    window.takeScreenshot = function() {
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `assembly_${Date.now()}.png`;
+      link.href = dataURL;
+      link.click();
+      updateStatus('✅ 截图已保存');
+    }
+
+    function updateProgress(percent, message) {
+      document.getElementById('progress-fill').style.width = `${percent}%`;
+      document.getElementById('loading-progress').textContent = message;
+    }
+
+    function updateStatus(text) {
+      document.getElementById('status-text').textContent = text;
+    }
+
+    // FPS计数
+    let frames = 0, lastTime = performance.now();
+    setInterval(() => {
+      const now = performance.now();
+      const fps = Math.round(frames * 1000 / (now - lastTime));
+      document.getElementById('fps-counter').textContent = `${fps} FPS`;
+      frames = 0;
+      lastTime = now;
+    }, 1000);
+
+    function countFrame() {
+      frames++;
+      requestAnimationFrame(countFrame);
+    }
+    countFrame();
+
+    // 初始化并自动加载
+    initScene();
+    setTimeout(() => {
+      loadAssembly();
+    }, 500);
+  </script>
+</body>
+</html>

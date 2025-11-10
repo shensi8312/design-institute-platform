@@ -1,0 +1,117 @@
+{
+  "word": {
+    "general": {
+      "name": "通用文档",
+      "file": "general.docx",
+      "description": "适用于各类通用文档",
+      "variables": [
+        "title",
+        "author",
+        "date",
+        "content"
+      ]
+    },
+    "design_plan": {
+      "name": "设计方案",
+      "file": "design_plan.docx",
+      "description": "设计方案专用模板，包含项目信息、章节结构",
+      "variables": [
+        "title",
+        "project_name",
+        "author",
+        "date",
+        "content",
+        "sections",
+        "doc_number"
+      ]
+    },
+    "technical_report": {
+      "name": "技术报告",
+      "file": "technical_report.docx",
+      "description": "技术报告专用模板",
+      "variables": [
+        "title",
+        "project_name",
+        "author",
+        "date",
+        "content",
+        "doc_number"
+      ]
+    },
+    "meeting_minutes": {
+      "name": "会议纪要",
+      "file": "meeting_minutes.docx",
+      "description": "会议记录专用模板",
+      "variables": [
+        "title",
+        "date",
+        "attendees",
+        "content",
+        "action_items"
+      ]
+    }
+  },
+  "excel": {
+    "general": {
+      "name": "通用表格",
+      "file": "general.xlsx",
+      "description": "通用数据表格",
+      "variables": [
+        "title",
+        "data"
+      ]
+    },
+    "data_analysis": {
+      "name": "数据分析",
+      "file": "data_analysis.xlsx",
+      "description": "数据分析报表，包含图表",
+      "variables": [
+        "title",
+        "data",
+        "charts"
+      ]
+    },
+    "cost_estimate": {
+      "name": "造价预算",
+      "file": "cost_estimate.xlsx",
+      "description": "工程造价预算表",
+      "variables": [
+        "project_name",
+        "items",
+        "total"
+      ]
+    }
+  },
+  "ppt": {
+    "general": {
+      "name": "通用PPT",
+      "file": "general.pptx",
+      "description": "通用演示文稿",
+      "variables": [
+        "title",
+        "author",
+        "slides"
+      ]
+    },
+    "project_report": {
+      "name": "项目汇报",
+      "file": "project_report.pptx",
+      "description": "项目汇报专用，包含封面、目录、内容页",
+      "variables": [
+        "project_name",
+        "date",
+        "slides"
+      ]
+    },
+    "design_presentation": {
+      "name": "设计展示",
+      "file": "design_presentation.pptx",
+      "description": "设计方案展示专用",
+      "variables": [
+        "project_name",
+        "designer",
+        "slides"
+      ]
+    }
+  }
+}

@@ -1,0 +1,239 @@
+domain:
+  name: "智能标准文档"
+  description: "自动识别文档类型并智能提取多维度规则"
+  code: "intelligent_standards"
+
+# 第一阶段：文档智能识别
+document_classification:
+  prompt: |
+    请分析以下文档内容，识别其类型、专业领域和标准层级。
+
+    文档标题：{title}
+    文档内容片段：{content}
+
+    请返回JSON格式：
+    {
+      "document_type": "技术规程|设计规范|施工标准|计价定额|检验规范|材料标准",
+      "domains": ["建筑结构", "暖通空调", "给排水", "装配式", "市政工程", "材料"],
+      "standard_level": "国标|地标|行标|企标",
+      "keywords": ["关键词1", "关键词2", ...]
+    }
+
+# 第二阶段：多维度规则提取
+rule_extraction:
+  # 并行提取多种规则类型
+  rule_types:
+    - name: "设计规则"
+      code: "design_rule"
+      description: "尺寸要求、计算公式、选型标准、设计参数"
+      color: "#1890FF"
+      prompt: |
+        从以下标准文档中提取设计规则：
+        {content}
+
+        关注：
+        1. 尺寸要求（最小值、最大值、推荐值）
+        2. 计算公式和设计参数
+        3. 选型标准和适用条件
+        4. 设计原则和要求
+
+        提取格式：
+        - 规则名称
+        - 适用条件
+        - 具体要求
+        - 计算公式（如有）
+        - 引用条款
+
+    - name: "装配规则"
+      code: "assembly_rule"
+      description: "安装顺序、连接方式、配合要求"
+      color: "#52C41A"
+      prompt: |
+        从以下标准文档中提取装配/安装规则：
+        {content}
+
+        关注：
+        1. 安装顺序和步骤
+        2. 连接方式和固定方法
+        3. 配合间隙和公差要求
+        4. 装配注意事项
+
+    - name: "施工规则"
+      code: "construction_rule"
+      description: "工艺流程、操作要求、质量控制"
+      color: "#FA8C16"
+      prompt: |
+        从以下标准文档中提取施工规则：
+        {content}
+
+        关注：
+        1. 施工工艺流程
+        2. 操作要求和方法
+        3. 质量控制要点
+        4. 安全注意事项
+
+    - name: "检验规则"
+      code: "inspection_rule"
+      description: "检测方法、验收标准、合格指标"
+      color: "#722ED1"
+      prompt: |
+        从以下标准文档中提取检验/验收规则：
+        {content}
+
+        关注：
+        1. 检测方法和频率
+        2. 验收标准和合格指标
+        3. 不合格处理
+        4. 检验记录要求
+
+    - name: "材料规则"
+      code: "material_rule"
+      description: "材料性能、规格型号、适用范围"
+      color: "#EB2F96"
+      prompt: |
+        从以下标准文档中提取材料规则：
+        {content}
+
+        关注：
+        1. 材料性能指标
+        2. 规格型号和等级
+        3. 适用范围和条件
+        4. 材料要求和限制
+
+    - name: "约束条件"
+      code: "constraint_rule"
+      description: "适用条件、限制条件、禁止事项"
+      color: "#F5222D"
+      prompt: |
+        从以下标准文档中提取约束条件和限制：
+        {content}
+
+        关注：
+        1. 适用条件和范围
+        2. 限制条件和要求
+        3. 禁止事项和注意事项
+        4. 特殊情况处理
+
+# 知识图谱配置
+knowledge_graph:
+  # 实体类型（动态扩展）
+  node_types:
+    - entity_type: "标准文档"
+      neo4j_label: "StandardDocument"
+      color: "#1890FF"
+      properties: ["标题", "编号", "发布日期", "实施日期", "文档类型", "标准层级"]
+
+    - entity_type: "规则"
+      neo4j_label: "Rule"
+      color: "#52C41A"
+      properties: ["规则名称", "规则类型", "适用条件", "具体要求", "引用条款"]
+
+    - entity_type: "专业领域"
+      neo4j_label: "Domain"
+      color: "#722ED1"
+      properties: ["领域名称", "代码"]
+
+    - entity_type: "构件"
+      neo4j_label: "Component"
+      color: "#FA8C16"
+      properties: ["构件名称", "规格", "型号", "材料"]
+
+    - entity_type: "指标"
+      neo4j_label: "Indicator"
+      color: "#EB2F96"
+      properties: ["指标名称", "单位", "标准值", "容许偏差"]
+
+    - entity_type: "工艺"
+      neo4j_label: "Process"
+      color: "#13C2C2"
+      properties: ["工艺名称", "步骤", "要求"]
+
+  # 关系类型
+  relationship_types:
+    - "属于"      # 文档属于某个领域
+    - "规定"      # 文档规定某个规则
+    - "引用"      # 规则引用其他标准
+    - "适用于"    # 规则适用于某个构件
+    - "要求"      # 规则要求某个指标
+    - "包含"      # 工艺包含某个步骤
+    - "约束"      # 规则约束某个条件
+    - "依赖"      # 规则依赖其他规则
+    - "替代"      # 标准替代旧标准
+    - "参考"      # 规则参考其他文档
+
+# 提示词模板
+prompts:
+  # 智能识别提示词
+  document_analysis: |
+    你是一个建筑工程标准文档分析专家。
+
+    请分析以下标准文档，识别其类型、专业领域和关键信息：
+
+    文档标题：{title}
+    文档内容：
+    {content}
+
+    请返回JSON格式，包括：
+    1. document_type: 文档类型（技术规程/设计规范/施工标准/计价定额/检验规范/材料标准）
+    2. domains: 专业领域列表（建筑结构/暖通空调/给排水/装配式/市政工程/材料等）
+    3. standard_level: 标准层级（国标/地标/行标/企标）
+    4. standard_code: 标准编号（如 CECS318-2012）
+    5. keywords: 关键词列表
+    6. summary: 文档摘要（100字内）
+
+  # 通用规则提取
+  rule_extraction: |
+    你是一个建筑工程标准规则提取专家。
+
+    从以下标准文档中提取【{rule_type}】：
+
+    {content}
+
+    提取要求：
+    {extraction_requirements}
+
+    返回JSON数组格式：
+    [
+      {
+        "rule_name": "规则名称",
+        "rule_type": "规则类型",
+        "applicable_condition": "适用条件",
+        "requirements": "具体要求",
+        "formula": "计算公式（如有）",
+        "reference_clause": "引用条款",
+        "constraints": ["约束条件1", "约束条件2"],
+        "examples": "示例说明"
+      }
+    ]
+
+  # 实体关系提取
+  entity_relationship_extraction: |
+    你是一个知识图谱构建专家。
+
+    从以下规则中提取实体和关系：
+
+    {rule_content}
+
+    实体类型：标准文档、规则、构件、材料、指标、工艺、专业领域
+    关系类型：属于、规定、引用、适用于、要求、包含、约束、依赖、替代、参考
+
+    返回JSON格式：
+    {
+      "entities": [
+        {"name": "实体名称", "type": "实体类型", "properties": {"属性": "值"}}
+      ],
+      "relationships": [
+        {"source": "源实体", "target": "目标实体", "type": "关系类型"}
+      ]
+    }
+
+# 向量化配置
+vectorization:
+  chunk_size: 500
+  chunk_overlap: 100
+  metadata_fields:
+    - document_type
+    - domains
+    - standard_level
+    - rule_types
+    - keywords

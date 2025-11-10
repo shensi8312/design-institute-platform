@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>测试3D装配</title>
+  <style>
+    body { margin: 0; font-family: Arial; background: #1a1a2e; }
+    #container { width: 100vw; height: 100vh; }
+    #log { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="log">加载中...</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const log = document.getElementById('log');
+    function addLog(msg) {
+      log.innerHTML += '<br>' + msg;
+      console.log(msg);
+    }
+
+    let scene, camera, renderer, controls;
+
+    addLog('初始化Three.js...');
+    
+    // 场景
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    addLog('✅ 场景创建成功');
+
+    // 相机
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
+    camera.position.set(300, 200, 300);
+    addLog('✅ 相机创建成功');
+
+    // 渲染器
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('container').appendChild(renderer.domElement);
+    addLog('✅ 渲染器创建成功');
+
+    // 控制器
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    addLog('✅ 控制器创建成功');
+
+    // 灯光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(500, 500, 500);
+    scene.add(dirLight);
+    addLog('✅ 灯光添加成功');
+
+    // 网格地面
+    const gridHelper = new THREE.GridHelper(1000, 20, 0x444444, 0x222222);
+    scene.add(gridHelper);
+    addLog('✅ 网格添加成功');
+
+    // 坐标轴
+    const axesHelper = new THREE.AxesHelper(300);
+    scene.add(axesHelper);
+    addLog('✅ 坐标轴添加成功');
+
+    // 加载装配JSON
+    addLog('开始加载assembly.json...');
+    fetch('./assembly.json')
+      .then(response => {
+        addLog('✅ JSON请求成功: ' + response.status);
+        return response.json();
+      })
+      .then(data => {
+        addLog('✅ JSON解析成功');
+        addLog('几何体数: ' + data.geometries.length);
+        addLog('材质数: ' + data.materials.length);
+        addLog('子对象数: ' + data.object.children.length);
+        
+        const loader = new THREE.ObjectLoader();
+        const object = loader.parse(data);
+        addLog('✅ Three.js对象解析成功');
+        
+        scene.add(object);
+        addLog('✅ 对象添加到场景');
+        
+        // 遍历所有mesh
+        let meshCount = 0;
+        object.traverse((child) => {
+          if (child.isMesh) {
+            meshCount++;
+            addLog('  - Mesh: ' + child.name);
+          }
+        });
+        addLog('✅ 总共' + meshCount + '个Mesh');
+        
+        animate();
+      })
+      .catch(error => {
+        addLog('❌ 加载失败: ' + error.message);
+        console.error(error);
+      });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>导航调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .log { margin-top: 20px; padding: 10px; background: #f5f5f5; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>导航调试工具</h1>
+    
+    <h2>系统管理菜单</h2>
+    <button onclick="navigateTo('/system/users')">用户管理</button>
+    <button onclick="navigateTo('/system/organizations')">组织架构</button>
+    <button onclick="navigateTo('/system/permissions')">权限管理</button>
+    <button onclick="navigateTo('/system/logs')">系统日志</button>
+    <button onclick="navigateTo('/system/monitor')">服务监控</button>
+    
+    <h2>工作台菜单</h2>
+    <button onclick="navigateTo('/projects')">我的项目</button>
+    <button onclick="navigateTo('/knowledge/documents')">我的文档</button>
+    <button onclick="navigateTo('/workflow')">我的任务</button>
+    
+    <div id="log" class="log"></div>
+
+    <script>
+        function log(msg, isError = false) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = isError ? 'error' : 'success';
+            entry.textContent = new Date().toLocaleTimeString() + ' - ' + msg;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function navigateTo(path) {
+            log('导航到: ' + path);
+            
+            // 在当前窗口导航
+            window.location.href = path;
+        }
+
+        // 页面加载时检查
+        window.onload = function() {
+            log('当前路径: ' + window.location.pathname);
+            
+            // 检查是否已登录
+            const token = localStorage.getItem('token');
+            if (token) {
+                log('已登录，token存在');
+            } else {
+                log('未登录，请先登录', true);
+            }
+        };
+    </script>
+</body>
+</html>

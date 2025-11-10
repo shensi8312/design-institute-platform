@@ -1,0 +1,190 @@
+# 建筑设计领域配置
+domain:
+  name: "建筑设计"
+  description: "建筑工程设计领域知识管理"
+  version: "1.0.0"
+
+# 1. 文档知识提取配置
+extraction:
+  # 实体类型定义
+  entity_types:
+    - name: "墙体"
+      aliases: ["墙", "wall", "剪力墙", "承重墙", "隔墙"]
+      properties: ["材料", "厚度", "高度", "承重能力", "防火等级"]
+      color: "#FF6B6B"
+      description: "建筑物的墙体结构"
+
+    - name: "柱"
+      aliases: ["column", "支柱", "立柱", "框架柱"]
+      properties: ["截面尺寸", "材料", "配筋", "承载力", "高度"]
+      color: "#4ECDC4"
+      description: "建筑结构的柱子"
+
+    - name: "梁"
+      aliases: ["beam", "框架梁", "连续梁"]
+      properties: ["跨度", "截面", "材料", "配筋", "承载力"]
+      color: "#95E1D3"
+      description: "建筑结构的梁"
+
+    - name: "楼板"
+      aliases: ["slab", "floor", "板", "楼面"]
+      properties: ["厚度", "材料", "跨度", "荷载", "配筋"]
+      color: "#F38181"
+      description: "建筑的楼板结构"
+
+    - name: "门"
+      aliases: ["door", "入口"]
+      properties: ["宽度", "高度", "材料", "防火等级", "开启方式"]
+      color: "#FAA916"
+      description: "建筑的门"
+
+    - name: "窗"
+      aliases: ["window", "窗户"]
+      properties: ["宽度", "高度", "材料", "开启方式", "隔音等级"]
+      color: "#78E08F"
+      description: "建筑的窗户"
+
+  # 提示词模板
+  prompts:
+    entity_extraction: |
+      你是一个建筑设计领域的专家。请从以下建筑设计文本中提取实体。
+
+      **文本内容：**
+      {text}
+
+      **请识别以下类型的实体：**
+      - 建筑构件：墙体、柱、梁、楼板、门、窗、楼梯、电梯等
+      - 材料：混凝土、钢筋、砖、玻璃、钢材等
+      - 参数：尺寸、强度、厚度、高度、跨度、荷载等
+      - 规范：GB、JGJ、CJJ等国家或行业标准
+
+      **返回JSON格式：**
+      {
+        "entities": [
+          {
+            "name": "实体名称",
+            "type": "实体类型",
+            "properties": {},
+            "description": "简短描述"
+          }
+        ]
+      }
+
+    relation_extraction: |
+      你是一个建筑设计领域的专家。请从以下信息中提取实体之间的关系。
+
+      **已识别的实体：**
+      {entities}
+
+      **原文文本：**
+      {text}
+
+      **请识别关系类型：**
+      - 承重关系、连接关系、包含关系、支撑关系、约束关系
+
+      **返回JSON格式：**
+      {
+        "relationships": [
+          {
+            "source": "源实体",
+            "target": "目标实体",
+            "type": "关系类型",
+            "properties": {},
+            "description": "关系描述"
+          }
+        ]
+      }
+
+# 2. 知识图谱构建配置
+knowledge_graph:
+  node_types:
+    - entity_type: "墙体"
+      neo4j_label: "Wall"
+      vector_enabled: true
+
+    - entity_type: "柱"
+      neo4j_label: "Column"
+      vector_enabled: true
+
+    - entity_type: "梁"
+      neo4j_label: "Beam"
+      vector_enabled: true
+
+    - entity_type: "楼板"
+      neo4j_label: "Slab"
+      vector_enabled: true
+
+    - entity_type: "门"
+      neo4j_label: "Door"
+      vector_enabled: true
+
+    - entity_type: "窗"
+      neo4j_label: "Window"
+      vector_enabled: true
+
+  relation_types:
+    - name: "承重"
+      neo4j_type: "BEARS_LOAD"
+      properties: ["荷载值", "安全系数"]
+      direction: true
+      color: "#E74C3C"
+
+    - name: "连接"
+      neo4j_type: "CONNECTS"
+      properties: ["连接方式", "节点类型"]
+      direction: false
+      color: "#3498DB"
+
+    - name: "包含"
+      neo4j_type: "CONTAINS"
+      properties: ["数量"]
+      direction: true
+      color: "#2ECC71"
+
+    - name: "约束"
+      neo4j_type: "CONSTRAINS"
+      properties: ["约束类型", "约束值"]
+      direction: true
+      color: "#9B59B6"
+
+# 3. 规则提取配置
+rule_extraction:
+  rule_templates:
+    - pattern: "{A} -承重-> {B}"
+      template: "当 {A.name} 承重 {B.name} 时，{A.承重能力} >= {B.荷载}"
+      category: "结构安全"
+      priority: "critical"
+
+    - pattern: "房间 -包含-> 门"
+      template: "每个房间必须至少有一个门，门的宽度不应小于0.9m"
+      category: "建筑规范"
+      priority: "high"
+
+  prompts:
+    rule_generation: |
+      你是一个建筑设计规范专家。请基于以下知识图谱模式生成设计规则。
+
+      **图谱模式：** {pattern}
+      **相关实体：** {entities}
+      **相关关系：** {relations}
+
+      请参考GB50009、GB50010、GB50016等规范。
+
+# 4. 辅助设计配置
+recommendation:
+  scoring_weights:
+    vector_similarity: 0.35
+    rule_matching: 0.30
+    graph_connectivity: 0.20
+    standard_compliance: 0.10
+    llm_confidence: 0.05
+
+  prompts:
+    design_assistance: |
+      你是一个资深建筑设计师。请基于以下信息提供设计建议。
+
+      **用户需求：** {query}
+      **相关规则：** {rules}
+      **相似案例：** {cases}
+
+      请从结构安全性、规范符合性、经济性角度给出建议。

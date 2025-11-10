@@ -1,0 +1,25 @@
+我有4个React页面显示空白，浏览器控制台显示"Error handled by React Router default ErrorBoundary"错误。
+
+问题页面：
+1. /workflow 和 /workflow/editor - 使用WorkflowEditor组件
+2. /learning - 使用LearningDashboard组件  
+3. /annotation - 使用DataAnnotation组件
+
+WorkflowEditor结构：
+- WorkflowEditorInner组件内部使用useReactFlow hook
+- WorkflowEditor组件用ReactFlowProvider包装WorkflowEditorInner
+- 正确export default WorkflowEditor
+
+其他25个页面都正常工作，只有这4个空白。
+
+项目环境：
+- React 18
+- React Router v6
+- Vite
+- TypeScript
+- 使用lazy loading和Suspense
+
+请分析：
+1. 为什么这4个页面会触发ErrorBoundary？
+2. 可能的运行时错误原因
+3. 具体调试和修复步骤

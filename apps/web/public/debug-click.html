@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>调试点击事件</title>
+    <meta charset="UTF-8">
+    <style>
+        body { padding: 20px; font-family: Arial; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .test { background: #1890ff; color: white; border: none; cursor: pointer; }
+        .danger { background: #ff4d4f; color: white; border: none; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>调试点击事件</h1>
+    
+    <h2>测试基础点击：</h2>
+    <button class="test" onclick="alert('原生onclick工作')">测试原生onclick</button>
+    <button class="test" id="test1">测试addEventListener</button>
+    <button class="test" id="test2">测试jQuery式点击</button>
+    
+    <h2>在控制台运行这段代码，检查引擎管理页面的按钮：</h2>
+    <pre>
+// 复制到控制台运行
+// 1. 查找删除按钮
+const deleteButtons = document.querySelectorAll('button');
+let foundButton = null;
+
+deleteButtons.forEach(btn => {
+    if (btn.textContent.includes('删除选中')) {
+        foundButton = btn;
+        console.log('找到删除按钮:', btn);
+        console.log('按钮是否禁用:', btn.disabled);
+        console.log('按钮className:', btn.className);
+        
+        // 获取按钮的事件监听器
+        const events = getEventListeners ? getEventListeners(btn) : null;
+        if (events) {
+            console.log('按钮事件:', events);
+        }
+        
+        // 尝试模拟点击
+        console.log('尝试模拟点击...');
+        btn.click();
+    }
+});
+
+if (!foundButton) {
+    console.error('没有找到删除按钮！');
+} else {
+    // 手动添加点击事件
+    console.log('手动添加新的点击事件...');
+    foundButton.addEventListener('click', () => {
+        alert('手动添加的点击事件触发了！');
+    });
+}
+    </pre>
+    
+    <h2>检查React组件：</h2>
+    <pre>
+// 检查React组件的props
+const reactButton = document.querySelector('button[class*="danger"]');
+if (reactButton) {
+    // React 17+
+    const reactPropsKey = Object.keys(reactButton).find(key => key.startsWith('__reactProps'));
+    if (reactPropsKey) {
+        console.log('React Props:', reactButton[reactPropsKey]);
+        console.log('onClick函数:', reactButton[reactPropsKey].onClick);
+    }
+    
+    // 尝试获取React Fiber
+    const reactFiberKey = Object.keys(reactButton).find(key => key.startsWith('__reactFiber'));
+    if (reactFiberKey) {
+        console.log('React Fiber:', reactButton[reactFiberKey]);
+    }
+}
+    </pre>
+    
+    <h2>强制刷新页面的方法：</h2>
+    <ul>
+        <li>按住 Shift + 刷新按钮</li>
+        <li>打开开发者工具，右键刷新按钮，选择"硬性重新加载"</li>
+        <li>清除浏览器缓存：设置 → 隐私和安全 → 清除浏览数据</li>
+        <li>在控制台运行：location.reload(true)</li>
+    </ul>
+    
+    <script>
+        document.getElementById('test1').addEventListener('click', () => {
+            alert('addEventListener工作');
+        });
+        
+        document.getElementById('test2').onclick = function() {
+            alert('onclick属性工作');
+        };
+    </script>
+</body>
+</html>

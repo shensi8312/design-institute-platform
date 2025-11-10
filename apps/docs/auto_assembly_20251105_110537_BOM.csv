@@ -1,0 +1,4 @@
+﻿item,part_number,description,specification,quantity,unit
+1,PUMP-GENERIC-001,pump,type=centrifugal; flow=50; head=30,1,EA
+2,VALVE-GENERIC-001,valve,type=gate; diameter=50; pressure_class=PN16,1,EA
+3,INSTRUMENT-GENERIC-001,instrument,type=pressure_gauge; range=0-2.5 MPa,1,EA

@@ -1,0 +1,199 @@
+# 机械设计领域配置
+domain:
+  name: "机械设计"
+  description: "机械工程设计领域知识管理"
+  version: "1.0.0"
+
+# 1. 文档知识提取配置
+extraction:
+  entity_types:
+    - name: "轴"
+      aliases: ["shaft", "转轴", "传动轴", "心轴"]
+      properties: ["直径", "长度", "材料", "表面处理", "热处理"]
+      color: "#95E1D3"
+      description: "传动系统中的轴类零件"
+
+    - name: "轴承"
+      aliases: ["bearing", "滚动轴承", "滑动轴承"]
+      properties: ["型号", "内径", "外径", "承载能力", "转速"]
+      color: "#F38181"
+      description: "支撑旋转零件的轴承"
+
+    - name: "齿轮"
+      aliases: ["gear", "传动齿轮"]
+      properties: ["模数", "齿数", "压力角", "材料", "精度等级"]
+      color: "#78E08F"
+      description: "传递动力和运动的齿轮"
+
+    - name: "螺栓"
+      aliases: ["bolt", "螺钉", "紧固件"]
+      properties: ["规格", "强度等级", "材料", "螺纹类型"]
+      color: "#FAA916"
+      description: "紧固连接用螺栓"
+
+    - name: "螺母"
+      aliases: ["nut"]
+      properties: ["规格", "材料", "螺纹类型"]
+      color: "#FD79A8"
+      description: "与螺栓配合的螺母"
+
+    - name: "键"
+      aliases: ["key", "平键", "花键"]
+      properties: ["尺寸", "材料", "类型"]
+      color: "#6C5CE7"
+      description: "轴与轴上零件的连接键"
+
+  prompts:
+    entity_extraction: |
+      你是一个机械设计领域的专家。请从以下机械设计文本中提取实体。
+
+      **文本内容：**
+      {text}
+
+      **请识别以下类型的实体：**
+      - 零件：轴、轴承、齿轮、螺栓、螺母、键、弹簧、密封件等
+      - 材料：钢、铝合金、铸铁、铜、塑料等
+      - 参数：尺寸、公差、表面粗糙度、硬度、强度等
+      - 标准：GB/T、ISO、JB等标准
+
+      **返回JSON格式：**
+      {
+        "entities": [
+          {
+            "name": "实体名称",
+            "type": "实体类型",
+            "properties": {},
+            "description": "简短描述"
+          }
+        ]
+      }
+
+    relation_extraction: |
+      你是一个机械设计领域的专家。请从以下信息中提取零件之间的关系。
+
+      **已识别的实体：**
+      {entities}
+
+      **原文文本：**
+      {text}
+
+      **请识别关系类型：**
+      - 配合关系、装配关系、传动关系、支撑关系、约束关系
+
+      **返回JSON格式：**
+      {
+        "relationships": [
+          {
+            "source": "源实体",
+            "target": "目标实体",
+            "type": "关系类型",
+            "properties": {},
+            "description": "关系描述"
+          }
+        ]
+      }
+
+# 2. 知识图谱构建配置
+knowledge_graph:
+  node_types:
+    - entity_type: "轴"
+      neo4j_label: "Shaft"
+      vector_enabled: true
+
+    - entity_type: "轴承"
+      neo4j_label: "Bearing"
+      vector_enabled: true
+
+    - entity_type: "齿轮"
+      neo4j_label: "Gear"
+      vector_enabled: true
+
+    - entity_type: "螺栓"
+      neo4j_label: "Bolt"
+      vector_enabled: true
+
+    - entity_type: "螺母"
+      neo4j_label: "Nut"
+      vector_enabled: true
+
+    - entity_type: "键"
+      neo4j_label: "Key"
+      vector_enabled: true
+
+  relation_types:
+    - name: "配合"
+      neo4j_type: "FITS_WITH"
+      properties: ["配合类型", "公差等级", "间隙/过盈"]
+      direction: false
+      color: "#E74C3C"
+
+    - name: "装配"
+      neo4j_type: "ASSEMBLES"
+      properties: ["装配顺序", "装配方向", "紧固力矩"]
+      direction: true
+      color: "#3498DB"
+
+    - name: "传动"
+      neo4j_type: "TRANSMITS"
+      properties: ["传动比", "效率", "传递功率"]
+      direction: true
+      color: "#2ECC71"
+
+    - name: "支撑"
+      neo4j_type: "SUPPORTS"
+      properties: ["支撑类型", "承载能力"]
+      direction: true
+      color: "#F39C12"
+
+    - name: "约束"
+      neo4j_type: "CONSTRAINS"
+      properties: ["约束类型", "标准依据"]
+      direction: true
+      color: "#9B59B6"
+
+# 3. 规则提取配置
+rule_extraction:
+  rule_templates:
+    - pattern: "{轴} -配合-> {轴承}"
+      template: "当 {轴.name} 与 {轴承.name} 配合时，轴颈直径公差应为 {公差等级}，配合类型为 {配合类型}"
+      category: "配合约束"
+      priority: "high"
+
+    - pattern: "{螺栓} -装配-> {螺母}"
+      template: "{螺栓.name} 与 {螺母.name} 的螺纹规格必须一致"
+      category: "装配约束"
+      priority: "critical"
+
+    - pattern: "{齿轮} -传动-> {齿轮}"
+      template: "齿轮传动时，模数、压力角必须相同"
+      category: "传动设计"
+      priority: "high"
+
+  prompts:
+    rule_generation: |
+      你是一个机械设计规范专家。请基于以下知识图谱模式生成设计规则。
+
+      **图谱模式：** {pattern}
+      **相关实体：** {entities}
+      **相关关系：** {relations}
+
+      请参考GB/T 1800、GB/T 3934等标准。
+
+# 4. 辅助设计配置
+recommendation:
+  scoring_weights:
+    vector_similarity: 0.35
+    rule_matching: 0.30
+    graph_connectivity: 0.15
+    standard_compliance: 0.15
+    manufacturing_cost: 0.05
+
+  prompts:
+    design_assistance: |
+      你是一个资深机械设计工程师。请基于以下信息提供设计建议。
+
+      **用户需求：** {query}
+      **相关规则：** {rules}
+      **相似案例：** {cases}
+
+      请从结构强度、标准符合性、可制造性、经济性角度给出建议。

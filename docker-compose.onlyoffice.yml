@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice-docs
+    restart: always
+    ports:
+      - "8880:80"
+    environment:
+      # 开发环境禁用JWT验证（生产环境必须启用）
+      - JWT_ENABLED=false
+      # 生产环境请设置强密钥
+      - JWT_SECRET=design-institute-secret-2025
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+    networks:
+      - design-network
+
+networks:
+  design-network:
+    external: false
+
+volumes:
+  onlyoffice_data:
+  onlyoffice_logs:

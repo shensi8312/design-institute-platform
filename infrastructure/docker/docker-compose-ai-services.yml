@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Text Embedding Service (BGE-large-zh-v1.5)
+  text-embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    container_name: text-embeddings
+    environment:
+      - MODEL_ID=BAAI/bge-large-zh-v1.5
+      - REVISION=main
+      - MAX_BATCH_TOKENS=16384
+      - MAX_CLIENT_BATCH_SIZE=32
+    ports:
+      - "8001:80"
+    volumes:
+      - embedding_cache:/data
+    networks:
+      - design_network
+    restart: unless-stopped
+    command: --model-id BAAI/bge-large-zh-v1.5 --port 80
+
+  # OpenAI-compatible API Proxy for Embeddings
+  embedding-proxy:
+    image: nginx:alpine
+    container_name: embedding-proxy
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-embedding.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - design_network
+    depends_on:
+      - text-embeddings
+    restart: unless-stopped
+
+networks:
+  design_network:
+    external: true
+
+volumes:
+  embedding_cache:

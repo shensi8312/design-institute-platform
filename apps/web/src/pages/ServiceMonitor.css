@@ -1,0 +1,104 @@
+.service-monitor {
+  padding: 24px;
+  background: #f0f2f5;
+  min-height: 100vh;
+}
+
+.service-monitor .header-card {
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.service-monitor .stats-row {
+  margin-bottom: 16px;
+}
+
+.service-monitor .stats-row .ant-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.service-monitor .stats-row .ant-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.service-monitor .charts-row {
+  margin-bottom: 16px;
+}
+
+.service-monitor .charts-row .ant-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.service-monitor .log-panel {
+  margin-top: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.service-monitor .log-panel .ant-list-item {
+  padding: 8px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.service-monitor .log-panel .ant-list-item:hover {
+  background: #fafafa;
+}
+
+.service-monitor .ant-table-row:hover {
+  background: #f5f5f5;
+}
+
+.service-monitor .ant-progress-text {
+  font-size: 12px;
+}
+
+/* 状态指示灯动画 */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(82, 196, 26, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+  }
+}
+
+.service-monitor .ant-badge-status-success {
+  animation: pulse 2s infinite;
+}
+
+/* 响应式布局 */
+@media (max-width: 1600px) {
+  .service-monitor .stats-row > div {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .service-monitor .charts-row > div {
+    margin-bottom: 16px;
+  }
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .service-monitor {
+    background: #141414;
+  }
+  
+  .service-monitor .ant-card {
+    background: #1f1f1f;
+    border-color: #303030;
+  }
+  
+  .service-monitor .ant-table {
+    background: #1f1f1f;
+  }
+  
+  .service-monitor .ant-list-item:hover {
+    background: #262626;
+  }
+}

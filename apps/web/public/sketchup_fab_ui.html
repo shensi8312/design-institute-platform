@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI建筑设计助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .step {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .step:last-child {
+            border-bottom: none;
+        }
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .industry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .industry-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .industry-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .industry-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .industry-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        .industry-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .building-types {
+            display: none;
+        }
+        .building-types.active {
+            display: block;
+        }
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .type-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        .type-btn:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        .type-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        .params-section {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .params-section.active {
+            display: block;
+        }
+        .param-group {
+            margin-bottom: 20px;
+        }
+        .param-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .param-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .param-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .hint {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ AI参数化建筑生成</h1>
+            <p>三步完成：选择行业 → 选择建筑类型 → 配置参数生成</p>
+        </div>
+
+        <div class="content">
+            <!-- Step 1: 选择行业 -->
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">1</span>
+                    选择行业类型
+                </div>
+                <div class="industry-grid" id="industryGrid">
+                    <div class="industry-card" data-industry="fab">
+                        <div class="industry-icon">🔬</div>
+                        <div class="industry-name">Fab 厂设计</div>
+                    </div>
+                    <div class="industry-card" data-industry="pharma">
+                        <div class="industry-icon">💊</div>
+                        <div class="industry-name">药厂设计</div>
+                    </div>
+                    <div class="industry-card" data-industry="datacenter">
+                        <div class="industry-icon">🖥️</div>
+                        <div class="industry-name">数据中心</div>
+                    </div>
+                    <div class="industry-card" data-industry="chemical">
+                        <div class="industry-icon">⚗️</div>
+                        <div class="industry-name">化工厂</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: 选择建筑类型 -->
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">2</span>
+                    选择建筑类型
+                </div>
+
+                <!-- Fab厂建筑类型 -->
+                <div class="building-types" id="fab-buildings">
+                    <div class="type-grid">
+                        <button class="type-btn" data-type="cleanroom">洁净室主厂房</button>
+                        <button class="type-btn" data-type="power">动力站</button>
+                        <button class="type-btn" data-type="cooling">冷冻站</button>
+                        <button class="type-btn" data-type="chemical">化学品库</button>
+                        <button class="type-btn" data-type="gas">气体站</button>
+                        <button class="type-btn" data-type="office">办公楼</button>
+                        <button class="type-btn" data-type="warehouse">仓库</button>
+                        <button class="type-btn" data-type="dorm">宿舍楼</button>
+                        <button class="type-btn" data-type="canteen">食堂</button>
+                    </div>
+                </div>
+
+                <!-- 药厂建筑类型 -->
+                <div class="building-types" id="pharma-buildings">
+                    <div class="type-grid">
+                        <button class="type-btn" data-type="gmp_workshop">GMP车间</button>
+                        <button class="type-btn" data-type="material_warehouse">原料库</button>
+                        <button class="type-btn" data-type="product_warehouse">成品库</button>
+                        <button class="type-btn" data-type="qa_lab">质检楼</button>
+                        <button class="type-btn" data-type="office">办公楼</button>
+                        <button class="type-btn" data-type="utility">动力车间</button>
+                    </div>
+                </div>
+
+                <!-- 数据中心建筑类型 -->
+                <div class="building-types" id="datacenter-buildings">
+                    <div class="type-grid">
+                        <button class="type-btn" data-type="server_room">主机房</button>
+                        <button class="type-btn" data-type="ups_room">UPS室</button>
+                        <button class="type-btn" data-type="cooling_tower">冷却塔</button>
+                        <button class="type-btn" data-type="office">办公楼</button>
+                    </div>
+                </div>
+
+                <!-- 化工厂建筑类型 -->
+                <div class="building-types" id="chemical-buildings">
+                    <div class="type-grid">
+                        <button class="type-btn" data-type="reactor_workshop">反应车间</button>
+                        <button class="type-btn" data-type="storage_tank">储罐区</button>
+                        <button class="type-btn" data-type="control_room">控制室</button>
+                        <button class="type-btn" data-type="office">办公楼</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: 配置参数 -->
+            <div class="step">
+                <div class="step-title">
+                    <span class="step-number">3</span>
+                    配置建筑参数
+                </div>
+                <div id="paramsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 建筑参数配置
+        const buildingParams = {
+            // Fab厂建筑参数
+            cleanroom: {
+                name: '洁净室主厂房',
+                params: {
+                    length: { label: '长度(m)', default: 144, min: 50, max: 300 },
+                    width: { label: '宽度(m)', default: 72, min: 30, max: 150 },
+                    floor_height: { label: '层高(m)', default: 4.5, min: 3, max: 8 },
+                    floors: { label: '层数', default: 4, min: 1, max: 10 },
+                    tech_layer_height: { label: '技术夹层高(m)', default: 3.5, min: 2, max: 6 }
+                }
+            },
+            power: {
+                name: '动力站',
+                params: {
+                    length: { label: '长度(m)', default: 36, min: 20, max: 80 },
+                    width: { label: '宽度(m)', default: 24, min: 15, max: 50 },
+                    floor_height: { label: '层高(m)', default: 6, min: 4, max: 10 },
+                    equipment_floor_height: { label: '设备层高(m)', default: 4, min: 3, max: 6 }
+                }
+            },
+            cooling: {
+                name: '冷冻站',
+                params: {
+                    length: { label: '长度(m)', default: 30, min: 15, max: 60 },
+                    width: { label: '宽度(m)', default: 20, min: 12, max: 40 },
+                    floor_height: { label: '层高(m)', default: 5, min: 4, max: 8 },
+                    cooling_tower_height: { label: '冷却塔高(m)', default: 8, min: 5, max: 15 }
+                }
+            },
+            chemical: {
+                name: '化学品库',
+                params: {
+                    length: { label: '长度(m)', default: 24, min: 12, max: 50 },
+                    width: { label: '宽度(m)', default: 18, min: 10, max: 40 },
+                    floor_height: { label: '层高(m)', default: 4.5, min: 3.5, max: 6 },
+                    partition_count: { label: '隔间数', default: 4, min: 2, max: 10 }
+                }
+            },
+            gas: {
+                name: '气体站',
+                params: {
+                    length: { label: '长度(m)', default: 20, min: 10, max: 40 },
+                    width: { label: '宽度(m)', default: 15, min: 8, max: 30 },
+                    floor_height: { label: '层高(m)', default: 4, min: 3, max: 6 }
+                }
+            },
+            office: {
+                name: '办公楼',
+                params: {
+                    length: { label: '长度(m)', default: 60, min: 30, max: 120 },
+                    width: { label: '宽度(m)', default: 15, min: 12, max: 24 },
+                    floor_height: { label: '层高(m)', default: 3.6, min: 3, max: 4.5 },
+                    floors: { label: '层数', default: 6, min: 2, max: 20 }
+                }
+            },
+            warehouse: {
+                name: '仓库',
+                params: {
+                    length: { label: '长度(m)', default: 50, min: 25, max: 100 },
+                    width: { label: '宽度(m)', default: 30, min: 20, max: 60 },
+                    floor_height: { label: '层高(m)', default: 8, min: 5, max: 12 },
+                    shelf_height: { label: '货架高(m)', default: 6, min: 3, max: 10 }
+                }
+            },
+            dorm: {
+                name: '宿舍楼',
+                params: {
+                    length: { label: '长度(m)', default: 72, min: 40, max: 100 },
+                    width: { label: '宽度(m)', default: 12, min: 10, max: 16 },
+                    floor_height: { label: '层高(m)', default: 3, min: 2.8, max: 3.6 },
+                    floors: { label: '层数', default: 6, min: 3, max: 12 }
+                }
+            },
+            canteen: {
+                name: '食堂',
+                params: {
+                    length: { label: '长度(m)', default: 36, min: 20, max: 60 },
+                    width: { label: '宽度(m)', default: 24, min: 15, max: 40 },
+                    floor_height: { label: '层高(m)', default: 4.5, min: 3.5, max: 6 },
+                    floors: { label: '层数', default: 2, min: 1, max: 3 }
+                }
+            },
+            // 药厂建筑参数
+            gmp_workshop: {
+                name: 'GMP车间',
+                params: {
+                    length: { label: '长度(m)', default: 80, min: 40, max: 150 },
+                    width: { label: '宽度(m)', default: 50, min: 25, max: 100 },
+                    floor_height: { label: '层高(m)', default: 4.2, min: 3.5, max: 6 },
+                    floors: { label: '层数', default: 3, min: 1, max: 5 },
+                    clean_level: { label: '洁净等级', default: '100000级', type: 'text' }
+                }
+            },
+            material_warehouse: {
+                name: '原料库',
+                params: {
+                    length: { label: '长度(m)', default: 40, min: 20, max: 80 },
+                    width: { label: '宽度(m)', default: 30, min: 15, max: 60 },
+                    floor_height: { label: '层高(m)', default: 6, min: 4, max: 10 },
+                    temperature_control: { label: '恒温区域', default: '是', type: 'text' }
+                }
+            },
+            product_warehouse: {
+                name: '成品库',
+                params: {
+                    length: { label: '长度(m)', default: 50, min: 25, max: 100 },
+                    width: { label: '宽度(m)', default: 35, min: 20, max: 70 },
+                    floor_height: { label: '层高(m)', default: 5, min: 3.5, max: 8 }
+                }
+            },
+            qa_lab: {
+                name: '质检楼',
+                params: {
+                    length: { label: '长度(m)', default: 40, min: 20, max: 80 },
+                    width: { label: '宽度(m)', default: 20, min: 12, max: 40 },
+                    floor_height: { label: '层高(m)', default: 3.9, min: 3.3, max: 5 },
+                    floors: { label: '层数', default: 4, min: 2, max: 8 }
+                }
+            },
+            utility: {
+                name: '动力车间',
+                params: {
+                    length: { label: '长度(m)', default: 30, min: 15, max: 60 },
+                    width: { label: '宽度(m)', default: 20, min: 12, max: 40 },
+                    floor_height: { label: '层高(m)', default: 6, min: 4.5, max: 9 }
+                }
+            },
+            // 数据中心建筑参数
+            server_room: {
+                name: '主机房',
+                params: {
+                    length: { label: '长度(m)', default: 60, min: 30, max: 120 },
+                    width: { label: '宽度(m)', default: 40, min: 20, max: 80 },
+                    floor_height: { label: '层高(m)', default: 4.5, min: 3.5, max: 6 },
+                    raised_floor_height: { label: '架空地板高(m)', default: 0.6, min: 0.3, max: 1 }
+                }
+            },
+            ups_room: {
+                name: 'UPS室',
+                params: {
+                    length: { label: '长度(m)', default: 30, min: 15, max: 60 },
+                    width: { label: '宽度(m)', default: 20, min: 12, max: 40 },
+                    floor_height: { label: '层高(m)', default: 5, min: 3.5, max: 7 }
+                }
+            },
+            cooling_tower: {
+                name: '冷却塔',
+                params: {
+                    diameter: { label: '直径(m)', default: 8, min: 4, max: 15 },
+                    height: { label: '高度(m)', default: 12, min: 6, max: 20 }
+                }
+            },
+            // 化工厂建筑参数
+            reactor_workshop: {
+                name: '反应车间',
+                params: {
+                    length: { label: '长度(m)', default: 50, min: 25, max: 100 },
+                    width: { label: '宽度(m)', default: 30, min: 15, max: 60 },
+                    floor_height: { label: '层高(m)', default: 12, min: 8, max: 20 }
+                }
+            },
+            storage_tank: {
+                name: '储罐区',
+                params: {
+                    diameter: { label: '储罐直径(m)', default: 10, min: 5, max: 20 },
+                    height: { label: '储罐高度(m)', default: 15, min: 8, max: 25 },
+                    tank_count: { label: '储罐数量', default: 4, min: 1, max: 20 }
+                }
+            },
+            control_room: {
+                name: '控制室',
+                params: {
+                    length: { label: '长度(m)', default: 30, min: 15, max: 60 },
+                    width: { label: '宽度(m)', default: 12, min: 8, max: 24 },
+                    floor_height: { label: '层高(m)', default: 3.6, min: 3, max: 5 },
+                    floors: { label: '层数', default: 2, min: 1, max: 4 }
+                }
+            }
+        };
+
+        let selectedIndustry = null;
+        let selectedBuildingType = null;
+
+        // 行业选择
+        document.querySelectorAll('.industry-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // 清除所有active
+                document.querySelectorAll('.industry-card').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.building-types').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('paramsContainer').innerHTML = '';
+
+                // 设置当前active
+                this.classList.add('active');
+                selectedIndustry = this.dataset.industry;
+                selectedBuildingType = null;
+
+                // 显示对应的建筑类型
+                const buildingTypesDiv = document.getElementById(`${selectedIndustry}-buildings`);
+                if (buildingTypesDiv) {
+                    buildingTypesDiv.classList.add('active');
+                }
+            });
+        });
+
+        // 建筑类型选择
+        document.querySelectorAll('.type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedBuildingType = this.dataset.type;
+
+                // 显示参数配置
+                showParams(selectedBuildingType);
+            });
+        });
+
+        // 显示参数配置
+        function showParams(buildingType) {
+            const config = buildingParams[buildingType];
+            if (!config) return;
+
+            let html = `
+                <div class="params-section active">
+                    <h3 style="margin-bottom: 20px; color: #333;">📐 ${config.name} - 参数配置</h3>
+                    <div class="param-grid">
+            `;
+
+            for (const [key, param] of Object.entries(config.params)) {
+                const inputType = param.type === 'text' ? 'text' : 'number';
+                const extraAttrs = inputType === 'number'
+                    ? `min="${param.min}" max="${param.max}" step="0.1"`
+                    : '';
+
+                html += `
+                    <div class="param-group">
+                        <label class="param-label">${param.label}</label>
+                        <input
+                            type="${inputType}"
+                            class="param-input"
+                            data-param="${key}"
+                            value="${param.default}"
+                            ${extraAttrs}
+                        />
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                    <button class="generate-btn" onclick="generateBuilding()">
+                        🚀 生成 ${config.name}
+                    </button>
+                    <div class="hint">
+                        💡 提示：可以修改参数后再生成，系统会自动创建3D白模
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('paramsContainer').innerHTML = html;
+        }
+
+        // 生成建筑
+        function generateBuilding() {
+            if (!selectedIndustry || !selectedBuildingType) {
+                alert('请先选择行业和建筑类型');
+                return;
+            }
+
+            const config = buildingParams[selectedBuildingType];
+            const params = {};
+
+            document.querySelectorAll('.param-input').forEach(input => {
+                const key = input.dataset.param;
+                // 数值参数转换为毫米单位
+                if (input.type === 'number') {
+                    params[key] = parseFloat(input.value) * 1000; // 米转毫米
+                } else {
+                    params[key] = input.value;
+                }
+            });
+
+            const data = {
+                industry: selectedIndustry,
+                building_type: selectedBuildingType,
+                building_name: config.name,
+                params: params
+            };
+
+            console.log('生成建筑:', data);
+
+            // 调用SketchUp Ruby方法
+            if (window.sketchup) {
+                window.sketchup.generate_building(JSON.stringify(data));
+            } else {
+                alert('SketchUp接口未就绪\n\n请在SketchUp中打开此界面');
+            }
+        }
+    </script>
+</body>
+</html>

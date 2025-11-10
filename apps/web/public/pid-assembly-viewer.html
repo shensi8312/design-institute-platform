@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PID装配体查看器 - 真实STEP模型</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
+    }
+
+    #container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      min-width: 300px;
+      max-width: 400px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #info h2 {
+      margin-bottom: 15px;
+      font-size: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    #stats {
+      margin-top: 15px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-label { opacity: 0.7; }
+    .stat-value {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    #parts-list {
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .part-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: rgba(255,255,255,0.05);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .part-item:hover {
+      background: rgba(102,126,234,0.3);
+      transform: translateX(5px);
+    }
+
+    .part-name {
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .part-vertices {
+      opacity: 0.6;
+      font-size: 11px;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 15px 25px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+
+    .control-btn {
+      background: rgba(102,126,234,0.3);
+      border: 1px solid rgba(102,126,234,0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+
+    .control-btn:hover {
+      background: rgba(102,126,234,0.6);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <div id="info">
+    <h2>🏗️ PID装配体（真实STEP）</h2>
+
+    <div id="stats">
+      <div class="stat-item">
+        <span class="stat-label">PID来源</span>
+        <span class="stat-value" id="pidSource">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">零件数量</span>
+        <span class="stat-value" id="partCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">总顶点数</span>
+        <span class="stat-value" id="vertexCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">生成器</span>
+        <span class="stat-value" id="generator">-</span>
+      </div>
+    </div>
+
+    <div id="parts-list"></div>
+  </div>
+
+  <div class="controls">
+    <button class="control-btn" onclick="resetView()">🔄 重置视图</button>
+    <button class="control-btn" onclick="toggleWireframe()">📐 线框模式</button>
+    <button class="control-btn" onclick="exportScene()">💾 导出</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    let scene, camera, renderer, controls;
+    let parts = [];
+    let wireframeMode = false;
+
+    const assemblyFile = '/assembly-output/pid_real_assembly.json';
+
+    async function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x2a2a3e);
+
+      camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000
+      );
+      camera.position.set(500, 500, 500);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      document.getElementById('container').appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      // 灯光
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(200, 300, 200);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
+      light2.position.set(-200, 200, -200);
+      scene.add(light2);
+
+      // 网格辅助线
+      const gridHelper = new THREE.GridHelper(2000, 20, 0x444444, 0x222222);
+      scene.add(gridHelper);
+
+      await loadAssembly();
+
+      animate();
+    }
+
+    async function loadAssembly() {
+      try {
+        const response = await fetch(assemblyFile);
+        const assemblyData = await response.json();
+
+        // 使用Three.js ObjectLoader正确加载
+        const loader = new THREE.ObjectLoader();
+        const assemblyObject = loader.parse(assemblyData);
+
+        scene.add(assemblyObject);
+
+        // 统计
+        let partCount = 0;
+        let vertexCount = 0;
+
+        assemblyObject.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            partCount++;
+            if (child.geometry.attributes.position) {
+              vertexCount += child.geometry.attributes.position.count;
+            }
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            parts.push({
+              name: child.name,
+              mesh: child,
+              vertices: child.geometry.attributes.position ? child.geometry.attributes.position.count : 0
+            });
+          }
+        });
+
+        document.getElementById('pidSource').textContent = assemblyData.metadata.source || 'Unknown';
+        document.getElementById('generator').textContent = assemblyData.metadata.generator || 'Unknown';
+        document.getElementById('partCount').textContent = partCount;
+        document.getElementById('vertexCount').textContent = vertexCount.toLocaleString();
+
+        renderPartsList();
+        fitCameraToScene();
+
+      } catch (error) {
+        console.error('加载装配体失败:', error);
+        alert('加载失败: ' + error.message);
+      }
+    }
+
+    function renderPartsList() {
+      const container = document.getElementById('parts-list');
+      container.innerHTML = '<div style="font-size:13px;margin-bottom:10px;font-weight:bold;">零件列表</div>';
+
+      parts.forEach(part => {
+        const item = document.createElement('div');
+        item.className = 'part-item';
+        item.innerHTML = `
+          <div class="part-name">${part.name}</div>
+          <div class="part-vertices">${part.vertices.toLocaleString()} 顶点</div>
+        `;
+        item.onclick = () => focusOnPart(part.mesh);
+        container.appendChild(item);
+      });
+    }
+
+    function focusOnPart(mesh) {
+      camera.position.set(
+        mesh.position.x + 200,
+        mesh.position.y + 200,
+        mesh.position.z + 200
+      );
+      controls.target.copy(mesh.position);
+      controls.update();
+    }
+
+    function fitCameraToScene() {
+      const box = new THREE.Box3().setFromObject(scene);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+      cameraZ *= 1.5;
+
+      camera.position.set(center.x + cameraZ, center.y + cameraZ, center.z + cameraZ);
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    function resetView() {
+      fitCameraToScene();
+    }
+
+    function toggleWireframe() {
+      wireframeMode = !wireframeMode;
+      parts.forEach(part => {
+        part.mesh.material.wireframe = wireframeMode;
+      });
+    }
+
+    function exportScene() {
+      const data = {
+        parts: parts.map(p => ({
+          name: p.name,
+          position: p.mesh.position,
+          vertices: p.vertices
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pid_assembly_export.json';
+      a.click();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+  </script>
+</body>
+</html>

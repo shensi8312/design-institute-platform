@@ -1,0 +1,135 @@
+version: '3.8'
+
+# 允许外部访问的Docker配置
+# 使用方法: docker-compose -f docker-compose-external.yml up -d
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: design-postgres
+    environment:
+      POSTGRES_DB: design_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123  # 改成更安全的密码
+    ports:
+      - "0.0.0.0:5433:5432"  # 绑定到所有接口
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - design_network
+    restart: unless-stopped
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: design-redis
+    ports:
+      - "0.0.0.0:6379:6379"  # 绑定到所有接口
+    volumes:
+      - redis_data:/data
+    networks:
+      - design_network
+    command: redis-server --appendonly yes --requirepass redis123 --bind 0.0.0.0 --protected-mode no
+    restart: unless-stopped
+
+  # Neo4j 图数据库
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j-design
+    environment:
+      NEO4J_AUTH: neo4j/neo4j123
+      NEO4J_dbms_memory_pagecache_size: 1G
+      NEO4J_dbms_memory_heap_initial__size: 1G
+      NEO4J_dbms_memory_heap_max__size: 2G
+      NEO4J_dbms_default__listen__address: 0.0.0.0  # 监听所有接口
+    ports:
+      - "0.0.0.0:7474:7474"  # HTTP - 绑定到所有接口
+      - "0.0.0.0:7687:7687"  # Bolt - 绑定到所有接口
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - design_network
+    restart: unless-stopped
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: design-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "0.0.0.0:9200:9200"  # 绑定到所有接口
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - design_network
+    restart: unless-stopped
+
+  # MinIO 对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: mst-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "0.0.0.0:9000:9000"  # API - 绑定到所有接口
+      - "0.0.0.0:9001:9001"  # Console - 绑定到所有接口
+    volumes:
+      - ./volumes/minio:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - design_network
+    restart: unless-stopped
+
+  # Milvus 向量数据库
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: milvus-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ./volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://0.0.0.0:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - design_network
+
+  milvus:
+    image: milvusdb/milvus:v2.3.3
+    container_name: milvus-standalone
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: minioadmin
+      MINIO_SECRET_ACCESS_KEY: minioadmin123
+    volumes:
+      - ./volumes/milvus:/var/lib/milvus
+    ports:
+      - "0.0.0.0:19530:19530"  # 绑定到所有接口
+      - "0.0.0.0:9091:9091"  # Metrics - 绑定到所有接口
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - design_network
+    restart: unless-stopped
+
+networks:
+  design_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  es_data:

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>真实STEP装配查看器（STL加载）</title>
+  <style>
+    body { margin: 0; font-family: Arial; background: #1a1a2e; color: white; }
+    #container { width: 100vw; height: 100vh; }
+    #log {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.9); padding: 20px;
+      max-width: 450px; border-radius: 10px;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .loading { color: #ffa500; }
+    .success { color: #4CAF50; font-weight: bold; }
+    .error { color: #f44336; }
+    .info { color: #2196F3; }
+    h3 { margin: 0 0 10px 0; color: #fff; }
+    .stats { margin-top: 15px; padding-top: 15px; border-top: 1px solid #444; }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="log">
+    <h3>🚀 装配加载进度</h3>
+    <div id="progress"></div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+    const progress = document.getElementById('progress');
+    const stats = document.getElementById('stats');
+
+    function addLog(msg, type = 'info') {
+      const color = type === 'error' ? 'error' : (type === 'success' ? 'success' : (type === 'loading' ? 'loading' : 'info'));
+      progress.innerHTML += `<div class="${color}">${msg}</div>`;
+      console.log(msg);
+    }
+
+    let scene, camera, renderer, controls;
+
+    addLog('初始化Three.js...', 'loading');
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50000);
+    camera.position.set(800, 600, 800);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.getElementById('container').appendChild(renderer.domElement);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+
+    // 灯光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight1.position.set(1000, 1000, 1000);
+    dirLight1.castShadow = true;
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    dirLight2.position.set(-1000, 500, -1000);
+    scene.add(dirLight2);
+
+    const gridHelper = new THREE.GridHelper(3000, 60, 0x444444, 0x222222);
+    scene.add(gridHelper);
+
+    const axesHelper = new THREE.AxesHelper(800);
+    scene.add(axesHelper);
+
+    addLog('✅ 场景初始化完成', 'success');
+
+    // 加载颜色映射
+    addLog('🎨 加载零件颜色映射...', 'loading');
+    let colorMap = {};
+    try {
+      const colorResponse = await fetch('/uploads/step_colors.json');
+      colorMap = await colorResponse.json();
+      addLog(`✅ 颜色映射加载完成: ${Object.keys(colorMap).length}个零件`, 'success');
+    } catch (error) {
+      addLog('⚠️ 颜色映射加载失败，使用默认颜色', 'error');
+    }
+
+    // 加载装配
+    addLog('📥 加载assembly.json...', 'loading');
+    const response = await fetch('./assembly.json');
+    const data = await response.json();
+
+    const parts = data.object.children;
+    addLog(`✅ 装配数据加载完成: ${parts.length}个零件`, 'success');
+
+    const stlLoader = new STLLoader();
+    let loaded = 0, failed = 0;
+    const totalParts = parts.length;
+
+    // 计算装配包围盒用于居中
+    const box = new THREE.Box3();
+
+    for (let i = 0; i < parts.length; i++) {
+      const child = parts[i];
+      const partName = child.name.split('_')[0].split(' ')[0]; // 清理名称
+      const position = new THREE.Vector3(child.matrix[12], child.matrix[13], child.matrix[14]);
+
+      try {
+        const geometry = await new Promise((resolve, reject) => {
+          stlLoader.load(
+            `/stl/${partName}.stl`,
+            (geom) => resolve(geom),
+            undefined,
+            (error) => reject(error)
+          );
+        });
+
+        geometry.computeVertexNormals();
+
+        // 使用真实STEP颜色
+        const stepColor = colorMap[partName]?.hex || '#999999';
+        const material = new THREE.MeshStandardMaterial({
+          color: parseInt(stepColor.replace('#', '0x')),
+          metalness: 0.6,
+          roughness: 0.4,
+          flatShading: false
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.name = child.name;
+        scene.add(mesh);
+
+        box.expandByObject(mesh);
+        loaded++;
+
+        if (loaded % 5 === 0 || loaded === totalParts) {
+          addLog(`⏳ 已加载 ${loaded}/${totalParts} (${Math.round(loaded/totalParts*100)}%)`, 'info');
+        }
+      } catch (error) {
+        failed++;
+        if (failed <= 5) {
+          addLog(`⚠️ ${partName}.stl 加载失败`, 'error');
+        }
+      }
+    }
+
+    // 居中并调整相机
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    controls.target.copy(center);
+
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const distance = maxDim * 1.5;
+
+    camera.position.set(
+      center.x + distance,
+      center.y + distance * 0.8,
+      center.z + distance
+    );
+    camera.lookAt(center);
+
+    stats.innerHTML = `
+      <h3>📊 加载统计</h3>
+      <div class="success">✅ 成功加载: ${loaded}个</div>
+      ${failed > 0 ? `<div class="error">❌ 加载失败: ${failed}个</div>` : ''}
+      <div class="info">📦 装配尺寸: ${maxDim.toFixed(1)}mm</div>
+      <div class="info">📍 中心位置: (${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)})</div>
+    `;
+
+    addLog(`🎉 装配加载完成！`, 'success');
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

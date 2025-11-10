@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+out/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Data
+volumes/
+backups/
+*.tar.gz
+
+# Uploads (runtime data)
+uploads/
+apps/api/uploads/
+apps/api/src/uploads/
+
+# Coverage reports
+coverage/
+apps/api/coverage/
+
+# Temporary
+.refactor_temp/
+tmp/
+temp/
+.DS_Store
+
+# 清理后的忽略规则
+/apps/api/logs/
+/apps/api/test-results/
+/apps/api/backups/
+*.log
+*_test.json
+*_result.json
+venv_gemini/

@@ -1,0 +1,1498 @@
+{
+  "metadata": {
+    "version": 4.5,
+    "type": "Object",
+    "generator": "RuleBasedAssemblyGenerator"
+  },
+  "geometries": [
+    {
+      "uuid": "geo-0",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-1",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-2",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-3",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-4",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-5",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-6",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-7",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-8",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-9",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-10",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-11",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-12",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-13",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-14",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-15",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-16",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-17",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-18",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-19",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-20",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-21",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-22",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-23",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-24",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-25",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-26",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-27",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-28",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-29",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-30",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-31",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-32",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-33",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-34",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-35",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-36",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    },
+    {
+      "uuid": "geo-37",
+      "type": "BoxGeometry",
+      "width": 50,
+      "height": 50,
+      "depth": 50
+    }
+  ],
+  "materials": [
+    {
+      "uuid": "mat-0",
+      "type": "MeshStandardMaterial",
+      "color": 14705490,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-1",
+      "type": "MeshStandardMaterial",
+      "color": 14701149,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-2",
+      "type": "MeshStandardMaterial",
+      "color": 5431514,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-3",
+      "type": "MeshStandardMaterial",
+      "color": 6902496,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-4",
+      "type": "MeshStandardMaterial",
+      "color": 14701167,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-5",
+      "type": "MeshStandardMaterial",
+      "color": 5431514,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-6",
+      "type": "MeshStandardMaterial",
+      "color": 12407520,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-7",
+      "type": "MeshStandardMaterial",
+      "color": 5421024,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-8",
+      "type": "MeshStandardMaterial",
+      "color": 5421024,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-9",
+      "type": "MeshStandardMaterial",
+      "color": 5421024,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-10",
+      "type": "MeshStandardMaterial",
+      "color": 14701274,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-11",
+      "type": "MeshStandardMaterial",
+      "color": 13623378,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-12",
+      "type": "MeshStandardMaterial",
+      "color": 5421024,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-13",
+      "type": "MeshStandardMaterial",
+      "color": 14701197,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-14",
+      "type": "MeshStandardMaterial",
+      "color": 5413344,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-15",
+      "type": "MeshStandardMaterial",
+      "color": 5398240,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-16",
+      "type": "MeshStandardMaterial",
+      "color": 5398240,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-17",
+      "type": "MeshStandardMaterial",
+      "color": 14344274,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-18",
+      "type": "MeshStandardMaterial",
+      "color": 6545490,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-19",
+      "type": "MeshStandardMaterial",
+      "color": 14701233,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-20",
+      "type": "MeshStandardMaterial",
+      "color": 14701167,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-21",
+      "type": "MeshStandardMaterial",
+      "color": 12014304,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-22",
+      "type": "MeshStandardMaterial",
+      "color": 11621088,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-23",
+      "type": "MeshStandardMaterial",
+      "color": 5413344,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-24",
+      "type": "MeshStandardMaterial",
+      "color": 14737490,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-25",
+      "type": "MeshStandardMaterial",
+      "color": 6545490,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-26",
+      "type": "MeshStandardMaterial",
+      "color": 14708562,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-27",
+      "type": "MeshStandardMaterial",
+      "color": 14701197,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-28",
+      "type": "MeshStandardMaterial",
+      "color": 5421024,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-29",
+      "type": "MeshStandardMaterial",
+      "color": 14701245,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-30",
+      "type": "MeshStandardMaterial",
+      "color": 12014304,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-31",
+      "type": "MeshStandardMaterial",
+      "color": 5431437,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-32",
+      "type": "MeshStandardMaterial",
+      "color": 11657298,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-33",
+      "type": "MeshStandardMaterial",
+      "color": 8868576,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-34",
+      "type": "MeshStandardMaterial",
+      "color": 14725458,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-35",
+      "type": "MeshStandardMaterial",
+      "color": 8868576,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-36",
+      "type": "MeshStandardMaterial",
+      "color": 14737490,
+      "metalness": 0.5,
+      "roughness": 0.5
+    },
+    {
+      "uuid": "mat-37",
+      "type": "MeshStandardMaterial",
+      "color": 5431390,
+      "metalness": 0.5,
+      "roughness": 0.5
+    }
+  ],
+  "object": {
+    "type": "Scene",
+    "children": [
+      {
+        "uuid": "obj-0",
+        "type": "Mesh",
+        "name": "401000004066",
+        "geometry": "geo-0",
+        "material": "mat-0",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.794,
+          2.794,
+          -12.7,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-1",
+        "type": "Mesh",
+        "name": "100001020385_Fujikin-Female Nut-4",
+        "geometry": "geo-1",
+        "material": "mat-1",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          17.031861585365853,
+          4.327558463128826,
+          -9.153602439024379,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-2",
+        "type": "Mesh",
+        "name": "100000051073",
+        "geometry": "geo-2",
+        "material": "mat-2",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -12.05113841463416,
+          15.519376575710366,
+          -3.6164024390243847,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-3",
+        "type": "Mesh",
+        "name": "101000092555",
+        "geometry": "geo-3",
+        "material": "mat-3",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-4",
+        "type": "Mesh",
+        "name": "100012001017",
+        "geometry": "geo-4",
+        "material": "mat-4",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.8111439209673033,
+          -52.002316442544995,
+          78.08469510101102,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-5",
+        "type": "Mesh",
+        "name": "100000000529",
+        "geometry": "geo-5",
+        "material": "mat-5",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.1606615853658395,
+          11.988800000000001,
+          1.7175975609756151,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-6",
+        "type": "Mesh",
+        "name": "P0000006486_18.88",
+        "geometry": "geo-6",
+        "material": "mat-6",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.185711269612999,
+          26.861887175154003,
+          85.86286975939602,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-7",
+        "type": "Mesh",
+        "name": "100002130279",
+        "geometry": "geo-7",
+        "material": "mat-7",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.749999999999993,
+          0.5800000000001637,
+          1.0206836365579027e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-8",
+        "type": "Mesh",
+        "name": "101000092543",
+        "geometry": "geo-8",
+        "material": "mat-8",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.1606615853658395,
+          0.5842,
+          1.7175975609756151,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-9",
+        "type": "Mesh",
+        "name": "101000092534",
+        "geometry": "geo-9",
+        "material": "mat-9",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          24.2,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-10",
+        "type": "Mesh",
+        "name": "101000092558",
+        "geometry": "geo-10",
+        "material": "mat-10",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2,
+          1.743597812952665,
+          -4.119968255444915e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-11",
+        "type": "Mesh",
+        "name": "P0000010530_50",
+        "geometry": "geo-11",
+        "material": "mat-11",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          70.625,
+          -4.2243986086987195e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-12",
+        "type": "Mesh",
+        "name": "101000092552",
+        "geometry": "geo-12",
+        "material": "mat-12",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.953599999996829,
+          1.4245999999999903,
+          -383.73920000000066,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-13",
+        "type": "Mesh",
+        "name": "100002140576",
+        "geometry": "geo-13",
+        "material": "mat-13",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -11.641364799999984,
+          4.9103216000000725,
+          14.300000000000002,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-14",
+        "type": "Mesh",
+        "name": "P0000006486_5",
+        "geometry": "geo-14",
+        "material": "mat-14",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.788299390243915,
+          12.3174512195122,
+          3.347135040868455,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-15",
+        "type": "Mesh",
+        "name": "A0000002618",
+        "geometry": "geo-15",
+        "material": "mat-15",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.871200000002467,
+          35.1377,
+          -168.60520000000068,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-16",
+        "type": "Mesh",
+        "name": "A0000002627",
+        "geometry": "geo-16",
+        "material": "mat-16",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.572338414634153,
+          12.7,
+          -3.6164024390243847,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-17",
+        "type": "Mesh",
+        "name": "100001020546_Fujikin-VCR Cap-4",
+        "geometry": "geo-17",
+        "material": "mat-17",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          72.8,
+          -4.70734562441066e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-18",
+        "type": "Mesh",
+        "name": "101000022849",
+        "geometry": "geo-18",
+        "material": "mat-18",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          72.8,
+          -4.70734562441066e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-19",
+        "type": "Mesh",
+        "name": "A0000002616",
+        "geometry": "geo-19",
+        "material": "mat-19",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.924799999999999,
+          0.14217039837538872,
+          0,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-20",
+        "type": "Mesh",
+        "name": "100001060023",
+        "geometry": "geo-20",
+        "material": "mat-20",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.13975511022563e-13,
+          117.29369999999348,
+          -70.48200000000924,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-21",
+        "type": "Mesh",
+        "name": "100001020946",
+        "geometry": "geo-21",
+        "material": "mat-21",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.3660000000000005,
+          0,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-22",
+        "type": "Mesh",
+        "name": "100001020423_Fujikin-Male Nut-4",
+        "geometry": "geo-22",
+        "material": "mat-22",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.1606615853658395,
+          5.5372,
+          -12.3794024390244,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-23",
+        "type": "Mesh",
+        "name": "100001060022",
+        "geometry": "geo-23",
+        "material": "mat-23",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          49.3,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-24",
+        "type": "Mesh",
+        "name": "101000092551",
+        "geometry": "geo-24",
+        "material": "mat-24",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.753930652932148,
+          -3.986837689542,
+          0.13315121811963496,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-25",
+        "type": "Mesh",
+        "name": "101000092545",
+        "geometry": "geo-25",
+        "material": "mat-25",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          22.199999999999996,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-26",
+        "type": "Mesh",
+        "name": "A0000002655",
+        "geometry": "geo-26",
+        "material": "mat-26",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.150000000000002,
+          0.01,
+          -13.15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-27",
+        "type": "Mesh",
+        "name": "101000092544",
+        "geometry": "geo-27",
+        "material": "mat-27",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.8111444973086295,
+          32.70768355715406,
+          78.08469510103095,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-28",
+        "type": "Mesh",
+        "name": "101000036752",
+        "geometry": "geo-28",
+        "material": "mat-28",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.7583006097560903,
+          12.3174512195122,
+          12.7,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-29",
+        "type": "Mesh",
+        "name": "100001020941",
+        "geometry": "geo-29",
+        "material": "mat-29",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.03902370734162,
+          5.5372,
+          -12.5074024390244,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-30",
+        "type": "Mesh",
+        "name": "101000036750",
+        "geometry": "geo-30",
+        "material": "mat-30",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.21426934706784,
+          0.712162310458001,
+          -8.7314487818804,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-31",
+        "type": "Mesh",
+        "name": "100001020576",
+        "geometry": "geo-31",
+        "material": "mat-31",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2,
+          1.7730426766813399,
+          -4.66206934168767e-15,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-32",
+        "type": "Mesh",
+        "name": "101000092559",
+        "geometry": "geo-32",
+        "material": "mat-32",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -11.614446813381017,
+          42.0167229141642,
+          40.192611405069506,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-33",
+        "type": "Mesh",
+        "name": "100000000527",
+        "geometry": "geo-33",
+        "material": "mat-33",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.4999999999998102,
+          6.70752342557546e-13,
+          0,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-34",
+        "type": "Mesh",
+        "name": "100000000528",
+        "geometry": "geo-34",
+        "material": "mat-34",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          23.860899390243897,
+          -5.0815487804878,
+          2.3876,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-35",
+        "type": "Mesh",
+        "name": "100001060025",
+        "geometry": "geo-35",
+        "material": "mat-35",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -14.859,
+          10.16,
+          7.3660000000000005,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-36",
+        "type": "Mesh",
+        "name": "101000036760",
+        "geometry": "geo-36",
+        "material": "mat-36",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.06333841463416,
+          -1.2065000000000001,
+          1.7175975609756151,
+          1
+        ]
+      },
+      {
+        "uuid": "obj-37",
+        "type": "Mesh",
+        "name": "100001060024",
+        "geometry": "geo-37",
+        "material": "mat-37",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -14.112330652932153,
+          5.538162310458,
+          10.597951218119618,
+          1
+        ]
+      }
+    ]
+  }
+}

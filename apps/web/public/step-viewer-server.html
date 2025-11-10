@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>服务端STEP解析 - 装配图查看器</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
+    }
+
+    #container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      min-width: 300px;
+      max-width: 400px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #info h2 {
+      margin-bottom: 15px;
+      font-size: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    #progress {
+      margin: 10px 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    #stats {
+      margin-top: 15px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-label { opacity: 0.7; }
+    .stat-value {
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    #parts-list {
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .part-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: rgba(255,255,255,0.05);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .part-item:hover {
+      background: rgba(102,126,234,0.3);
+      transform: translateX(5px);
+    }
+
+    .part-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .part-info {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    .part-name {
+      font-weight: bold;
+    }
+
+    .part-vertices {
+      opacity: 0.6;
+      font-size: 11px;
+    }
+
+    #error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+      z-index: 200;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 15px 25px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+
+    .control-btn {
+      background: rgba(102,126,234,0.3);
+      border: 1px solid rgba(102,126,234,0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+    }
+
+    .control-btn:hover {
+      background: rgba(102,126,234,0.6);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <div id="info">
+    <h2>🔧 服务端STEP解析</h2>
+    <div id="progress">
+      <div style="font-size: 13px; margin-bottom: 5px;">加载进度</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+      <div id="progressText" style="font-size: 12px; margin-top: 5px; opacity: 0.7;">初始化...</div>
+    </div>
+
+    <div id="stats">
+      <div class="stat-item">
+        <span class="stat-label">装配体</span>
+        <span class="stat-value" id="assemblyName">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">零件数量</span>
+        <span class="stat-value" id="partCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">总顶点数</span>
+        <span class="stat-value" id="vertexCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">解析器</span>
+        <span class="stat-value" id="parser">-</span>
+      </div>
+    </div>
+
+    <div id="parts-list"></div>
+  </div>
+
+  <div class="controls">
+    <button class="control-btn" onclick="resetView()">🔄 重置视图</button>
+    <button class="control-btn" onclick="toggleWireframe()">📐 线框模式</button>
+    <button class="control-btn" onclick="exportScene()">💾 导出</button>
+  </div>
+
+  <div id="error"></div>
+
+  <!-- three.js r150+ 不再暴露全局 OrbitControls，这里固定使用 r146 兼容版 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    let scene, camera, renderer, controls;
+    let parts = [];
+    let wireframeMode = false;
+
+    // 从装配体JSON加载
+    const assemblyFile = '/assembly-output/assembly_output.json';
+
+    async function init() {
+      // Three.js场景设置
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x2a2a3e);
+
+      camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000
+      );
+      camera.position.set(500, 500, 500);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      document.getElementById('container').appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      // 灯光
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(200, 300, 200);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
+      light2.position.set(-200, 200, -200);
+      scene.add(light2);
+
+      // 网格辅助线
+      const gridHelper = new THREE.GridHelper(2000, 20, 0x444444, 0x222222);
+      scene.add(gridHelper);
+
+      // 加载装配体
+      await loadAssembly();
+
+      animate();
+    }
+
+    async function loadAssembly() {
+      try {
+        updateProgress(10, '加载装配体配置...');
+
+        const response = await fetch(assemblyFile);
+        const assemblyData = await response.json();
+
+        document.getElementById('assemblyName').textContent =
+          assemblyData.metadata?.assemblyName || assemblyData.metadata?.generator || 'Unknown';
+
+        const children = assemblyData.object?.children || assemblyData.children || [];
+        const totalParts = children.length;
+
+        updateProgress(20, `找到 ${totalParts} 个零件`);
+
+        let loadedCount = 0;
+        let totalVertices = 0;
+        let parserType = 'unknown';
+
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const partName = child.name.split('_')[0];
+          const position = new THREE.Vector3(
+            child.matrix[12],
+            child.matrix[13],
+            child.matrix[14]
+          );
+
+          try {
+            // 调用服务端STEP解析API
+            updateProgress(
+              20 + (i / totalParts) * 70,
+              `解析 ${partName} (${i + 1}/${totalParts})...`
+            );
+
+            const stepResponse = await fetch(`/api/step-loader/${partName}`);
+            const stepData = await stepResponse.json();
+
+            if (!stepData.success) {
+              console.warn(`${partName} 解析失败:`, stepData.message);
+              continue;
+            }
+
+            const { data } = stepData;
+            parserType = data.metadata?.parser || 'unknown';
+
+            // 创建几何体
+            let geometry;
+            if (data.geometry.vertices && data.geometry.vertices.length > 0) {
+              geometry = new THREE.BufferGeometry();
+              geometry.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(data.geometry.vertices, 3)
+              );
+
+              if (data.geometry.normals && data.geometry.normals.length > 0) {
+                geometry.setAttribute(
+                  'normal',
+                  new THREE.Float32BufferAttribute(data.geometry.normals, 3)
+                );
+              } else {
+                geometry.computeVertexNormals();
+              }
+
+              totalVertices += data.geometry.vertices.length / 3;
+            } else {
+              // 降级方案：使用占位符
+              geometry = new THREE.BoxGeometry(50, 50, 50);
+            }
+
+            // 创建材质（使用STEP颜色）
+            const color = new THREE.Color(
+              data.color.r,
+              data.color.g,
+              data.color.b
+            );
+
+            const material = new THREE.MeshStandardMaterial({
+              color: color,
+              metalness: 0.3,
+              roughness: 0.6,
+              side: THREE.DoubleSide
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(position);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            scene.add(mesh);
+
+            parts.push({
+              name: child.name,
+              mesh: mesh,
+              color: `#${color.getHexString()}`,
+              vertices: data.metadata?.vertexCount || 0
+            });
+
+            loadedCount++;
+
+          } catch (error) {
+            console.error(`加载 ${partName} 失败:`, error);
+          }
+        }
+
+        updateProgress(95, '调整视图...');
+
+        // 更新统计信息
+        document.getElementById('partCount').textContent = loadedCount;
+        document.getElementById('vertexCount').textContent = totalVertices.toLocaleString();
+        document.getElementById('parser').textContent = parserType;
+
+        // 渲染零件列表
+        renderPartsList();
+
+        // 自动调整相机
+        fitCameraToScene();
+
+        updateProgress(100, '✅ 加载完成');
+
+      } catch (error) {
+        showError('加载装配体失败: ' + error.message);
+      }
+    }
+
+    function renderPartsList() {
+      const container = document.getElementById('parts-list');
+      container.innerHTML = '<div style="font-size:13px;margin-bottom:10px;font-weight:bold;">零件列表</div>';
+
+      parts.forEach(part => {
+        const item = document.createElement('div');
+        item.className = 'part-item';
+        item.innerHTML = `
+          <div class="part-color" style="background:${part.color}"></div>
+          <div class="part-info">
+            <div class="part-name">${part.name}</div>
+            <div class="part-vertices">${part.vertices.toLocaleString()} 顶点</div>
+          </div>
+        `;
+        item.onclick = () => focusOnPart(part.mesh);
+        container.appendChild(item);
+      });
+    }
+
+    function focusOnPart(mesh) {
+      camera.position.set(
+        mesh.position.x + 200,
+        mesh.position.y + 200,
+        mesh.position.z + 200
+      );
+      controls.target.copy(mesh.position);
+      controls.update();
+    }
+
+    function fitCameraToScene() {
+      const box = new THREE.Box3().setFromObject(scene);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+      cameraZ *= 1.5;
+
+      camera.position.set(center.x + cameraZ, center.y + cameraZ, center.z + cameraZ);
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    function updateProgress(percent, text) {
+      document.getElementById('progressBar').style.width = percent + '%';
+      document.getElementById('progressText').textContent = text;
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = '❌ ' + message;
+      errorDiv.style.display = 'block';
+    }
+
+    function resetView() {
+      fitCameraToScene();
+    }
+
+    function toggleWireframe() {
+      wireframeMode = !wireframeMode;
+      parts.forEach(part => {
+        part.mesh.material.wireframe = wireframeMode;
+      });
+    }
+
+    function exportScene() {
+      const data = {
+        parts: parts.map(p => ({
+          name: p.name,
+          position: p.mesh.position,
+          color: p.color,
+          vertices: p.vertices
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'assembly_export.json';
+      a.click();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+  </script>
+</body>
+</html>

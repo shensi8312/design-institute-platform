@@ -1,0 +1,3120 @@
+{
+  "components": [
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1000",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1812,
+        1538
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1001",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        510,
+        1484
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1002",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1930,
+        1538
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1003",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2038,
+        1526
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1004",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1850,
+        1502
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1005",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        480,
+        1530
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1006",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        660,
+        1474
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1007",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1888,
+        1366
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1008",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        618,
+        1522
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1009",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2092,
+        1516
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1010",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1980,
+        1530
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1011",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1844,
+        1312
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1012",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        398,
+        1478
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1013",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        478,
+        1402
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1014",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2204,
+        1510
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1015",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1788,
+        1484
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1016",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        560,
+        1492
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1017",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1900,
+        1318
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1018",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        328,
+        1434
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1019",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        334,
+        1494
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1020",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        450,
+        1460
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1021",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        820,
+        1512
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1022",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1672,
+        1496
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1023",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        540,
+        1538
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1024",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        728,
+        1532
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1025",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1818,
+        1382
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1026",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2176,
+        1554
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1027",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1756,
+        1594
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1028",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1674,
+        1556
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1029",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        718,
+        1474
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1030",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1874,
+        1548
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1031",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1826,
+        1678
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1032",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        218,
+        1434
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1033",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        560,
+        1434
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1034",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1788,
+        1278
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1035",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1960,
+        1580
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1036",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2226,
+        1556
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1037",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1762,
+        1544
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1038",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1936,
+        1278
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1039",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2060,
+        1398
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1040",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        304,
+        1536
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1041",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1952,
+        1360
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1042",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2302,
+        1430
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1043",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1810,
+        1598
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1044",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        280,
+        1318
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1045",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1904,
+        1658
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1046",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1872,
+        1450
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1047",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2114,
+        1562
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1048",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2052,
+        1574
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1049",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2022,
+        1614
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1050",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        654,
+        1596
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1051",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2202,
+        1396
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1052",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        198,
+        1494
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1053",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        664,
+        1334
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1054",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1944,
+        1450
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1055",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        330,
+        1270
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1056",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2266,
+        1508
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1057",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        780,
+        1544
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1058",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1618,
+        1498
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1059",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1620,
+        1548
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1060",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        784,
+        1462
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1061",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2142,
+        1510
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1062",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1778,
+        1416
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1063",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        838,
+        1452
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1064",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        698,
+        1410
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1065",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        878,
+        1516
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1066",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        390,
+        1544
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1067",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        630,
+        1170
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1068",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2108,
+        1430
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1069",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        386,
+        1428
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1070",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2018,
+        1476
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1071",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        352,
+        1644
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1072",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        596,
+        1592
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1073",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        450,
+        1596
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1074",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1744,
+        1372
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1075",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2230,
+        1446
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1076",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1596,
+        1594
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1077",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2230,
+        1354
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1078",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        238,
+        1538
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1079",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        284,
+        1458
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1080",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        668,
+        1528
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1081",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2304,
+        1546
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1082",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        398,
+        1612
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1083",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        296,
+        1612
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1084",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2254,
+        1402
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1085",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2278,
+        1598
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1086",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        634,
+        1420
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1087",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        300,
+        1384
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1088",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        708,
+        1610
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1089",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1722,
+        1452
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1090",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2182,
+        1220
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1091",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1650,
+        1600
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1092",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1990,
+        1274
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1093",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        860,
+        1566
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1094",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2160,
+        1430
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1095",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1768,
+        1682
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1096",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        608,
+        1462
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1097",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        536,
+        1384
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1098",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        858,
+        1396
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1099",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        806,
+        1610
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1100",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        514,
+        1592
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1101",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2162,
+        1636
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1102",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2338,
+        1588
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1103",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        190,
+        1570
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1104",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1856,
+        1618
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1105",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        770,
+        1356
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1106",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2314,
+        1492
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1107",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        756,
+        1412
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1108",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2098,
+        1616
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1109",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1962,
+        1220
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1110",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2230,
+        1616
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1111",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1776,
+        52
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1112",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        910,
+        1476
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1113",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        262,
+        1270
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1114",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        172,
+        1392
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1115",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        418,
+        1364
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1116",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        354,
+        1382
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1117",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1726,
+        1640
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1118",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2016,
+        52
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1119",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1814,
+        1170
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1120",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1902,
+        1594
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1121",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2204,
+        56
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1122",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1954,
+        1636
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1123",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2308,
+        1638
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1124",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1724,
+        1506
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1125",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        420,
+        1270
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1126",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2062,
+        1452
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1127",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        754,
+        1634
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1128",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        202,
+        1350
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1129",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2108,
+        50
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1130",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1822,
+        1446
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1131",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2254,
+        54
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1132",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        666,
+        1658
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1133",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1920,
+        52
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1134",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1646,
+        1170
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1135",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        186,
+        1642
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1136",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1942,
+        1170
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1137",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1908,
+        1226
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1138",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        248,
+        1596
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1139",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1086,
+        1170
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1140",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2048,
+        1198
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1141",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1864,
+        52
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1142",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2002,
+        1406
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1143",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        808,
+        1392
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1144",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        498,
+        1652
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1145",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2320,
+        56
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1146",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1908,
+        1490
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1147",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        920,
+        1560
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1148",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1140,
+        1014
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1149",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        574,
+        1650
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1150",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        356,
+        1582
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1151",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        250,
+        1388
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1152",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        574,
+        1336
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1153",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2034,
+        1672
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1154",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        810,
+        678
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1155",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1880,
+        1142
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1156",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1696,
+        990
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1157",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1126,
+        680
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1158",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        590,
+        1392
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1159",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        482,
+        1350
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1160",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2122,
+        1220
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1161",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1702,
+        744
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1162",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1672,
+        882
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1163",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1124,
+        892
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1164",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1118,
+        620
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1165",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        160,
+        1454
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1166",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1414,
+        400
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1167",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        2382,
+        1434
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1168",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        352,
+        1324
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "pump_or_instrument",
+      "tag_number": "P-1169",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        148,
+        1518
+      ],
+      "confidence": 0.7
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1170",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        143,
+        1618,
+        781,
+        36
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1171",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        848,
+        1577,
+        76,
+        40
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1172",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        143,
+        1577,
+        81,
+        40
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1173",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1870,
+        1509,
+        86,
+        28
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1174",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        848,
+        1499,
+        76,
+        41
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1175",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        143,
+        1499,
+        81,
+        40
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1176",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1870,
+        1481,
+        86,
+        27
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1177",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1694,
+        1481,
+        175,
+        27
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1178",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1694,
+        1452,
+        175,
+        28
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1179",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        1694,
+        1424,
+        175,
+        27
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1180",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        322,
+        1373,
+        135,
+        83
+      ],
+      "confidence": 0.6
+    },
+    {
+      "symbol_type": "equipment",
+      "tag_number": "E-1181",
+      "parameters": {},
+      "page": 0,
+      "source": "symbol_detection",
+      "position": [
+        848,
+        1332,
+        76,
+        40
+      ],
+      "confidence": 0.6
+    }
+  ],
+  "connections": [
+    {
+      "from": "E-1170",
+      "to": "E-1171",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1171",
+      "to": "E-1172",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1172",
+      "to": "E-1173",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1173",
+      "to": "E-1174",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1174",
+      "to": "E-1175",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1175",
+      "to": "E-1176",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1176",
+      "to": "E-1177",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1177",
+      "to": "E-1178",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1178",
+      "to": "E-1179",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1179",
+      "to": "E-1180",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1180",
+      "to": "E-1181",
+      "confidence": 0.5
+    },
+    {
+      "from": "E-1181",
+      "to": "P-1000",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1000",
+      "to": "P-1001",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1001",
+      "to": "P-1002",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1002",
+      "to": "P-1003",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1003",
+      "to": "P-1004",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1004",
+      "to": "P-1005",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1005",
+      "to": "P-1006",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1006",
+      "to": "P-1007",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1007",
+      "to": "P-1008",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1008",
+      "to": "P-1009",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1009",
+      "to": "P-1010",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1010",
+      "to": "P-1011",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1011",
+      "to": "P-1012",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1012",
+      "to": "P-1013",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1013",
+      "to": "P-1014",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1014",
+      "to": "P-1015",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1015",
+      "to": "P-1016",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1016",
+      "to": "P-1017",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1017",
+      "to": "P-1018",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1018",
+      "to": "P-1019",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1019",
+      "to": "P-1020",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1020",
+      "to": "P-1021",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1021",
+      "to": "P-1022",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1022",
+      "to": "P-1023",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1023",
+      "to": "P-1024",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1024",
+      "to": "P-1025",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1025",
+      "to": "P-1026",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1026",
+      "to": "P-1027",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1027",
+      "to": "P-1028",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1028",
+      "to": "P-1029",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1029",
+      "to": "P-1030",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1030",
+      "to": "P-1031",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1031",
+      "to": "P-1032",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1032",
+      "to": "P-1033",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1033",
+      "to": "P-1034",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1034",
+      "to": "P-1035",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1035",
+      "to": "P-1036",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1036",
+      "to": "P-1037",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1037",
+      "to": "P-1038",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1038",
+      "to": "P-1039",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1039",
+      "to": "P-1040",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1040",
+      "to": "P-1041",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1041",
+      "to": "P-1042",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1042",
+      "to": "P-1043",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1043",
+      "to": "P-1044",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1044",
+      "to": "P-1045",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1045",
+      "to": "P-1046",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1046",
+      "to": "P-1047",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1047",
+      "to": "P-1048",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1048",
+      "to": "P-1049",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1049",
+      "to": "P-1050",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1050",
+      "to": "P-1051",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1051",
+      "to": "P-1052",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1052",
+      "to": "P-1053",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1053",
+      "to": "P-1054",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1054",
+      "to": "P-1055",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1055",
+      "to": "P-1056",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1056",
+      "to": "P-1057",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1057",
+      "to": "P-1058",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1058",
+      "to": "P-1059",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1059",
+      "to": "P-1060",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1060",
+      "to": "P-1061",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1061",
+      "to": "P-1062",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1062",
+      "to": "P-1063",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1063",
+      "to": "P-1064",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1064",
+      "to": "P-1065",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1065",
+      "to": "P-1066",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1066",
+      "to": "P-1067",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1067",
+      "to": "P-1068",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1068",
+      "to": "P-1069",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1069",
+      "to": "P-1070",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1070",
+      "to": "P-1071",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1071",
+      "to": "P-1072",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1072",
+      "to": "P-1073",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1073",
+      "to": "P-1074",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1074",
+      "to": "P-1075",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1075",
+      "to": "P-1076",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1076",
+      "to": "P-1077",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1077",
+      "to": "P-1078",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1078",
+      "to": "P-1079",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1079",
+      "to": "P-1080",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1080",
+      "to": "P-1081",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1081",
+      "to": "P-1082",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1082",
+      "to": "P-1083",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1083",
+      "to": "P-1084",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1084",
+      "to": "P-1085",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1085",
+      "to": "P-1086",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1086",
+      "to": "P-1087",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1087",
+      "to": "P-1088",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1088",
+      "to": "P-1089",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1089",
+      "to": "P-1090",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1090",
+      "to": "P-1091",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1091",
+      "to": "P-1092",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1092",
+      "to": "P-1093",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1093",
+      "to": "P-1094",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1094",
+      "to": "P-1095",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1095",
+      "to": "P-1096",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1096",
+      "to": "P-1097",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1097",
+      "to": "P-1098",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1098",
+      "to": "P-1099",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1099",
+      "to": "P-1100",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1100",
+      "to": "P-1101",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1101",
+      "to": "P-1102",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1102",
+      "to": "P-1103",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1103",
+      "to": "P-1104",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1104",
+      "to": "P-1105",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1105",
+      "to": "P-1106",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1106",
+      "to": "P-1107",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1107",
+      "to": "P-1108",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1108",
+      "to": "P-1109",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1109",
+      "to": "P-1110",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1110",
+      "to": "P-1111",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1111",
+      "to": "P-1112",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1112",
+      "to": "P-1113",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1113",
+      "to": "P-1114",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1114",
+      "to": "P-1115",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1115",
+      "to": "P-1116",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1116",
+      "to": "P-1117",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1117",
+      "to": "P-1118",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1118",
+      "to": "P-1119",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1119",
+      "to": "P-1120",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1120",
+      "to": "P-1121",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1121",
+      "to": "P-1122",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1122",
+      "to": "P-1123",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1123",
+      "to": "P-1124",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1124",
+      "to": "P-1125",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1125",
+      "to": "P-1126",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1126",
+      "to": "P-1127",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1127",
+      "to": "P-1128",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1128",
+      "to": "P-1129",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1129",
+      "to": "P-1130",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1130",
+      "to": "P-1131",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1131",
+      "to": "P-1132",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1132",
+      "to": "P-1133",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1133",
+      "to": "P-1134",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1134",
+      "to": "P-1135",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1135",
+      "to": "P-1136",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1136",
+      "to": "P-1137",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1137",
+      "to": "P-1138",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1138",
+      "to": "P-1139",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1139",
+      "to": "P-1140",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1140",
+      "to": "P-1141",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1141",
+      "to": "P-1142",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1142",
+      "to": "P-1143",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1143",
+      "to": "P-1144",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1144",
+      "to": "P-1145",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1145",
+      "to": "P-1146",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1146",
+      "to": "P-1147",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1147",
+      "to": "P-1148",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1148",
+      "to": "P-1149",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1149",
+      "to": "P-1150",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1150",
+      "to": "P-1151",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1151",
+      "to": "P-1152",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1152",
+      "to": "P-1153",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1153",
+      "to": "P-1154",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1154",
+      "to": "P-1155",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1155",
+      "to": "P-1156",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1156",
+      "to": "P-1157",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1157",
+      "to": "P-1158",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1158",
+      "to": "P-1159",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1159",
+      "to": "P-1160",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1160",
+      "to": "P-1161",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1161",
+      "to": "P-1162",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1162",
+      "to": "P-1163",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1163",
+      "to": "P-1164",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1164",
+      "to": "P-1165",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1165",
+      "to": "P-1166",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1166",
+      "to": "P-1167",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1167",
+      "to": "P-1168",
+      "confidence": 0.5
+    },
+    {
+      "from": "P-1168",
+      "to": "P-1169",
+      "confidence": 0.5
+    }
+  ],
+  "page_count": 1
+}
