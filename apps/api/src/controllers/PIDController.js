@@ -18,14 +18,21 @@ class PIDController {
         })
       }
 
-      // 选择识别方法: opencv (传统) | qwenvl (多模态AI)
-      const method = req.query.method || 'opencv'
+      // 获取识别方法和切片模式参数
+      const method = req.query.method || process.env.PID_RECOGNITION_METHOD || 'qwenvl'
+      const tiling = req.query.tiling === 'true' || req.query.tiling === '1'
 
-      console.log(`[PID Controller] 开始识别: ${req.file.originalname} (方法: ${method})`)
+      console.log(`[PID Controller] 开始识别: ${req.file.originalname} (方法: ${method}, 切片: ${tiling})`)
 
       let result
 
-      if (method === 'qwenvl') {
+      if (tiling && method === 'qwenvl') {
+        // 使用切片识别模式
+        result = await pidVLService.recognizePIDWithTiling(req.file.buffer, req.file.originalname)
+      } else if (method === 'ocr') {
+        // 使用OCR+QwenVL两阶段增强识别
+        result = await pidVLService.recognizePIDWithOCR(req.file.buffer, req.file.originalname)
+      } else if (method === 'qwenvl') {
         // 使用QWEN-VL多模态识别
         result = await pidVLService.recognizePID(req.file.buffer, req.file.originalname)
       } else {
@@ -33,27 +40,13 @@ class PIDController {
         result = await pidService.recognizePID(req.file.buffer, req.file.originalname)
       }
 
-      // 保存到数据库
-      const db = require('../config/database')
-      const [savedResult] = await db('pid_recognition_results')
-        .insert({
-          file_name: req.file.originalname,
-          file_path: '',
-          components: JSON.stringify(result.components || []),
-          connections: JSON.stringify(result.connections || []),
-          visualization_urls: JSON.stringify(result.visualization_images || []),
-          graph_analysis: result.graph_analysis ? JSON.stringify(result.graph_analysis) : null,
-          page_count: result.page_count || 1,
-          user_notes: ''
-        })
-        .returning('*')
+      // ⚠️ 暂时不保存到数据库，直接返回识别结果
+      // 用户确认后再通过 /api/pid/save 保存
+      console.log(`[PID Controller] 识别完成: ${(result.components || []).length} 个组件`)
 
       res.json({
         success: true,
-        data: {
-          ...result,
-          id: savedResult.id
-        }
+        data: result
       })
     } catch (error) {
       console.error('[PID Controller] 识别失败:', error)
