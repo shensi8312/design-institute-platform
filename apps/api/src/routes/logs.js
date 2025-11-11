@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const LogController = require('../controllers/LogController.refactored');
+const LogController = require('../controllers/LogController');
 
 // 日志管理
 router.get('/', authenticate, LogController.getLogs);

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const WorkflowController = require('../controllers/WorkflowController.refactored');
+const WorkflowController = require('../controllers/WorkflowController');
 
 // 工作流管理
 router.get('/', authenticate, WorkflowController.getWorkflows);
