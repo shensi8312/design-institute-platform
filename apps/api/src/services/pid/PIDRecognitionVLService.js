@@ -91,11 +91,11 @@ class PIDRecognitionVLService {
 
       console.log(`  临时PDF文件: ${tempPdfPath}`)
 
-      // 转换PDF第一页为PNG
+      // 转换PDF第一页为PNG（高分辨率）
       const pngPages = await pdfToPng.pdfToPng(tempPdfPath, {
         disableFontFace: false,
         useSystemFonts: false,
-        viewportScale: 2.0,
+        viewportScale: 3.0,  // 提高分辨率到3倍
         outputFolder: os.tmpdir(),
         strictPagesToProcess: true,
         pagesToProcess: [1]  // 只处理第一页
@@ -221,10 +221,13 @@ MV→manual_valve, V→pneumatic_valve, NV→needle_valve, CV→check_valve, PT�
           max_tokens: this.config.options.max_tokens
         },
         {
-          timeout: 120000,  // 2分钟超时
+          timeout: 300000,  // 5分钟超时（PID图纸识别需要较长时间）
           headers: {
             'Content-Type': 'application/json',
             ...(this.config.apiKey && { 'Authorization': `Bearer ${this.config.apiKey}` })
+          },
+          onUploadProgress: (progressEvent) => {
+            console.log(`  上传进度: ${Math.round(progressEvent.loaded / 1024)}KB`)
           }
         }
       )

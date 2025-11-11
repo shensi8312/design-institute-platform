@@ -2722,6 +2722,394 @@ class AssemblyController {
       })
     }
   }
+
+  // ========== 历史案例学习 ==========
+
+  /**
+   * 上传历史BOM样本
+   */
+  async uploadHistoricalBOM(req, res) {
+    try {
+      const { project_name, description } = req.body
+      const files = req.files
+
+      if (!files || files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: '请上传至少一个BOM文件'
+        })
+      }
+
+      console.log(`[历史案例学习] 收到${files.length}个BOM文件`)
+
+      const XLSX = require('xlsx')
+      const historicalCases = []
+
+      // 解析每个BOM文件
+      for (const file of files) {
+        try {
+          const workbook = XLSX.read(file.buffer, { type: 'buffer' })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const bomData = XLSX.utils.sheet_to_json(sheet)
+
+          const historicalCase = {
+            file_name: file.originalname,
+            project_name: project_name || file.originalname,
+            description: description || '',
+            upload_date: new Date(),
+            bom_items: bomData.map(row => ({
+              part_number: row['图号'] || row['零件编号'] || row['part_number'] || '',
+              part_name: row['名称'] || row['零件名称'] || row['name'] || '',
+              specification: row['规格'] || row['spec'] || '',
+              material: row['材质'] || row['material'] || '',
+              quantity: parseInt(row['数量'] || row['quantity'] || 1),
+              unit: row['单位'] || row['unit'] || '个',
+              remark: row['备注'] || row['remark'] || ''
+            }))
+          }
+
+          historicalCases.push(historicalCase)
+
+          console.log(`[历史案例] 解析完成: ${file.originalname}, ${bomData.length}个零件`)
+        } catch (parseError) {
+          console.error(`[历史案例] 解析失败 ${file.originalname}:`, parseError.message)
+        }
+      }
+
+      // 保存到数据库
+      const savedCases = await Promise.all(
+        historicalCases.map(async (caseData) => {
+          const result = await db.query(`
+            INSERT INTO historical_cases
+            (project_name, description, bom_data, uploaded_by, created_at)
+            VALUES ($1, $2, $3, $4, NOW())
+            RETURNING id, project_name, created_at
+          `, [
+            caseData.project_name,
+            caseData.description,
+            JSON.stringify(caseData.bom_items),
+            req.user.id
+          ])
+          return result.rows[0]
+        })
+      )
+
+      res.json({
+        success: true,
+        message: `成功上传${savedCases.length}个历史案例`,
+        data: {
+          uploaded_count: savedCases.length,
+          cases: savedCases
+        }
+      })
+    } catch (error) {
+      console.error('[历史案例上传失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: '上传失败: ' + error.message
+      })
+    }
+  }
+
+  /**
+   * 获取历史案例列表
+   */
+  async getHistoricalCases(req, res) {
+    try {
+      const result = await db.query(`
+        SELECT
+          id,
+          project_name,
+          description,
+          jsonb_array_length(bom_data) as item_count,
+          uploaded_by,
+          created_at
+        FROM historical_cases
+        ORDER BY created_at DESC
+      `)
+
+      res.json({
+        success: true,
+        data: result.rows
+      })
+    } catch (error) {
+      console.error('[获取历史案例失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取失败: ' + error.message
+      })
+    }
+  }
+
+  /**
+   * 分析配套模式 - 从历史BOM中统计学习
+   */
+  async analyzeMatchingPatterns(req, res) {
+    try {
+      console.log('[配套模式分析] 开始统计分析...')
+
+      // 获取所有历史案例
+      const casesResult = await db.query(`
+        SELECT id, project_name, bom_data
+        FROM historical_cases
+        ORDER BY created_at DESC
+      `)
+
+      const cases = casesResult.rows
+
+      if (cases.length === 0) {
+        return res.json({
+          success: false,
+          message: '没有历史案例数据,请先上传BOM样本'
+        })
+      }
+
+      console.log(`[配套模式] 分析${cases.length}个历史案例...`)
+
+      // 统计配套模式
+      const patterns = this._analyzeCoOccurrencePatterns(cases)
+
+      // 生成配套规则
+      const matchingRules = this._generateMatchingRules(patterns)
+
+      // 保存规则到数据库
+      const savedRules = await Promise.all(
+        matchingRules.map(async (rule) => {
+          const result = await db.query(`
+            INSERT INTO design_rules
+            (rule_id, rule_name, rule_type, condition_data, action_data,
+             source, confidence, sample_count, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            ON CONFLICT (rule_id) DO UPDATE SET
+              confidence = $7,
+              sample_count = $8,
+              updated_at = NOW()
+            RETURNING rule_id, rule_name, confidence
+          `, [
+            rule.rule_id,
+            rule.rule_name,
+            'matching',
+            JSON.stringify(rule.condition),
+            JSON.stringify(rule.action),
+            'learned_from_history',
+            rule.confidence,
+            rule.sample_count
+          ])
+          return result.rows[0]
+        })
+      )
+
+      res.json({
+        success: true,
+        message: `分析完成,生成${savedRules.length}条配套规则`,
+        data: {
+          analyzed_cases: cases.length,
+          rules_generated: savedRules.length,
+          rules: savedRules
+        }
+      })
+    } catch (error) {
+      console.error('[配套模式分析失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: '分析失败: ' + error.message
+      })
+    }
+  }
+
+  /**
+   * 获取配套规则
+   */
+  async getMatchingRules(req, res) {
+    try {
+      const result = await db.query(`
+        SELECT
+          rule_id,
+          rule_name,
+          rule_type,
+          condition_data,
+          action_data,
+          source,
+          confidence,
+          sample_count,
+          created_at
+        FROM design_rules
+        WHERE rule_type = 'matching'
+        ORDER BY confidence DESC, sample_count DESC
+      `)
+
+      res.json({
+        success: true,
+        data: result.rows
+      })
+    } catch (error) {
+      console.error('[获取配套规则失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取失败: ' + error.message
+      })
+    }
+  }
+
+  /**
+   * 分析共现模式(内部方法)
+   */
+  _analyzeCoOccurrencePatterns(cases) {
+    const patterns = {}
+
+    // 关键词识别
+    const mainPartKeywords = ['阀门', '球阀', '闸阀', '截止阀', '泵', '离心泵', '齿轮泵']
+    const flangeKeywords = ['法兰', 'flange']
+    const boltKeywords = ['螺栓', '螺钉', 'bolt']
+    const nutKeywords = ['螺母', 'nut']
+    const gasketKeywords = ['垫片', 'gasket']
+
+    for (const caseData of cases) {
+      const bom = caseData.bom_data
+
+      // 查找主件
+      for (const item of bom) {
+        const itemName = (item.part_name || '').toLowerCase()
+        const itemSpec = (item.specification || '').toLowerCase()
+
+        // 判断是否为主件
+        let isMainPart = false
+        let mainPartType = ''
+        let dn = this._extractDN(itemSpec)
+
+        for (const keyword of mainPartKeywords) {
+          if (itemName.includes(keyword)) {
+            isMainPart = true
+            mainPartType = keyword
+            break
+          }
+        }
+
+        if (!isMainPart || !dn) continue
+
+        // 查找配套的法兰
+        const flanges = bom.filter(part => {
+          const name = (part.part_name || '').toLowerCase()
+          const spec = (part.specification || '').toLowerCase()
+          return flangeKeywords.some(kw => name.includes(kw)) &&
+                 this._extractDN(spec) === dn
+        })
+
+        if (flanges.length > 0) {
+          const key = `${mainPartType}_DN${dn}_needs_flanges`
+          if (!patterns[key]) {
+            patterns[key] = {
+              main_part_type: mainPartType,
+              dn: dn,
+              matching_parts: [],
+              count: 0
+            }
+          }
+          patterns[key].count++
+          patterns[key].matching_parts.push({
+            type: '法兰',
+            spec: `DN${dn}`,
+            quantity: flanges.length
+          })
+        }
+
+        // 查找配套的螺栓
+        const bolts = bom.filter(part => {
+          const name = (part.part_name || '').toLowerCase()
+          return boltKeywords.some(kw => name.includes(kw))
+        })
+
+        if (bolts.length > 0) {
+          const key = `${mainPartType}_DN${dn}_needs_bolts`
+          if (!patterns[key]) {
+            patterns[key] = {
+              main_part_type: mainPartType,
+              dn: dn,
+              matching_parts: [],
+              count: 0
+            }
+          }
+          patterns[key].count++
+
+          const boltSpec = this._extractThreadSpec(bolts[0].specification || '')
+          patterns[key].matching_parts.push({
+            type: '螺栓',
+            spec: boltSpec,
+            quantity: bolts.reduce((sum, b) => sum + (b.quantity || 1), 0)
+          })
+        }
+      }
+    }
+
+    console.log(`[配套模式] 发现${Object.keys(patterns).length}个配套模式`)
+    return patterns
+  }
+
+  /**
+   * 生成配套规则(内部方法)
+   */
+  _generateMatchingRules(patterns) {
+    const rules = []
+    const totalCases = Object.values(patterns)[0]?.count || 1
+
+    for (const [key, pattern] of Object.entries(patterns)) {
+      // 只保留出现频率>=50%的模式
+      const confidence = pattern.count / totalCases
+      if (confidence < 0.5) continue
+
+      // 计算配套件的平均数量
+      const avgMatching = {}
+      for (const part of pattern.matching_parts) {
+        if (!avgMatching[part.type]) {
+          avgMatching[part.type] = { spec: part.spec, quantity: 0, count: 0 }
+        }
+        avgMatching[part.type].quantity += part.quantity
+        avgMatching[part.type].count++
+      }
+
+      const addParts = Object.entries(avgMatching).map(([type, data]) => ({
+        type,
+        spec: data.spec,
+        quantity: Math.round(data.quantity / data.count),
+        reasoning: `统计${pattern.count}个案例,平均配套数量`
+      }))
+
+      rules.push({
+        rule_id: `LEARNED_${key.toUpperCase()}`,
+        rule_name: `${pattern.main_part_type}DN${pattern.dn}配套规则`,
+        rule_type: 'matching',
+        condition: {
+          part_type: pattern.main_part_type,
+          dn: pattern.dn
+        },
+        action: {
+          add_parts: addParts
+        },
+        confidence: Math.min(0.95, confidence),
+        sample_count: pattern.count
+      })
+    }
+
+    return rules
+  }
+
+  /**
+   * 提取DN口径(内部方法)
+   */
+  _extractDN(text) {
+    if (!text) return null
+    const match = text.match(/DN\s*(\d+)/i) || text.match(/dn\s*(\d+)/i)
+    return match ? parseInt(match[1]) : null
+  }
+
+  /**
+   * 提取螺纹规格(内部方法)
+   */
+  _extractThreadSpec(text) {
+    if (!text) return 'M16'
+    const match = text.match(/M(\d+)/i)
+    return match ? `M${match[1]}` : 'M16'
+  }
 }
 
 module.exports = new AssemblyController()
