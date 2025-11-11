@@ -221,10 +221,13 @@ MV→manual_valve, V→pneumatic_valve, NV→needle_valve, CV→check_valve, PT�
           max_tokens: this.config.options.max_tokens
         },
         {
-          timeout: 120000,  // 2分钟超时
+          timeout: 300000,  // 5分钟超时（PID图纸识别需要较长时间）
           headers: {
             'Content-Type': 'application/json',
             ...(this.config.apiKey && { 'Authorization': `Bearer ${this.config.apiKey}` })
+          },
+          onUploadProgress: (progressEvent) => {
+            console.log(`  上传进度: ${Math.round(progressEvent.loaded / 1024)}KB`)
           }
         }
       )
