@@ -17,8 +17,8 @@ class MenuService extends BaseService {
   async getList(params = {}) {
     try {
       const {
-        page = 1,
-        pageSize = 20,
+        page,
+        pageSize,
         search,
         parentId,
         status,
@@ -38,6 +38,21 @@ class MenuService extends BaseService {
           ['name', 'path', 'component'],
           conditions
         )
+        return {
+          success: true,
+          data: {
+            list: menus,
+            total: menus.length
+          }
+        }
+      }
+
+      // 如果没有分页参数，返回所有菜单
+      if (!page && !pageSize) {
+        const menus = await this.menuRepository.findAll(conditions, {
+          orderBy,
+          order
+        })
         return {
           success: true,
           data: {
