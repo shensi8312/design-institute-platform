@@ -322,7 +322,7 @@ const RoleManagement: React.FC = () => {
       key: 'permissions',
       width: 120,
       render: (permissions: string[]) => (
-        <Tag color="blue">{permissions?.length || 0} 个</Tag>
+        <Tag color="blue">{getPermissionCount(permissions)} 个</Tag>
       ),
     },
     {
