@@ -15,9 +15,17 @@ class MenuController {
   async getList(req, res) {
     try {
       const result = await this.menuService.getList(req.query)
-      
+
       if (result.success) {
-        res.json(result)
+        // 为角色管理权限选择，直接返回菜单数组
+        if (!req.query.page && !req.query.pageSize) {
+          res.json({
+            success: true,
+            data: result.data.list || []
+          })
+        } else {
+          res.json(result)
+        }
       } else {
         res.status(400).json(result)
       }

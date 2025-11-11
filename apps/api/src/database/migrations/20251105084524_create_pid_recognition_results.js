@@ -3,7 +3,7 @@ exports.up = function(knex) {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
 
     // 关联原始文档
-    table.uuid('document_id').references('id').inTable('documents').onDelete('CASCADE');
+    table.uuid('document_id').references('id').inTable('knowledge_documents').onDelete('CASCADE'); // [PE-fix-table-name: documents表不存在，应为knowledge_documents]
     table.string('file_name').notNullable();
     table.string('file_path'); // 原始PDF路径
 

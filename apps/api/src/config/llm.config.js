@@ -37,9 +37,9 @@ const LLMConfig = {
     apiKey: process.env.QWENVL_API_KEY || '',
     options: {
       temperature: 0.1,
-      max_tokens: 2000,
-      maxImageWidth: 2048,
-      maxImageHeight: 2048
+      max_tokens: 8000,  // 增加到8000支持40+组件的JSON输出
+      maxImageWidth: 4096,  // 提高图片分辨率保留细节
+      maxImageHeight: 4096
     }
   },
 

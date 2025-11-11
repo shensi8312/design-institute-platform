@@ -280,7 +280,7 @@ const AssemblyDesignManagement: React.FC = () => {
     try {
       message.loading({ content: '🤖 正在调用AI生成3D模型...', key: 'generate3d', duration: 0 })
 
-      const response = await axios.post(`/api/assembly/designs/${designId}/generate-3d`)
+      const response = await axios.post(`/api/assembly/designs/${designId}/3d-model`) // [PE-fix-route-path: 统一为后端实际路由/3d-model]
 
       if (response.data.success) {
         message.success({ content: '✅ 3D模型生成成功！', key: 'generate3d' })
@@ -488,7 +488,7 @@ const AssemblyDesignManagement: React.FC = () => {
 
           <Upload
             name="model_file"
-            action={`${axios.defaults.baseURL}/api/assembly/designs/${record.id}/upload-3d`}
+            action={`${axios.defaults.baseURL}/api/assembly/designs/${record.id}/3d-model`} // [PE-fix-route-path: 统一为后端实际路由/3d-model]
             headers={{
               Authorization: `Bearer ${localStorage.getItem('token')}`
             }}
