@@ -299,6 +299,45 @@ class UnifiedDocumentController {
   }
 
   /**
+   * 获取模板目录大纲
+   */
+  async getTemplateOutline(req, res) {
+    try {
+      const { id } = req.params;
+
+      const template = await knex('document_templates')
+        .where({ id })
+        .first();
+
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          message: '模板不存在'
+        });
+      }
+
+      // 从config中读取解析好的目录结构
+      const config = JSON.parse(template.config || '{}');
+
+      res.json({
+        success: true,
+        data: {
+          outline: config.sectionStructure || [],
+          flatOutline: config.flatSections || [],
+          stats: config.stats || { totalSections: 0 }
+        }
+      });
+    } catch (error) {
+      console.error('[模板管理] 获取目录失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取模板目录失败',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * 基于模板创建文档实例
    */
   async createDocumentFromTemplate(req, res) {
