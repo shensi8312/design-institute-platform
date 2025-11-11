@@ -162,20 +162,34 @@ class PIDRecognitionVLService {
    * 调用QWEN-VL API
    */
   async _callQwenVL(imageBase64) {
-    const prompt = `分析P&ID图纸，识别所有带位号标签的组件。
+    const prompt = `你是P&ID图纸识别专家。请仔细分析图纸，识别:
+
+1. **所有带位号标签的组件** (MV1, V1, RG1等)
+2. **管道连接关系** (追踪管线，识别哪个组件连接到哪个组件)
+3. **连接规格** (管径DN、压力等级PN)
 
 位号规则：
 MV→manual_valve, V→pneumatic_valve, NV→needle_valve, CV→check_valve, PT→pressure_transducer, PS→pressure_switch, MFC→mass_flow_controller, RG→pressure_regulator, F→filter
 
-JSON格式：
+**必须**返回JSON格式：
+\`\`\`json
 {
   "components": [
-    {"id": "MV1", "type": "manual_valve", "tag": "MV1"},
-    {"id": "V1", "type": "pneumatic_valve", "tag": "V1"}
+    {"id": "MV1", "type": "manual_valve", "tag": "MV1", "dn": 40, "pn": 16},
+    {"id": "RG1", "type": "pressure_regulator", "tag": "RG1", "dn": 40, "pn": 16}
+  ],
+  "connections": [
+    {"from": "MV1", "to": "RG1", "dn": 40, "pn": 16, "pipe_type": "process"},
+    {"from": "RG1", "to": "MFC1", "dn": 25, "pn": 16, "pipe_type": "process"}
   ]
 }
+\`\`\`
 
-要求：完整列出所有30-40个组件，不要遗漏。`
+要求：
+- 完整列出所有30-40个组件
+- **追踪所有管道连接线，识别连接关系**
+- 提取管径和压力等级标注
+- 不要遗漏任何组件和连接`
 
     console.log(`  调用API: ${this.config.baseUrl}/v1/chat/completions`)
 
@@ -236,12 +250,11 @@ JSON格式：
     let jsonData = null
 
     try {
-      // 方法1: 直接解析
+      // 方法1: 直接解析整个响应
       jsonData = JSON.parse(content)
     } catch (e) {
-      // 方法2: 提取JSON代码块
-      const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) ||
-                       content.match(/(\{[\s\S]*\})/)
+      // 方法2: 提取```json...```代码块（支持多行）
+      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
       if (jsonMatch) {
         try {
           const jsonStr = jsonMatch[1]
@@ -249,8 +262,26 @@ JSON格式：
             .replace(/,\s*}/g, '}')  // 移除尾随逗号
             .replace(/,\s*]/g, ']')
           jsonData = JSON.parse(jsonStr)
+          console.log('  ✅ 成功解析JSON代码块')
         } catch (e2) {
-          console.warn('⚠️  无法解析JSON，使用文本分析')
+          console.warn('⚠️  JSON代码块解析失败:', e2.message)
+        }
+      }
+
+      // 方法3: 尝试提取完整JSON对象（包含connections字段）
+      if (!jsonData) {
+        const fullJsonMatch = content.match(/(\{[\s\S]*"connections"[\s\S]*?\][\s\S]*?\})/)
+        if (fullJsonMatch) {
+          try {
+            const cleanJson = fullJsonMatch[1]
+              .replace(/\/\/.*/g, '')
+              .replace(/,\s*}/g, '}')
+              .replace(/,\s*]/g, ']')
+            jsonData = JSON.parse(cleanJson)
+            console.log('  ✅ 成功解析完整JSON对象')
+          } catch (e3) {
+            console.warn('⚠️  完整JSON对象解析失败:', e3.message)
+          }
         }
       }
     }
@@ -266,6 +297,7 @@ JSON格式：
       }
 
       // 输出统计信息
+      console.log(`  📊 解析结果: ${result.components.length}个组件, ${result.connections.length}条连接`)
       if (result.statistics && Object.keys(result.statistics).length > 0) {
         console.log('  📊 识别统计:')
         for (const [key, value] of Object.entries(result.statistics)) {
@@ -277,6 +309,7 @@ JSON格式：
     }
 
     // 如果无法解析JSON，尝试从文本中提取信息
+    console.warn('⚠️  所有JSON解析方法失败，使用文本提取')
     return this._extractFromText(content)
   }
 
