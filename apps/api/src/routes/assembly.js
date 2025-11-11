@@ -144,11 +144,42 @@ router.get('/parts/library', authenticate, AssemblyController.getPartLibrary)
 // 获取学习到的规则（从JSON文件）
 router.get('/learned-rules', authenticate, AssemblyController.getLearnedRules)
 
-// 触发规则学习（执行Python脚本）
+// 触发规则学习（执行Python脚本 - 从STEP文件学习几何约束）
 router.post('/learn-rules', authenticate, AssemblyController.learnRules)
 
 // 从STEP装配文件生成装配图
 router.post('/generate-from-step', authenticate, AssemblyController.generateFromStep)
+
+// ========== 历史案例学习 ==========
+
+/**
+ * @route POST /api/assembly/learn/upload-historical-bom
+ * @desc 上传历史BOM样本用于统计学习配套规则
+ * @body { files: BOM Excel files[], project_name: string, description: string }
+ */
+router.post('/learn/upload-historical-bom',
+  authenticate,
+  upload.array('bom_files', 20),  // 最多上传20个BOM文件
+  AssemblyController.uploadHistoricalBOM
+)
+
+/**
+ * @route GET /api/assembly/learn/historical-cases
+ * @desc 获取已上传的历史案例列表
+ */
+router.get('/learn/historical-cases', authenticate, AssemblyController.getHistoricalCases)
+
+/**
+ * @route POST /api/assembly/learn/analyze-patterns
+ * @desc 从已上传的历史BOM中统计分析配套模式
+ */
+router.post('/learn/analyze-patterns', authenticate, AssemblyController.analyzeMatchingPatterns)
+
+/**
+ * @route GET /api/assembly/learn/matching-rules
+ * @desc 获取学习到的配套规则（主件→辅助件）
+ */
+router.get('/learn/matching-rules', authenticate, AssemblyController.getMatchingRules)
 
 // ========== 基于规则的装配生成 ==========
 
