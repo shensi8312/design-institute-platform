@@ -91,11 +91,11 @@ class PIDRecognitionVLService {
 
       console.log(`  临时PDF文件: ${tempPdfPath}`)
 
-      // 转换PDF第一页为PNG
+      // 转换PDF第一页为PNG（高分辨率）
       const pngPages = await pdfToPng.pdfToPng(tempPdfPath, {
         disableFontFace: false,
         useSystemFonts: false,
-        viewportScale: 2.0,
+        viewportScale: 3.0,  // 提高分辨率到3倍
         outputFolder: os.tmpdir(),
         strictPagesToProcess: true,
         pagesToProcess: [1]  // 只处理第一页
