@@ -58,8 +58,6 @@ const WorkflowEditor = lazy(() => import('../pages/WorkflowEditor'));
 const AgentWorkflow = lazy(() => import('../pages/AgentWorkflow/WorkflowDesigner'));
 
 // 新增页面
-const LearningDashboard = lazy(() => import('../pages/LearningDashboardFixed'));
-const DataAnnotation = lazy(() => import('../pages/DataAnnotation'));
 const LangExtract = lazy(() => import('../pages/LangExtract'));
 const EngineManagement = lazy(() => import('../pages/EngineManagement'));
 const BuildingLayoutEngine = lazy(() => import('../pages/BuildingLayoutEngine'));
@@ -366,14 +364,6 @@ const router = createBrowserRouter([
         element: <LazyWrapper Component={AssemblyValidationExport} />
       },
       // 学习与标注
-      {
-        path: 'learning',
-        element: <LazyWrapper Component={LearningDashboard} />
-      },
-      {
-        path: 'annotation',
-        element: <LazyWrapper Component={DataAnnotation} />
-      },
       {
         path: 'langextract',
         element: <LazyWrapper Component={LangExtract} />
