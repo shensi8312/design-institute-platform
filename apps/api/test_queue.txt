@@ -1,8 +1,0 @@
-This is a test document for queue system testing.
-队列系统测试文档。
-
-测试内容:
-1. Bull队列
-2. Redis
-3. 进度追踪
-4. 断点续传
