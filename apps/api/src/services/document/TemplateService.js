@@ -7,6 +7,7 @@ const knex = require('../../config/database');
 const DocumentDomainConfig = require('../../config/DocumentDomainConfig');
 const UnifiedLLMService = require('../llm/UnifiedLLMService');
 const MasterFormatMatcher = require('./MasterFormatMatcher');
+const WordOutlineExtractor = require('./WordOutlineExtractor');
 
 class TemplateService {
   constructor() {
@@ -69,28 +70,38 @@ class TemplateService {
     const domain = this.domainConfig.getDomain(templateType);
     const parseConfig = domain.template.parsing;
 
-    // TODO: 实现文件读取和AI解析
-    // 1. 读取Word/PDF文件
-    // 2. 提取文本内容和目录结构
-    // 3. 使用LLM识别章节标题、编号、层级关系
-    // 4. 识别模板变量 (如 {{projectName}})
-    // 5. 提取表格、图片等资源
+    try {
+      console.log('[模板解析] 开始解析文件:', filePath);
 
-    return {
-      sectionStructure: [
-        // 示例结构
-        {
-          id: 'sec_001',
-          code: '01',
-          title: '总则',
-          level: 1,
-          order: 1,
-          children: []
-        }
-      ],
-      variables: [],
-      config: {}
-    };
+      // 提取Word文档目录结构
+      const { outline, flatOutline } = await WordOutlineExtractor.extractOutline(filePath);
+      const stats = WordOutlineExtractor.getOutlineStats(outline);
+
+      console.log('[模板解析] 目录提取成功:', stats);
+
+      // TODO: 后续扩展
+      // 1. 使用LLM识别模板变量 (如 {{projectName}})
+      // 2. 提取表格、图片等资源
+      // 3. 识别特殊格式和样式
+
+      return {
+        sectionStructure: outline,      // 树形结构
+        flatSections: flatOutline,      // 扁平结构
+        stats: stats,                   // 统计信息
+        variables: [],                  // 模板变量（待实现）
+        config: {}                      // 其他配置
+      };
+    } catch (error) {
+      console.error('[模板解析] 失败:', error);
+      // 返回空结构，不影响模板创建
+      return {
+        sectionStructure: [],
+        flatSections: [],
+        stats: { totalSections: 0 },
+        variables: [],
+        config: {}
+      };
+    }
   }
 
   /**

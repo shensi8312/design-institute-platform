@@ -201,12 +201,12 @@ class PIDController {
       }
 
       if (created_by) {
-        query = query.where('pid_recognition_results.created_by', created_by)
+        query = query.whereRaw('pid_recognition_results.created_by::text = ?', [created_by])
       }
 
       // 如果不是管理员，只能查看自己的
       if (!req.user.isAdmin) {
-        query = query.where('pid_recognition_results.created_by', req.user.id)
+        query = query.whereRaw('pid_recognition_results.created_by::text = ?', [req.user.id])
       }
 
       // 获取总数

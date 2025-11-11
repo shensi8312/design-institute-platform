@@ -80,6 +80,9 @@ router.get('/templates', UnifiedDocumentController.getTemplates);
 // 获取模板章节结构（必须在 /templates/:id 之前）
 router.get('/templates/:id/sections', UnifiedDocumentController.getTemplateSections);
 
+// 获取模板目录大纲（必须在 /templates/:id 之前）
+router.get('/templates/:id/outline', UnifiedDocumentController.getTemplateOutline);
+
 // 发布模板（必须在 /templates/:id 之前）
 router.post('/templates/:id/publish', UnifiedDocumentController.publishTemplate);
 
