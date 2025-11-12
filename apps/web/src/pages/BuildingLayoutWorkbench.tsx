@@ -19,7 +19,8 @@ import {
   Progress,
   Collapse,
   Statistic,
-  Divider
+  Divider,
+  Radio
 } from 'antd';
 import {
   CalculatorOutlined,
@@ -29,7 +30,11 @@ import {
   WarningOutlined,
   FileTextOutlined,
   DashboardOutlined,
-  RocketOutlined
+  RocketOutlined,
+  BulbOutlined,
+  DollarOutlined,
+  ExpandOutlined,
+  EnvironmentOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -68,10 +73,14 @@ interface WorkflowResult {
 
 const BuildingLayoutWorkbench: React.FC = () => {
   const [form] = Form.useForm();
+  const [optimizeForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | null>(null);
+  const [optimizationResult, setOptimizationResult] = useState<any>(null);
   const [rulesSummary, setRulesSummary] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('1');
+  const [optimizationStrategy, setOptimizationStrategy] = useState('balanced');
 
   // 获取规则摘要
   useEffect(() => {
@@ -143,6 +152,68 @@ const BuildingLayoutWorkbench: React.FC = () => {
       message.error(error.response?.data?.message || '工作流执行失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 运行布局优化
+  const runOptimization = async (values: any) => {
+    setOptimizing(true);
+
+    try {
+      const token = localStorage.getItem('token');
+
+      // 构建场地边界（示例：矩形场地）
+      const siteBoundary = [
+        [0, 0],
+        [values.site_width || 200, 0],
+        [values.site_width || 200, values.site_length || 150],
+        [0, values.site_length || 150],
+        [0, 0]
+      ];
+
+      const requestData = {
+        site_boundary: siteBoundary,
+        required_area: values.required_area,
+        setback_distances: {
+          north: values.setback_north || 10,
+          south: values.setback_south || 10,
+          east: values.setback_east || 10,
+          west: values.setback_west || 10
+        },
+        options: {
+          max_time_seconds: values.max_time || 60,
+          num_solutions: values.num_solutions || 5
+        }
+      };
+
+      // 根据策略选择不同的API端点
+      let endpoint = '/api/building-layout/optimize';
+      if (optimizationStrategy === 'cost') {
+        endpoint = '/api/building-layout/optimize/cost';
+      } else if (optimizationStrategy === 'space') {
+        endpoint = '/api/building-layout/optimize/space';
+      } else if (optimizationStrategy === 'green') {
+        endpoint = '/api/building-layout/optimize/green';
+      } else if (optimizationStrategy === 'batch') {
+        endpoint = '/api/building-layout/optimize/batch';
+      }
+
+      const response = await axios.post(endpoint, requestData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setOptimizationResult(response.data);
+        setActiveTab('3'); // 切换到优化结果标签
+        message.success('布局优化完成！');
+      } else {
+        message.error(response.data.message || '优化失败');
+      }
+    } catch (error: any) {
+      console.error('优化失败:', error);
+      message.error(error.response?.data?.message || '优化失败');
+    } finally {
+      setOptimizing(false);
     }
   };
 
@@ -364,6 +435,191 @@ const BuildingLayoutWorkbench: React.FC = () => {
     );
   };
 
+  // 渲染优化结果
+  const renderOptimizationResults = () => {
+    if (!optimizationResult) return null;
+
+    // 批量优化结果
+    if (optimizationResult.strategies) {
+      return (
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <Alert
+            message={`批量优化完成 - 成功策略: ${optimizationResult.successful_strategies}/${optimizationResult.total_strategies}`}
+            type="success"
+            showIcon
+          />
+
+          <Collapse defaultActiveKey={['0']}>
+            {optimizationResult.strategies.map((strategy: any, idx: number) => (
+              <Panel
+                header={
+                  <Space>
+                    <Tag color="blue">{strategy.strategy_name}</Tag>
+                    <span>{strategy.strategy_description}</span>
+                    {strategy.result.best_solution && (
+                      <Tag color="green">得分: {strategy.result.best_solution.scores.total_score}</Tag>
+                    )}
+                  </Space>
+                }
+                key={idx}
+              >
+                {renderSingleOptimizationResult(strategy.result)}
+              </Panel>
+            ))}
+          </Collapse>
+        </Space>
+      );
+    }
+
+    // 单个优化结果
+    return renderSingleOptimizationResult(optimizationResult);
+  };
+
+  const renderSingleOptimizationResult = (result: any) => {
+    if (!result.best_solution) return null;
+
+    const bestSolution = result.best_solution;
+
+    const solutionColumns = [
+      {
+        title: '排名',
+        dataIndex: 'rank',
+        key: 'rank',
+        width: 80
+      },
+      {
+        title: '尺寸',
+        key: 'dimensions',
+        render: (_: any, record: any) => (
+          <div>
+            <div>长×宽: {record.dimensions.length}m × {record.dimensions.width}m</div>
+            <div>面积: {record.dimensions.area}m²</div>
+            <Tag>{record.dimensions.orientation === 'north-south' ? '南北向' : '东西向'}</Tag>
+          </div>
+        )
+      },
+      {
+        title: '总得分',
+        dataIndex: ['scores', 'total_score'],
+        key: 'total_score',
+        sorter: (a: any, b: any) => b.scores.total_score - a.scores.total_score,
+        render: (score: number) => <Tag color="blue">{score}</Tag>
+      },
+      {
+        title: '空间利用率',
+        dataIndex: ['scores', 'space_utilization'],
+        key: 'space_utilization',
+        render: (util: number) => `${util}%`
+      },
+      {
+        title: '日照得分',
+        dataIndex: ['scores', 'sunlight_score'],
+        key: 'sunlight_score'
+      },
+      {
+        title: '能耗得分',
+        dataIndex: ['scores', 'energy_score'],
+        key: 'energy_score'
+      },
+      {
+        title: '建造成本',
+        dataIndex: ['scores', 'cost_per_meter'],
+        key: 'cost',
+        render: (cost: number) => `¥${cost.toLocaleString()}`
+      }
+    ];
+
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size="large">
+        {result.solver_info && (
+          <Card size="small">
+            <Descriptions column={4} size="small">
+              <Descriptions.Item label="求解状态">
+                <Tag color={result.status === 'optimal' ? 'green' : 'orange'}>
+                  {result.status === 'optimal' ? '最优解' : '可行解'}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="求解时间">
+                {result.solver_info.wall_time}秒
+              </Descriptions.Item>
+              <Descriptions.Item label="搜索分支">
+                {result.solver_info.num_branches}
+              </Descriptions.Item>
+              <Descriptions.Item label="找到方案">
+                {result.solver_info.num_solutions_found}个
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        )}
+
+        <Card title={<><BuildOutlined /> 最佳方案</>}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Descriptions bordered column={1}>
+                <Descriptions.Item label="建筑尺寸">
+                  {bestSolution.dimensions.length}m × {bestSolution.dimensions.width}m
+                </Descriptions.Item>
+                <Descriptions.Item label="建筑面积">
+                  {bestSolution.dimensions.area}m²
+                </Descriptions.Item>
+                <Descriptions.Item label="周长">
+                  {bestSolution.dimensions.perimeter}m
+                </Descriptions.Item>
+                <Descriptions.Item label="朝向">
+                  <Tag>{bestSolution.dimensions.orientation === 'north-south' ? '南北向' : '东西向'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="位置">
+                  ({bestSolution.position.x}, {bestSolution.position.y})
+                </Descriptions.Item>
+              </Descriptions>
+            </Col>
+            <Col span={12}>
+              <Card size="small" title="性能指标">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Statistic
+                    title="总得分"
+                    value={bestSolution.scores.total_score}
+                    valueStyle={{ color: '#3f8600' }}
+                  />
+                  <Progress
+                    percent={bestSolution.scores.space_utilization}
+                    format={(percent) => `空间利用率: ${percent}%`}
+                  />
+                  <Row gutter={8}>
+                    <Col span={12}>
+                      <Statistic title="日照得分" value={bestSolution.scores.sunlight_score} suffix="/100" />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic title="能耗得分" value={bestSolution.scores.energy_score} suffix="/100" />
+                    </Col>
+                  </Row>
+                  <Statistic
+                    title="建造成本"
+                    value={bestSolution.scores.cost_per_meter}
+                    prefix="¥"
+                    precision={0}
+                  />
+                </Space>
+              </Card>
+            </Col>
+          </Row>
+        </Card>
+
+        {result.solutions && result.solutions.length > 1 && (
+          <Card title={<><DashboardOutlined /> 所有方案对比</>}>
+            <Table
+              dataSource={result.solutions}
+              columns={solutionColumns}
+              rowKey="rank"
+              pagination={false}
+              size="small"
+            />
+          </Card>
+        )}
+      </Space>
+    );
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Card>
@@ -492,6 +748,155 @@ const BuildingLayoutWorkbench: React.FC = () => {
                   {renderComplianceResult()}
                 </Space>
               )}
+            </TabPane>
+
+            <TabPane tab={<><BulbOutlined /> 布局优化</>} key="3">
+              <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Alert
+                  message="OR-Tools 约束规划求解器"
+                  description="基于Google OR-Tools CP-SAT求解器的多目标优化，支持成本、空间、日照、能耗多维度优化"
+                  type="info"
+                  showIcon
+                />
+
+                <Form
+                  form={optimizeForm}
+                  layout="vertical"
+                  onFinish={runOptimization}
+                  initialValues={{
+                    site_width: 200,
+                    site_length: 150,
+                    required_area: 10000,
+                    setback_north: 10,
+                    setback_south: 10,
+                    setback_east: 10,
+                    setback_west: 10,
+                    max_time: 60,
+                    num_solutions: 5
+                  }}
+                >
+                  <Card title="优化策略" size="small" style={{ marginBottom: 16 }}>
+                    <Form.Item label="选择优化策略">
+                      <Radio.Group
+                        value={optimizationStrategy}
+                        onChange={(e) => setOptimizationStrategy(e.target.value)}
+                        buttonStyle="solid"
+                      >
+                        <Radio.Button value="balanced">
+                          <Space><DashboardOutlined /> 平衡方案</Space>
+                        </Radio.Button>
+                        <Radio.Button value="cost">
+                          <Space><DollarOutlined /> 成本优先</Space>
+                        </Radio.Button>
+                        <Radio.Button value="space">
+                          <Space><ExpandOutlined /> 空间优先</Space>
+                        </Radio.Button>
+                        <Radio.Button value="green">
+                          <Space><EnvironmentOutlined /> 绿色建筑</Space>
+                        </Radio.Button>
+                        <Radio.Button value="batch">
+                          <Space><BuildOutlined /> 批量对比</Space>
+                        </Radio.Button>
+                      </Radio.Group>
+                    </Form.Item>
+                  </Card>
+
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Card title="场地参数" size="small">
+                        <Form.Item
+                          name="site_width"
+                          label="场地宽度（米）"
+                          rules={[{ required: true }]}
+                        >
+                          <InputNumber min={50} max={500} style={{ width: '100%' }} />
+                        </Form.Item>
+
+                        <Form.Item
+                          name="site_length"
+                          label="场地长度（米）"
+                          rules={[{ required: true }]}
+                        >
+                          <InputNumber min={50} max={500} style={{ width: '100%' }} />
+                        </Form.Item>
+
+                        <Form.Item
+                          name="required_area"
+                          label="要求建筑面积（m²）"
+                          rules={[{ required: true }]}
+                        >
+                          <InputNumber min={100} max={100000} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Card>
+                    </Col>
+
+                    <Col span={12}>
+                      <Card title="退距要求" size="small">
+                        <Row gutter={8}>
+                          <Col span={12}>
+                            <Form.Item name="setback_north" label="北侧退距（米）">
+                              <InputNumber min={0} max={50} style={{ width: '100%' }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="setback_south" label="南侧退距（米）">
+                              <InputNumber min={0} max={50} style={{ width: '100%' }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="setback_east" label="东侧退距（米）">
+                              <InputNumber min={0} max={50} style={{ width: '100%' }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item name="setback_west" label="西侧退距（米）">
+                              <InputNumber min={0} max={50} style={{ width: '100%' }} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </Card>
+                    </Col>
+                  </Row>
+
+                  <Card title="求解选项" size="small">
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Form.Item
+                          name="max_time"
+                          label="最大求解时间（秒）"
+                          tooltip="求解器运行的最大时间限制"
+                        >
+                          <InputNumber min={10} max={300} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="num_solutions"
+                          label="返回方案数量"
+                          tooltip="找到的解决方案数量"
+                        >
+                          <InputNumber min={1} max={10} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      size="large"
+                      loading={optimizing}
+                      icon={<BulbOutlined />}
+                      block
+                    >
+                      运行布局优化
+                    </Button>
+                  </Form.Item>
+                </Form>
+
+                {optimizationResult && renderOptimizationResults()}
+              </Space>
             </TabPane>
           </Tabs>
         </Space>

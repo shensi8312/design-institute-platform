@@ -1,6 +1,7 @@
 const BuildingLayoutService = require('../services/building/BuildingLayoutService')
 const BuildingLayoutKnowledgeGraphService = require('../services/building/BuildingLayoutKnowledgeGraphService')
 const GeometryProcessingService = require('../services/building/GeometryProcessingService')
+const LayoutOptimizationService = require('../services/building/LayoutOptimizationService')
 
 /**
  * 建筑强排控制器
@@ -11,6 +12,7 @@ class BuildingLayoutController {
     this.service = new BuildingLayoutService()
     this.graphService = new BuildingLayoutKnowledgeGraphService()
     this.geometryService = new GeometryProcessingService()
+    this.optimizationService = new LayoutOptimizationService()
   }
 
   /**
@@ -583,6 +585,174 @@ class BuildingLayoutController {
       })
     }
   }
+
+  // ========== 布局优化相关方法 (Phase 6 - OR-Tools) ==========
+
+  /**
+   * 优化建筑布局
+   * POST /api/building-layout/optimize
+   */
+  async optimizeLayout(req, res) {
+    try {
+      const params = req.body
+
+      if (!params.site_boundary || !params.required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.optimizeLayout(params)
+      res.json(result)
+    } catch (error) {
+      console.error('布局优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '布局优化失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 快速优化
+   * POST /api/building-layout/optimize/quick
+   */
+  async quickOptimize(req, res) {
+    try {
+      const { site_boundary, required_area, setback_distances } = req.body
+
+      if (!site_boundary || !required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.quickOptimize(
+        site_boundary,
+        required_area,
+        setback_distances || {}
+      )
+      res.json(result)
+    } catch (error) {
+      console.error('快速优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '快速优化失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 成本优先优化
+   * POST /api/building-layout/optimize/cost
+   */
+  async optimizeForCost(req, res) {
+    try {
+      const params = req.body
+
+      if (!params.site_boundary || !params.required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.optimizeForCost(params)
+      res.json(result)
+    } catch (error) {
+      console.error('成本优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '成本优化失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 空间优先优化
+   * POST /api/building-layout/optimize/space
+   */
+  async optimizeForSpace(req, res) {
+    try {
+      const params = req.body
+
+      if (!params.site_boundary || !params.required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.optimizeForSpace(params)
+      res.json(result)
+    } catch (error) {
+      console.error('空间优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '空间优化失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 绿色建筑优化
+   * POST /api/building-layout/optimize/green
+   */
+  async optimizeForGreen(req, res) {
+    try {
+      const params = req.body
+
+      if (!params.site_boundary || !params.required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.optimizeForGreen(params)
+      res.json(result)
+    } catch (error) {
+      console.error('绿色建筑优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '绿色建筑优化失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 批量优化 - 尝试多种策略
+   * POST /api/building-layout/optimize/batch
+   */
+  async batchOptimize(req, res) {
+    try {
+      const params = req.body
+
+      if (!params.site_boundary || !params.required_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和要求面积'
+        })
+      }
+
+      const result = await this.optimizationService.batchOptimize(params)
+      res.json(result)
+    } catch (error) {
+      console.error('批量优化失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '批量优化失败',
+        error: error.message
+      })
+    }
+  }
 }
 
 // 创建实例并导出
@@ -607,5 +777,12 @@ module.exports = {
   parseSHP: (req, res) => controller.parseSHP(req, res),
   calculateGeometricSetback: (req, res) => controller.calculateGeometricSetback(req, res),
   calculateSiteSetbackFromFile: (req, res) => controller.calculateSiteSetbackFromFile(req, res),
-  generateBuildingFootprint: (req, res) => controller.generateBuildingFootprint(req, res)
+  generateBuildingFootprint: (req, res) => controller.generateBuildingFootprint(req, res),
+  // 布局优化相关
+  optimizeLayout: (req, res) => controller.optimizeLayout(req, res),
+  quickOptimize: (req, res) => controller.quickOptimize(req, res),
+  optimizeForCost: (req, res) => controller.optimizeForCost(req, res),
+  optimizeForSpace: (req, res) => controller.optimizeForSpace(req, res),
+  optimizeForGreen: (req, res) => controller.optimizeForGreen(req, res),
+  batchOptimize: (req, res) => controller.batchOptimize(req, res)
 }

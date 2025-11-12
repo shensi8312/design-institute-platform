@@ -129,4 +129,48 @@ router.post('/geometry/site-setback', BuildingLayoutController.calculateSiteSetb
  */
 router.post('/geometry/generate-footprint', BuildingLayoutController.generateBuildingFootprint)
 
+// ========== 布局优化相关路由 (Phase 6 - OR-Tools) ==========
+
+/**
+ * @route   POST /api/building-layout/optimize
+ * @desc    优化建筑布局（多目标优化）
+ * @access  Private
+ */
+router.post('/optimize', BuildingLayoutController.optimizeLayout)
+
+/**
+ * @route   POST /api/building-layout/optimize/quick
+ * @desc    快速优化（30秒，3个解）
+ * @access  Private
+ */
+router.post('/optimize/quick', BuildingLayoutController.quickOptimize)
+
+/**
+ * @route   POST /api/building-layout/optimize/cost
+ * @desc    成本优先优化
+ * @access  Private
+ */
+router.post('/optimize/cost', BuildingLayoutController.optimizeForCost)
+
+/**
+ * @route   POST /api/building-layout/optimize/space
+ * @desc    空间优先优化
+ * @access  Private
+ */
+router.post('/optimize/space', BuildingLayoutController.optimizeForSpace)
+
+/**
+ * @route   POST /api/building-layout/optimize/green
+ * @desc    绿色建筑优化
+ * @access  Private
+ */
+router.post('/optimize/green', BuildingLayoutController.optimizeForGreen)
+
+/**
+ * @route   POST /api/building-layout/optimize/batch
+ * @desc    批量优化（尝试多种策略）
+ * @access  Private
+ */
+router.post('/optimize/batch', BuildingLayoutController.batchOptimize)
+
 module.exports = router
