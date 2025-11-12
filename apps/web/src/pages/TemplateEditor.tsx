@@ -1,12 +1,12 @@
 /**
- * Word模板在线编辑器（增强版）
+ * 文档模板编辑器
  * 左侧：文档目录树
- * 右侧：OnlyOffice完整编辑器
+ * 右侧：ReactQuill富文本编辑器
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Card, Button, Space, Tag, Tooltip, message } from 'antd';
+import { Layout, Card, Button, Space, Tag, Tooltip, message, Spin, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
   FileTextOutlined,
@@ -16,16 +16,181 @@ import {
   CompressOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
-import DocxEditor from '../components/DocxEditor';
 import TemplateOutlineTree from '../components/TemplateOutlineTree';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import axios from '../utils/axios';
 
 const { Sider, Content } = Layout;
+
+interface Template {
+  id: string;
+  name: string;
+  template_type: string;
+  description: string;
+}
+
+interface TemplateSection {
+  id: string;
+  title: string;
+  content: string;
+  level: number;
+  children?: TemplateSection[];
+}
 
 const TemplateEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const editorRef = useRef<any>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sections, setSections] = useState<TemplateSection[]>([]);
+  const quillRef = useRef<ReactQuill>(null);
+
+  // Quill编辑器配置
+  const modules = useMemo(() => ({
+    toolbar: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'script': 'sub'}, { 'script': 'super' }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['blockquote', 'code-block'],
+      ['link', 'image', 'video'],
+      ['clean']
+    ],
+    clipboard: {
+      matchVisual: false,
+    },
+  }), []);
+
+  const formats = [
+    'header', 'font', 'size',
+    'bold', 'italic', 'underline', 'strike',
+    'color', 'background',
+    'script',
+    'list', 'bullet', 'indent',
+    'align',
+    'blockquote', 'code-block',
+    'link', 'image', 'video'
+  ];
+
+  useEffect(() => {
+    if (id) {
+      loadTemplate();
+      loadTemplateSections();
+    }
+  }, [id]);
+
+  // 加载模板信息
+  const loadTemplate = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/api/unified-document/templates/${id}`);
+      if (response.data.success) {
+        setTemplate(response.data.data);
+        // 如果模板有content字段，加载它
+        setContent(response.data.data.content || '');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '加载模板失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 加载模板章节列表
+  const loadTemplateSections = async () => {
+    try {
+      const response = await axios.get(`/api/unified-document/templates/${id}/sections`);
+      if (response.data.success) {
+        setSections(response.data.data);
+      }
+    } catch (error: any) {
+      console.error('加载章节列表失败:', error);
+    }
+  };
+
+  // 处理目录节点选择 - 插入章节内容
+  const handleNodeSelect = (node: any) => {
+    Modal.confirm({
+      title: '插入章节内容',
+      content: `确定要插入"${node.title}"的内容到编辑器中吗？`,
+      onOk: () => {
+        insertSectionContent(node);
+      }
+    });
+  };
+
+  // 插入章节内容到编辑器
+  const insertSectionContent = async (node: any) => {
+    try {
+      // 从sections中找到对应的章节内容
+      const findSection = (sections: TemplateSection[], nodeId: string): TemplateSection | null => {
+        for (const section of sections) {
+          if (section.id === nodeId) return section;
+          if (section.children) {
+            const found = findSection(section.children, nodeId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const section = findSection(sections, node.id);
+
+      if (!section || !section.content) {
+        message.warning('该章节暂无内容');
+        return;
+      }
+
+      const quill = quillRef.current?.getEditor();
+      if (!quill) return;
+
+      // 获取当前光标位置
+      const selection = quill.getSelection();
+      const position = selection ? selection.index : quill.getLength();
+
+      // 插入章节标题（作为标题格式）
+      quill.insertText(position, `\n${node.title}\n`, { header: section.level });
+
+      // 插入章节内容
+      const delta = quill.clipboard.convert(section.content);
+      quill.setContents(quill.getContents().concat(delta), 'user');
+
+      message.success(`已插入章节：${node.title}`);
+    } catch (error: any) {
+      message.error('插入章节内容失败');
+      console.error(error);
+    }
+  };
+
+  // 保存文档
+  const handleSave = async () => {
+    if (!id) return;
+
+    setSaving(true);
+    try {
+      await axios.put(`/api/unified-document/templates/${id}`, {
+        content
+      });
+      message.success('保存成功');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 导出Word文档
+  const handleExport = () => {
+    message.info('导出功能开发中...');
+  };
 
   if (!id) {
     return (
@@ -35,35 +200,18 @@ const TemplateEditor: React.FC = () => {
     );
   }
 
-  // 处理目录节点选择 - 跳转到对应章节
-  const handleNodeSelect = (node: any) => {
-    console.log('选中目录节点:', node);
-    // TODO: 实现跳转到Word文档对应位置
-    // 需要通过OnlyOffice API实现
-    message.info(`跳转到: ${node.title}`);
-
-    // 未来实现：
-    // if (editorRef.current && editorRef.current.jumpToHeading) {
-    //   editorRef.current.jumpToHeading(node.title);
-    // }
-  };
-
-  // 保存文档
-  const handleSave = () => {
-    // OnlyOffice会自动保存
-    message.success('文档已自动保存');
-  };
-
-  // 导出Word文档
-  const handleExport = () => {
-    // TODO: 调用OnlyOffice API导出文档
-    message.info('正在导出Word文档...');
-
-    // 未来实现：
-    // if (editorRef.current && editorRef.current.downloadDocument) {
-    //   editorRef.current.downloadDocument();
-    // }
-  };
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
+      }}>
+        <Spin size="large" tip="加载中..." />
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -88,13 +236,13 @@ const TemplateEditor: React.FC = () => {
               <Space>
                 <FileTextOutlined style={{ fontSize: 18, color: '#1890ff' }} />
                 <span style={{ fontSize: 16, fontWeight: 500 }}>
-                  Word模板编辑器
+                  {template?.name || '文档模板编辑器'}
                 </span>
-                <Tag color="green">完整格式</Tag>
-                <Tag color="blue">自动保存</Tag>
+                <Tag color="green">富文本编辑</Tag>
+                <Tag color="blue">支持模板插入</Tag>
               </Space>
               <div style={{ marginTop: 4, fontSize: 12, color: '#8c8c8c' }}>
-                <InfoCircleOutlined /> 修改会自动保存到服务器
+                <InfoCircleOutlined /> 点击左侧目录可插入章节内容
               </div>
             </div>
           </Space>
@@ -108,7 +256,11 @@ const TemplateEditor: React.FC = () => {
                 {collapsed ? '显示' : '隐藏'}目录
               </Button>
             </Tooltip>
-            <Button icon={<SaveOutlined />} onClick={handleSave}>
+            <Button
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={saving}
+            >
               保存
             </Button>
             <Button
@@ -152,6 +304,9 @@ const TemplateEditor: React.FC = () => {
                 fontSize: 14
               }}>
                 📖 文档目录
+                <div style={{ fontSize: 12, color: '#999', marginTop: 4, fontWeight: 'normal' }}>
+                  点击章节可插入内容
+                </div>
               </div>
 
               {/* 目录树 */}
@@ -176,13 +331,28 @@ const TemplateEditor: React.FC = () => {
             background: '#fff',
             borderRadius: 4,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <DocxEditor
-              ref={editorRef}
-              documentId={id}
-              height="100%"
-            />
+            <div style={{
+              flex: 1,
+              padding: 24,
+              overflow: 'auto'
+            }}>
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={content}
+                onChange={setContent}
+                modules={modules}
+                formats={formats}
+                placeholder="请输入内容，或从左侧目录插入章节模板..."
+                style={{
+                  height: 'calc(100vh - 200px)',
+                }}
+              />
+            </div>
           </div>
         </Content>
       </Layout>
