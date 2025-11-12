@@ -49,28 +49,43 @@ class MenuRepository extends BaseRepository {
 
   /**
    * 获取用户菜单（根据权限）
-   * [PE-why] 修复权限查询逻辑：roles表的permissions是JSONB字段，不是通过role_permissions关联表
+   * 修复：同时支持users.role_id和user_roles表
    */
   async getUserMenus(userId) {
-    // 1. 获取用户的所有角色
+    // 1. 获取用户的直接角色（users.role_id）
+    const user = await this.db('users')
+      .where('id', userId)
+      .select('role_id')
+      .first()
+
+    const roleIds = []
+    if (user && user.role_id) {
+      roleIds.push(user.role_id)
+    }
+
+    // 2. 获取用户的额外角色（user_roles表）
     const userRoles = await this.db('user_roles')
       .where('user_id', userId)
       .select('role_id')
 
-    const roleIds = userRoles.map(r => r.role_id)
+    userRoles.forEach(r => {
+      if (!roleIds.includes(r.role_id)) {
+        roleIds.push(r.role_id)
+      }
+    })
 
     if (roleIds.length === 0) {
       // 用户没有角色，返回空菜单
       return []
     }
 
-    // 2. 获取这些角色的所有权限（permissions是JSONB字段）
+    // 3. 获取这些角色的所有权限（permissions是JSONB字段）
     const roles = await this.db('roles')
       .whereIn('id', roleIds)
       .where('status', 'active')
       .select('permissions')
 
-    // 3. 合并所有权限code
+    // 4. 合并所有权限code
     const permissionCodes = new Set()
     for (const role of roles) {
       let perms = role.permissions
@@ -89,9 +104,10 @@ class MenuRepository extends BaseRepository {
       perms.forEach(code => permissionCodes.add(code))
     }
 
+    console.log(`[MenuRepository] 用户${userId}的角色:`, roleIds)
     console.log(`[MenuRepository] 用户${userId}的权限codes:`, Array.from(permissionCodes))
 
-    // 4. 获取这些权限对应的菜单
+    // 5. 获取这些权限对应的菜单
     const menus = await this.db('menus')
       .where('menus.visible', true)
       .where('menus.status', 'active')
