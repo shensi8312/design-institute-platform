@@ -1,4 +1,6 @@
 const BuildingLayoutService = require('../services/building/BuildingLayoutService')
+const BuildingLayoutKnowledgeGraphService = require('../services/building/BuildingLayoutKnowledgeGraphService')
+const GeometryProcessingService = require('../services/building/GeometryProcessingService')
 
 /**
  * 建筑强排控制器
@@ -7,6 +9,8 @@ const BuildingLayoutService = require('../services/building/BuildingLayoutServic
 class BuildingLayoutController {
   constructor() {
     this.service = new BuildingLayoutService()
+    this.graphService = new BuildingLayoutKnowledgeGraphService()
+    this.geometryService = new GeometryProcessingService()
   }
 
   /**
@@ -329,6 +333,256 @@ class BuildingLayoutController {
       })
     }
   }
+
+  /**
+   * 同步规则到知识图谱
+   * POST /api/building-layout/graph/sync/:ruleId
+   */
+  async syncRuleToGraph(req, res) {
+    try {
+      const { ruleId } = req.params
+      const result = await this.graphService.syncRuleToGraph(ruleId)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('同步规则到图谱失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '同步规则到图谱失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 批量同步所有规则到图谱
+   * POST /api/building-layout/graph/sync-all
+   */
+  async syncAllRulesToGraph(req, res) {
+    try {
+      const result = await this.graphService.syncAllBuildingRulesToGraph()
+      res.json(result)
+    } catch (error) {
+      console.error('批量同步失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '批量同步失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 获取规则依赖图
+   * GET /api/building-layout/graph/dependencies/:ruleCode
+   */
+  async getRuleDependencyGraph(req, res) {
+    try {
+      const { ruleCode } = req.params
+      const result = await this.graphService.getRuleDependencyGraph(ruleCode)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(404).json(result)
+      }
+    } catch (error) {
+      console.error('获取依赖图失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取依赖图失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 获取规则依赖链
+   * GET /api/building-layout/graph/chain/:ruleCode
+   */
+  async getRuleDependencyChain(req, res) {
+    try {
+      const { ruleCode } = req.params
+      const maxDepth = parseInt(req.query.maxDepth) || 5
+
+      const result = await this.graphService.getRuleDependencyChain(ruleCode, maxDepth)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('获取依赖链失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取依赖链失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 获取图谱统计
+   * GET /api/building-layout/graph/statistics
+   */
+  async getGraphStatistics(req, res) {
+    try {
+      const result = await this.graphService.getGraphStatistics()
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('获取图谱统计失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取图谱统计失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 解析DXF文件
+   * POST /api/building-layout/geometry/parse-dxf
+   */
+  async parseDXF(req, res) {
+    try {
+      const { filePath } = req.body
+
+      if (!filePath) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供文件路径'
+        })
+      }
+
+      const result = await this.geometryService.parseDXF(filePath)
+      res.json(result)
+    } catch (error) {
+      console.error('解析DXF失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '解析DXF失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 解析SHP文件
+   * POST /api/building-layout/geometry/parse-shp
+   */
+  async parseSHP(req, res) {
+    try {
+      const { filePath } = req.body
+
+      if (!filePath) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供文件路径'
+        })
+      }
+
+      const result = await this.geometryService.parseSHP(filePath)
+      res.json(result)
+    } catch (error) {
+      console.error('解析SHP失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '解析SHP失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 计算几何退距
+   * POST /api/building-layout/geometry/calculate-setback
+   */
+  async calculateGeometricSetback(req, res) {
+    try {
+      const { boundaryCoords, distance } = req.body
+
+      if (!boundaryCoords || !distance) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供边界坐标和退距距离'
+        })
+      }
+
+      const result = await this.geometryService.calculateSetback(boundaryCoords, distance)
+      res.json(result)
+    } catch (error) {
+      console.error('计算几何退距失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '计算几何退距失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 从文件计算场地退距
+   * POST /api/building-layout/geometry/site-setback
+   */
+  async calculateSiteSetbackFromFile(req, res) {
+    try {
+      const { filePath, setbackRules } = req.body
+
+      if (!filePath || !setbackRules) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供文件路径和退距规则'
+        })
+      }
+
+      const result = await this.geometryService.calculateSiteSetbackFromFile(filePath, setbackRules)
+      res.json(result)
+    } catch (error) {
+      console.error('从文件计算场地退距失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '从文件计算场地退距失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * 生成建筑轮廓
+   * POST /api/building-layout/geometry/generate-footprint
+   */
+  async generateBuildingFootprint(req, res) {
+    try {
+      const buildingParams = req.body
+
+      if (!buildingParams.site_boundary || !buildingParams.building_area) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供场地边界和建筑面积'
+        })
+      }
+
+      const result = await this.geometryService.generateBuildingFootprint(buildingParams)
+      res.json(result)
+    } catch (error) {
+      console.error('生成建筑轮廓失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '生成建筑轮廓失败',
+        error: error.message
+      })
+    }
+  }
 }
 
 // 创建实例并导出
@@ -341,5 +595,17 @@ module.exports = {
   checkCompliance: (req, res) => controller.checkCompliance(req, res),
   runFullWorkflow: (req, res) => controller.runFullWorkflow(req, res),
   getRulesSummary: (req, res) => controller.getRulesSummary(req, res),
-  getExample: (req, res) => controller.getExample(req, res)
+  getExample: (req, res) => controller.getExample(req, res),
+  // 知识图谱相关
+  syncRuleToGraph: (req, res) => controller.syncRuleToGraph(req, res),
+  syncAllRulesToGraph: (req, res) => controller.syncAllRulesToGraph(req, res),
+  getRuleDependencyGraph: (req, res) => controller.getRuleDependencyGraph(req, res),
+  getRuleDependencyChain: (req, res) => controller.getRuleDependencyChain(req, res),
+  getGraphStatistics: (req, res) => controller.getGraphStatistics(req, res),
+  // 几何处理相关
+  parseDXF: (req, res) => controller.parseDXF(req, res),
+  parseSHP: (req, res) => controller.parseSHP(req, res),
+  calculateGeometricSetback: (req, res) => controller.calculateGeometricSetback(req, res),
+  calculateSiteSetbackFromFile: (req, res) => controller.calculateSiteSetbackFromFile(req, res),
+  generateBuildingFootprint: (req, res) => controller.generateBuildingFootprint(req, res)
 }
