@@ -65,6 +65,7 @@ const digitalSiteRoutes = require('./routes/digitalSite')
 const rulesRoutes = require('./routes/rules')  // 规则引擎（旧版）
 const unifiedRulesRoutes = require('./routes/unifiedRules')  // 统一规则系统
 const assemblyRoutes = require('./routes/assembly')  // 装配约束推理引擎
+const buildingLayoutRoutes = require('./routes/building-layout')  // 建筑强排系统
 const chatHistoryRoutes = require('./routes/chatHistory')  // 聊天历史
 const extractionRoutes = require('./routes/extraction')  // 动态提取系统
 const pidRoutes = require('./routes/pid')  // PID识别
@@ -186,6 +187,7 @@ app.use(`${API_PREFIX}/cv-vl-fusion`, cvVlFusionRoutes)
 app.use(`${API_PREFIX}/rules`, unifiedRulesRoutes)  // 统一规则系统（新版）
 app.use(`${API_PREFIX}/rules-legacy`, rulesRoutes)  // 旧版规则引擎（向后兼容）
 app.use(`${API_PREFIX}/assembly`, assemblyRoutes)  // 装配约束推理引擎
+app.use(`${API_PREFIX}/building-layout`, buildingLayoutRoutes)  // 建筑强排系统
 app.use(`${API_PREFIX}/pid`, pidRoutes)  // PID识别
 app.use(`${API_PREFIX}/unified-document`, unifiedDocumentRoutes)  // 统一文档系统
 app.use(`${API_PREFIX}/drawing-comparison`, drawingComparisonRoutes)  // 图纸比对
