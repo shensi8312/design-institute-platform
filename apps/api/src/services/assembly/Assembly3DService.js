@@ -21,6 +21,8 @@ class Assembly3DService {
     try {
       console.log(`[Assembly3D] 🎨 生成装配可视化: ${taskId}`);
 
+      const DEMO_MODE = process.env.ASSEMBLY_DEMO_MODE === 'true'  // 🎭 演示模式
+
       // 1. 获取装配任务信息
       const task = await db('assembly_inference_tasks')
         .where({ id: taskId })
@@ -31,13 +33,43 @@ class Assembly3DService {
       }
 
       // 2. 获取BOM清单
-      const bomData = JSON.parse(task.bom_data || '[]');
+      let bomData = JSON.parse(task.bom_data || '[]');
+
+      // 🎭 演示模式：如果BOM为空，生成示例数据
+      if (DEMO_MODE && bomData.length === 0) {
+        console.log('[Assembly3D] 🎭 演示模式：生成示例BOM数据')
+        bomData = [
+          { part_number: 'V1', name: '气动阀V1', type: 'PNEUMATIC_VALVE' },
+          { part_number: 'V2', name: '气动阀V2', type: 'PNEUMATIC_VALVE' },
+          { part_number: 'MV1', name: '手动阀MV1', type: 'MANUAL_VALVE' },
+          { part_number: 'MFC1', name: '质量流量计MFC1', type: 'MFC' },
+          { part_number: 'PR1', name: '压力调节器PR1', type: 'PRESSURE_REGULATOR' },
+          { part_number: 'F1', name: '过滤器F1', type: 'FILTER' }
+        ]
+      }
+
       console.log(`[Assembly3D] 📦 BOM清单: ${bomData.length}个零件`);
 
       // 3. 获取装配约束
-      const constraints = await db('assembly_constraints')
+      let constraints = await db('assembly_constraints')
         .where({ task_id: taskId })
         .select('*');
+
+      // 🎭 演示模式：如果约束为空，生成示例约束
+      if (DEMO_MODE && constraints.length === 0 && bomData.length >= 2) {
+        console.log('[Assembly3D] 🎭 演示模式：生成示例约束')
+        constraints = []
+        for (let i = 0; i < Math.min(bomData.length - 1, 8); i++) {
+          constraints.push({
+            constraint_type: ['CONCENTRIC', 'COINCIDENT', 'PARALLEL'][i % 3],
+            entity_a: bomData[i].part_number,
+            entity_b: bomData[i + 1].part_number,
+            confidence_score: 0.8 + Math.random() * 0.15,
+            reasoning_trace: `演示约束：${bomData[i].name} 与 ${bomData[i + 1].name} 配合连接`
+          })
+        }
+      }
+
       console.log(`[Assembly3D] 🔗 装配约束: ${constraints.length}个`);
 
       // 4. 匹配零件到STEP文件

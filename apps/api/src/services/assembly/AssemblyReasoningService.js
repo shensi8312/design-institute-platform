@@ -201,9 +201,13 @@ class AssemblyReasoningService {
       // 4. LLM增强：理解零件描述，提取特征
       // ✅ 默认启用LLM，除非明确设置为false
       const useLLM = process.env.ASSEMBLY_USE_LLM !== 'false'
+      const DEMO_MODE = process.env.ASSEMBLY_DEMO_MODE === 'true'  // 🎭 演示模式
       const hasUnrecognizedParts = enrichedParts.some(p => !p.type || !p.thread)
 
-      if (useLLM && hasUnrecognizedParts) {
+      if (DEMO_MODE) {
+        console.log('[模块2-约束学习] 🎭 演示模式：跳过AI分析')
+        reasoningPath.push(`模块2-约束学习: 演示模式(跳过AI分析)`)
+      } else if (useLLM && hasUnrecognizedParts) {
         console.log('[模块2-约束学习] 🤖 AI分析未识别零件...')
         reasoningPath.push(`模块2-约束学习: AI分析${enrichedParts.filter(p => !p.type).length}个未识别零件`)
         try {
@@ -224,13 +228,45 @@ class AssemblyReasoningService {
 
       // 6. 基于规则推理约束
       const constraints = []
-      for (let i = 0; i < enrichedParts.length - 1; i++) {
-        for (let j = i + 1; j < enrichedParts.length; j++) {
-          const partA = enrichedParts[i]
-          const partB = enrichedParts[j]
 
-          // 尝试匹配规则（已按优先级排序）
-          for (const rule of dbRules) {
+      if (DEMO_MODE && enrichedParts.length >= 2) {
+        // 🎭 演示模式：快速生成预设约束
+        console.log('[模块3-规则推理] 🎭 演示模式：生成预设约束')
+        reasoningPath.push('模块3-规则推理: 演示模式，生成示例约束')
+
+        for (let i = 0; i < Math.min(enrichedParts.length - 1, 10); i++) {
+          const partA = enrichedParts[i]
+          const partB = enrichedParts[i + 1]
+
+          const constraintTypes = ['CONCENTRIC', 'COINCIDENT', 'PARALLEL', 'SCREW']
+          const type = constraintTypes[i % constraintTypes.length]
+
+          constraints.push({
+            id: uuidv4(),
+            type,
+            part_a: partA.name || partA.partNumber,
+            part_b: partB.name || partB.partNumber,
+            part_number_a: partA.partNumber,
+            part_number_b: partB.partNumber,
+            entities: [partA.name || partA.partNumber, partB.name || partB.partNumber],
+            parameters: type === 'CONCENTRIC' ? { alignment: 'ALIGNED' } :
+                       type === 'SCREW' ? { pitch: 1.5, revolutions: 5 } : {},
+            reasoning: `演示约束：${partA.name || partA.partNumber} 与 ${partB.name || partB.partNumber} ${type}配合`,
+            confidence: 0.75 + Math.random() * 0.2,
+            ruleId: `DEMO_${type}_${i}`
+          })
+        }
+
+        console.log(`[模块3] 🎭 演示模式生成了 ${constraints.length} 个约束`)
+      } else {
+        // 正常模式：使用真实规则推理
+        for (let i = 0; i < enrichedParts.length - 1; i++) {
+          for (let j = i + 1; j < enrichedParts.length; j++) {
+            const partA = enrichedParts[i]
+            const partB = enrichedParts[j]
+
+            // 尝试匹配规则（已按优先级排序）
+            for (const rule of dbRules) {
             // 解析JSON condition_logic
             const conditionLogic = typeof rule.condition_logic === 'string'
               ? JSON.parse(rule.condition_logic)
@@ -268,6 +304,7 @@ class AssemblyReasoningService {
             }
           }
         }
+      }
       }
 
       reasoningPath.push(`模块2-约束学习: 规则推理${constraints.length}个约束 + STEP提取${stepConstraints.length}个约束`)
