@@ -14,6 +14,17 @@ class MenuController {
    */
   async getList(req, res) {
     try {
+      // 如果有用户信息且没有明确要求获取所有菜单(管理员功能)，则返回用户权限菜单
+      if (req.user && !req.query.all) {
+        const userMenusResult = await this.menuService.getUserMenus(req.user.id)
+        if (userMenusResult.success) {
+          return res.json({
+            success: true,
+            data: userMenusResult.data
+          })
+        }
+      }
+
       const result = await this.menuService.getList(req.query)
 
       if (result.success) {
