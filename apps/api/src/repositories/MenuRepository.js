@@ -108,11 +108,17 @@ class MenuRepository extends BaseRepository {
     console.log(`[MenuRepository] 用户${userId}的权限codes:`, Array.from(permissionCodes))
 
     // 5. 获取这些权限对应的菜单
+    // 检查是否有通配符权限 '*'
+    const hasWildcard = permissionCodes.has('*')
+
     const menus = await this.db('menus')
       .where('menus.visible', true)
       .where('menus.status', 'active')
       .where(function() {
-        if (permissionCodes.size > 0) {
+        if (hasWildcard) {
+          // 拥有 '*' 权限，返回所有菜单（不需要额外条件）
+          // 不添加任何where条件，相当于返回所有visible且active的菜单
+        } else if (permissionCodes.size > 0) {
           // 包含用户权限的菜单 OR 没有权限要求的菜单（public菜单）
           this.whereIn('permission_code', Array.from(permissionCodes))
             .orWhereNull('permission_code')
