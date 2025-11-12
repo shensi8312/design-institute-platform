@@ -239,7 +239,7 @@ const TemplateEditor: React.FC = () => {
                   {template?.name || '文档模板编辑器'}
                 </span>
                 <Tag color="green">富文本编辑</Tag>
-                <Tag color="blue">支持模板插入</Tag>
+                {sections.length > 0 && <Tag color="blue">支持模板插入</Tag>}
               </Space>
               <div style={{ marginTop: 4, fontSize: 12, color: '#8c8c8c' }}>
                 <InfoCircleOutlined /> 点击左侧目录可插入章节内容
@@ -248,14 +248,16 @@ const TemplateEditor: React.FC = () => {
           </Space>
 
           <Space>
-            <Tooltip title={collapsed ? "显示目录" : "隐藏目录"}>
-              <Button
-                icon={collapsed ? <ExpandOutlined /> : <CompressOutlined />}
-                onClick={() => setCollapsed(!collapsed)}
-              >
-                {collapsed ? '显示' : '隐藏'}目录
-              </Button>
-            </Tooltip>
+            {sections.length > 0 && (
+              <Tooltip title={collapsed ? "显示目录" : "隐藏目录"}>
+                <Button
+                  icon={collapsed ? <ExpandOutlined /> : <CompressOutlined />}
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  {collapsed ? '显示' : '隐藏'}目录
+                </Button>
+              </Tooltip>
+            )}
             <Button
               icon={<SaveOutlined />}
               onClick={handleSave}
@@ -276,49 +278,51 @@ const TemplateEditor: React.FC = () => {
 
       {/* 主体区域 - 左右分栏 */}
       <Layout style={{ flex: 1, background: '#f0f2f5' }}>
-        {/* 左侧目录树 */}
-        <Sider
-          width={320}
-          collapsed={collapsed}
-          collapsedWidth={0}
-          trigger={null}
-          style={{
-            background: '#fff',
-            borderRight: '1px solid #f0f0f0',
-            overflow: 'hidden',
-            transition: 'all 0.2s'
-          }}
-        >
-          {!collapsed && (
-            <div style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* 目录标题 */}
+        {/* 左侧目录树 - 只在有章节时显示 */}
+        {sections.length > 0 && (
+          <Sider
+            width={320}
+            collapsed={collapsed}
+            collapsedWidth={0}
+            trigger={null}
+            style={{
+              background: '#fff',
+              borderRight: '1px solid #f0f0f0',
+              overflow: 'hidden',
+              transition: 'all 0.2s'
+            }}
+          >
+            {!collapsed && (
               <div style={{
-                padding: '16px',
-                borderBottom: '1px solid #f0f0f0',
-                background: '#fafafa',
-                fontWeight: 500,
-                fontSize: 14
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
               }}>
-                📖 文档目录
-                <div style={{ fontSize: 12, color: '#999', marginTop: 4, fontWeight: 'normal' }}>
-                  点击章节可插入内容
+                {/* 目录标题 */}
+                <div style={{
+                  padding: '16px',
+                  borderBottom: '1px solid #f0f0f0',
+                  background: '#fafafa',
+                  fontWeight: 500,
+                  fontSize: 14
+                }}>
+                  📖 文档目录
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 4, fontWeight: 'normal' }}>
+                    点击章节可插入内容
+                  </div>
+                </div>
+
+                {/* 目录树 */}
+                <div style={{ flex: 1, overflow: 'auto' }}>
+                  <TemplateOutlineTree
+                    templateId={id}
+                    onSelectNode={handleNodeSelect}
+                  />
                 </div>
               </div>
-
-              {/* 目录树 */}
-              <div style={{ flex: 1, overflow: 'auto' }}>
-                <TemplateOutlineTree
-                  templateId={id}
-                  onSelectNode={handleNodeSelect}
-                />
-              </div>
-            </div>
-          )}
-        </Sider>
+            )}
+          </Sider>
+        )}
 
         {/* 右侧编辑器 */}
         <Content style={{

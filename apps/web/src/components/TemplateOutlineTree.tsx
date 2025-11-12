@@ -42,7 +42,7 @@ const TemplateOutlineTree: React.FC<Props> = ({ templateId, onSelectNode }) => {
       );
 
       if (response.data.success) {
-        const outlineData = response.data.data.outline;
+        const outlineData = response.data.data.outline || [];
         setOutline(outlineData);
 
         // 默认展开第一层
@@ -53,6 +53,8 @@ const TemplateOutlineTree: React.FC<Props> = ({ templateId, onSelectNode }) => {
       }
     } catch (error: any) {
       console.error('加载目录失败:', error);
+      // 静默处理错误，设置为空数组
+      setOutline([]);
     } finally {
       setLoading(false);
     }
