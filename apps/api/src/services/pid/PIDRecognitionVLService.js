@@ -176,12 +176,15 @@ class PIDRecognitionVLService {
       // 5. 解析结果
       const parsed = this._parseResult(result)
 
-      console.log(`✅ [QWEN-VL] 识别完成: ${parsed.components.length} 个组件, ${parsed.connections.length} 条连接`)
+      // 5.1. 应用NMS去除重复检测（修复标注图多画一个框的bug）
+      const deduplicatedComponents = this._applyNMS(parsed.components, 0.5)
 
-      // 6. 生成可视化标注图
+      console.log(`✅ [QWEN-VL] 识别完成: ${parsed.components.length} 个组件 (去重后: ${deduplicatedComponents.length}), ${parsed.connections.length} 条连接`)
+
+      // 6. 生成可视化标注图（使用去重后的组件）
       const annotationUrl = await this._generateAnnotationImage(
         imageBuffer,
-        parsed.components,
+        deduplicatedComponents,
         parsed.connections,
         fileId,
         timestamp
@@ -200,7 +203,7 @@ class PIDRecognitionVLService {
         file_name: fileName,
         file_path: savedPaths.original,
         converted_path: savedPaths.converted,
-        components: parsed.components,
+        components: deduplicatedComponents,
         connections: parsed.connections,
         legend: parsed.legend,
         summary: parsed.summary,
