@@ -320,13 +320,17 @@ class UnifiedDocumentController {
       // 从template_sections表查询章节
       const sections = await knex('template_sections')
         .where({ template_id: id })
-        .orderBy('sort_order', 'asc')
+        .orderBy('code', 'asc')  // 按章节编号排序
         .select('id', 'code', 'title', 'level', 'parent_code', 'sort_order');
 
-      // 构建树形结构（基于code和parent_code）
+      // 构建树形结构（基于code和parent_code），保持排序
       const buildTree = (sections, parentCode = null) => {
         return sections
           .filter(section => section.parent_code === parentCode)
+          .sort((a, b) => {
+            // 按章节编号字符串排序
+            return a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' });
+          })
           .map(section => ({
             id: section.id,
             title: section.title,
