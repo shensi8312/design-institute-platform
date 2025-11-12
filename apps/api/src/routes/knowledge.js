@@ -279,7 +279,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
     }
 
     // 构建系统提示词
-    const systemPrompt = `你是MST智能设计平台的专业助手。${systemContext ? '请结合以下参考资料回答用户问题：\n' + systemContext : '请简洁准确地回答用户问题。'}
+    systemPrompt = `你是MST智能设计平台的专业助手。${systemContext ? '请结合以下参考资料回答用户问题：\n' + systemContext : '请简洁准确地回答用户问题。'}
 
 ${sources.length > 0 ? `**重要：在回答时请引用来源！**
 当引用知识库内容时，使用 [来源X] 标记，例如：
