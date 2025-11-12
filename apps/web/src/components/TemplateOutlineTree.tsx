@@ -64,6 +64,9 @@ const TemplateOutlineTree: React.FC<Props> = ({ templateId, onSelectNode }) => {
   const convertToTreeData = (nodes: OutlineNode[]): DataNode[] => {
     return nodes.map((node) => {
       const hasChildren = node.children && node.children.length > 0;
+      const displayTitle = node.sectionNumber
+        ? `${node.sectionNumber} ${node.title}`
+        : node.title;
 
       return {
         key: node.id,
@@ -77,8 +80,13 @@ const TemplateOutlineTree: React.FC<Props> = ({ templateId, onSelectNode }) => {
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
             }}
-            title={node.title}
+            title={displayTitle}
           >
+            {node.sectionNumber && (
+              <span style={{ color: '#1890ff', marginRight: 4 }}>
+                {node.sectionNumber}
+              </span>
+            )}
             {node.title}
           </span>
         ),
@@ -93,10 +101,11 @@ const TemplateOutlineTree: React.FC<Props> = ({ templateId, onSelectNode }) => {
   const filterTree = (nodes: OutlineNode[], searchTerm: string): OutlineNode[] => {
     return nodes.filter((node) => {
       const matchTitle = node.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchCode = node.sectionNumber?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchChildren = node.children
         ? filterTree(node.children, searchTerm).length > 0
         : false;
-      return matchTitle || matchChildren;
+      return matchTitle || matchCode || matchChildren;
     }).map((node) => ({
       ...node,
       children: node.children ? filterTree(node.children, searchTerm) : undefined,

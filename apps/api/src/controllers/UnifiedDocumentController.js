@@ -10,6 +10,7 @@ const RevisionTrackingService = require('../services/document/RevisionTrackingSe
 const SectionApprovalService = require('../services/document/SectionApprovalService');
 const ArchiveService = require('../services/document/ArchiveService');
 const DocumentAIService = require('../services/document/DocumentAIService');
+const knex = require('../config/database');
 
 class UnifiedDocumentController {
   // ============================================
@@ -316,15 +317,34 @@ class UnifiedDocumentController {
         });
       }
 
-      // 从config中读取解析好的目录结构
-      const config = JSON.parse(template.config || '{}');
+      // 从template_sections表查询章节
+      const sections = await knex('template_sections')
+        .where({ template_id: id })
+        .orderBy('sort_order', 'asc')
+        .select('id', 'code', 'title', 'level', 'parent_code', 'sort_order');
+
+      // 构建树形结构（基于code和parent_code）
+      const buildTree = (sections, parentCode = null) => {
+        return sections
+          .filter(section => section.parent_code === parentCode)
+          .map(section => ({
+            id: section.id,
+            title: section.title,
+            sectionNumber: section.code,
+            level: section.level,
+            order: section.sort_order,
+            children: buildTree(sections, section.code)
+          }));
+      };
+
+      const outline = buildTree(sections);
 
       res.json({
         success: true,
         data: {
-          outline: config.sectionStructure || [],
-          flatOutline: config.flatSections || [],
-          stats: config.stats || { totalSections: 0 }
+          outline,
+          flatOutline: sections,
+          stats: { totalSections: sections.length }
         }
       });
     } catch (error) {
