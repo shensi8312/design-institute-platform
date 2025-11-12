@@ -159,86 +159,47 @@ const Dashboard: React.FC = () => {
 
         // 先尝试从API获取菜单
         try {
-          // 如果是超级管理员，获取所有菜单 (检查username或role字段)
-          if (userData.username === 'admin' || userData.role === 'admin' || userData.is_admin) {
-            const response = await axios.get('/api/menus?pageSize=100', {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+          // 所有用户（包括admin）都使用 /api/menus/user 接口
+          // 后端会根据权限（包括 '*' 通配符）自动过滤
+          const response = await axios.get('/api/menus/user', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
 
-            // 处理分页格式的响应
-            const menuData = response.data.data?.list || response.data.data || [];
-            
-            if (response.data.success && menuData && menuData.length > 0) {
-              console.log('从API获取到的菜单数据:', menuData);
-              // 构建树形结构
-              const treeMenus = buildMenuTree(menuData);
-              console.log('构建的树形菜单:', treeMenus);
-              // 格式化菜单
-              const formattedMenus = formatMenus(treeMenus);
-              
-              // 确保首页只添加一次
-              if (!formattedMenus.some(menu => menu.key === '')) {
-                formattedMenus.unshift({
-                  key: '',
-                  label: '首页',
-                  icon: <HomeOutlined />
-                });
-              }
-              
-              console.log('最终格式化的菜单数据:', formattedMenus.map(m => ({
-                key: m.key,
-                label: m.label,
-                children: m.children?.map((c: any) => ({ key: c.key, label: c.label }))
-              })));
-              
-              setUserMenus(formattedMenus);
-              // 只存储必要的数据，避免循环引用
-              const adminMenuData = formattedMenus.map((m: any) => ({
-                key: m.key,
-                label: m.label,
-                children: m.children?.map((c: any) => ({ 
-                  key: c.key, 
-                  label: c.label 
-                }))
-              }));
-              localStorage.setItem('menus', JSON.stringify(adminMenuData));
-              setLoading(false); // 设置加载完成
-              return; // 成功获取菜单，直接返回
+          if (response.data.success && response.data.data && response.data.data.length > 0) {
+            const userMenuData = response.data.data;
+            console.log('从API获取到的菜单数据:', userMenuData);
+
+            // 后端已经返回了树形结构，直接格式化
+            const formattedMenus = formatMenus(userMenuData);
+
+            // 确保首页只添加一次（检查是否已存在）
+            if (!formattedMenus.some(menu => menu.key === '' || menu.label === '首页')) {
+              formattedMenus.unshift({
+                key: '',
+                label: '首页',
+                icon: <HomeOutlined />
+              });
             }
-          } else {
-            // 普通用户，根据权限获取菜单
-            const response = await axios.get('/api/menus/user', {
-              headers: { Authorization: `Bearer ${token}` }
-            });
 
-            if (response.data.success && response.data.data && response.data.data.length > 0) {
-              const userMenuData = response.data.data;
-              // 后端已经返回了树形结构，直接使用
-              const formattedMenus = formatMenus(userMenuData);
+            console.log('最终格式化的菜单数据:', formattedMenus.map(m => ({
+              key: m.key,
+              label: m.label,
+              children: m.children?.map((c: any) => ({ key: c.key, label: c.label }))
+            })));
 
-              // 确保首页只添加一次（检查是否已存在）
-              if (!formattedMenus.some(menu => menu.key === '' || menu.label === '首页')) {
-                formattedMenus.unshift({
-                  key: '',
-                  label: '首页',
-                  icon: <HomeOutlined />
-                });
-              }
-
-              setUserMenus(formattedMenus);
-              // 只存储必要的数据，避免循环引用
-              const normalUserMenuData = formattedMenus.map((m: any) => ({
-                key: m.key,
-                label: m.label,
-                children: m.children?.map((c: any) => ({
-                  key: c.key,
-                  label: c.label
-                }))
-              }));
-              localStorage.setItem('menus', JSON.stringify(normalUserMenuData));
-              setLoading(false); // 设置加载完成
-              return; // 成功获取菜单，直接返回
-            }
+            setUserMenus(formattedMenus);
+            // 只存储必要的数据，避免循环引用
+            const menuData = formattedMenus.map((m: any) => ({
+              key: m.key,
+              label: m.label,
+              children: m.children?.map((c: any) => ({
+                key: c.key,
+                label: c.label
+              }))
+            }));
+            localStorage.setItem('menus', JSON.stringify(menuData));
+            setLoading(false); // 设置加载完成
+            return; // 成功获取菜单，直接返回
           }
         } catch (apiError) {
           console.error('API获取菜单失败，使用默认菜单', apiError);
