@@ -1293,7 +1293,7 @@ ${ocrTexts}
       const merged = this._mergeRecognitionResults(tileResults)
 
       // 分类组件：设备、接口、介质、规格
-      const classified = this._classifyComponents(merged.components)
+      const classified = await this._classifyComponents(merged.components)
 
       console.log(`\n  🎯 切片识别完成: ${classified.devices.length}个设备, ${classified.interfaces.length}个接口, ${classified.mediums.length}个介质, ${classified.specs.length}个规格, ${merged.connections.length}条连线`)
 
@@ -1352,42 +1352,49 @@ ${ocrTexts}
   /**
    * 分类组件：优先使用模型输出的type，只对明显错误进行最小修正
    */
-  _classifyComponents(components) {
-    const devices = []
-    const interfaces = []
-    const mediums = []
-    const specs = []
+  /**
+   * 使用规则引擎分类组件
+   */
+  async _classifyComponents(components, legend = {}) {
+    console.log(`🔍 [PID分类] 开始分类 ${components.length} 个组件...`);
 
-    for (const comp of components) {
-      const type = (comp.type || comp.symbol_type || '').toUpperCase()
-      const tag = (comp.tag || comp.tag_number || '').toUpperCase()
+    try {
+      const PIDRuleProcessor = require('../rules/processors/PIDRuleProcessor');
+      const processor = new PIDRuleProcessor();
 
-      // 优先使用模型输出的type
-      if (type === 'INTERFACE') {
-        interfaces.push({ ...comp, category: 'interface' })
-      } else if (type === 'MEDIUM') {
-        mediums.push({ ...comp, category: 'medium' })
-      } else if (type === 'PIPE_SPEC') {
-        specs.push({ ...comp, category: 'spec' })
-      } else if ((type === 'UNKNOWN' || type === 'LABEL') && tag.startsWith('TO ')) {
-        // 修正: TO xxx → 接口
-        interfaces.push({ ...comp, category: 'interface', type: 'INTERFACE' })
-      } else if ((type === 'UNKNOWN' || type === 'LABEL') && /^(BTM|VENT|RPS)/.test(tag)) {
-        // 修正: BTM/VENT/RPS → 接口
-        interfaces.push({ ...comp, category: 'interface', type: 'INTERFACE' })
-      } else if (type === 'LABEL' && /^[A-Z][0-9](\+[A-Z][0-9])?(-P)?$/.test(tag)) {
-        // 修正: N2/Ar/H2等 → 介质
-        mediums.push({ ...comp, category: 'medium', type: 'MEDIUM' })
-      } else if (type === 'LABEL' && /^\d+\/\d+"?$/.test(tag)) {
-        // 修正: 1/4" → 规格
-        specs.push({ ...comp, category: 'spec', type: 'PIPE_SPEC' })
-      } else {
-        // 其他所有类型（MANUAL VALVE, PRESSURE TRANSDUCER, UNKNOWN等）都是设备
-        devices.push({ ...comp, category: 'device' })
-      }
+      return await processor.classifyComponents(components, legend);
+    } catch (error) {
+      console.error('❌ [PID分类] 规则分类失败，使用fallback:', error);
+      return this._fallbackClassify(components);
     }
+  }
 
-    return { devices, interfaces, mediums, specs }
+  /**
+   * Fallback分类逻辑
+   */
+  _fallbackClassify(components) {
+    const devices = [];
+    const interfaces = [];
+    const mediums = [];
+    const specs = [];
+
+    components.forEach(comp => {
+      const tag = (comp.tag || comp.tag_number || '').toUpperCase();
+
+      if (/^(TO|FROM|BTM)\s/.test(tag)) {
+        interfaces.push({ ...comp, category: 'interface', type: 'INTERFACE' });
+      } else if (/^(Ar|N2|H2|He|O2)$/.test(tag)) {
+        mediums.push({ ...comp, category: 'medium', type: 'MEDIUM' });
+      } else if (/\d+\s*(PSIG|SCCM|Torr|")/.test(tag)) {
+        specs.push({ ...comp, category: 'spec', type: 'SPEC' });
+      } else {
+        devices.push({ ...comp, category: 'device' });
+      }
+    });
+
+    console.log(`⚠️  [PID分类-Fallback] 设备:${devices.length} 接口:${interfaces.length} 介质:${mediums.length} 规格:${specs.length}`);
+
+    return { devices, interfaces, mediums, specs };
   }
 
   /**
