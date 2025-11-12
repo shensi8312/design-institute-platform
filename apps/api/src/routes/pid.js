@@ -82,4 +82,25 @@ router.delete('/results/:id', authenticate, (req, res) => pidController.deleteRe
  */
 router.post('/results/:pidResultId/to-assembly', authenticate, (req, res) => pidController.createAssemblyFromPID(req, res))
 
+/**
+ * @route POST /api/pid/:id/learn
+ * @desc 从PID识别结果学习装配规则
+ * @access Private
+ */
+router.post('/:id/learn', authenticate, (req, res) => pidController.learnFromPID(req, res))
+
+/**
+ * @route POST /api/pid/learn/batch
+ * @desc 批量学习（所有已确认的PID）
+ * @access Private
+ */
+router.post('/learn/batch', authenticate, (req, res) => pidController.learnBatch(req, res))
+
+/**
+ * @route GET /api/pid/learned-rules
+ * @desc 获取从PID学习到的规则
+ * @access Private
+ */
+router.get('/learned-rules', authenticate, (req, res) => pidController.getLearnedRules(req, res))
+
 module.exports = router
