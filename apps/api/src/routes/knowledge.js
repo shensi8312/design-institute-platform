@@ -278,135 +278,79 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
       systemContext = `以下是相关参考资料：\n${vectorContext}${fileContext}\n`;
     }
 
-    // 🆕 定义LLM工具（Word/Excel/PPT生成）
-    const tools = [
-      {
-        type: "function",
-        function: {
-          name: "generate_word",
-          description: "生成Word文档。当用户要求'输出Word'、'生成文档'、'整理成报告'、'导出Word'时调用。使用单位标准模板。",
-          parameters: {
-            type: "object",
-            properties: {
-              title: {
-                type: "string",
-                description: "文档标题，例如：设计方案、技术报告等"
-              },
-              content: {
-                type: "string",
-                description: "文档正文内容，支持Markdown格式"
-              },
-              template: {
-                type: "string",
-                enum: ["general", "design_plan", "technical_report", "meeting_minutes"],
-                description: "模板类型：general(通用)、design_plan(设计方案)、technical_report(技术报告)、meeting_minutes(会议纪要)"
-              },
-              project_name: {
-                type: "string",
-                description: "项目名称（可选）"
-              }
-            },
-            required: ["title", "content"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "generate_excel",
-          description: "生成Excel表格。当用户要求'生成表格'、'导出Excel'、'统计数据'时调用。",
-          parameters: {
-            type: "object",
-            properties: {
-              title: { type: "string", description: "表格标题" },
-              data: {
-                type: "array",
-                description: "表格数据，对象数组格式"
-              },
-              template: {
-                type: "string",
-                enum: ["general", "data_analysis", "cost_estimate"],
-                description: "模板类型"
-              }
-            },
-            required: ["title", "data"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "generate_ppt",
-          description: "生成PPT演示文稿。当用户要求'生成PPT'、'做个演示'、'汇报材料'时调用。",
-          parameters: {
-            type: "object",
-            properties: {
-              title: { type: "string", description: "PPT标题" },
-              slides: {
-                type: "array",
-                description: "幻灯片数组，每个对象包含{title,content}"
-              },
-              template: {
-                type: "string",
-                enum: ["general", "project_report", "design_presentation"],
-                description: "模板类型"
-              }
-            },
-            required: ["title", "slides"]
-          }
-        }
-      }
-    ];
+    // 构建系统提示词
+    const systemPrompt = `你是MST智能设计平台的专业助手。${systemContext ? '请结合以下参考资料回答用户问题：\n' + systemContext : '请简洁准确地回答用户问题。'}
+
+${sources.length > 0 ? `**重要：在回答时请引用来源！**
+当引用知识库内容时，使用 [来源X] 标记，例如：
+- "根据[来源1]，建筑高度不应超过100米。"
+- "根据[来源1]和[来源2]，住宅建筑需要满足..."
+引用编号对应上方参考资料中的编号。` : ''}
+
+**文档生成功能**：
+当用户明确要求"生成Word"、"导出Word"、"输出Word文档"、"生成Excel"、"生成PPT"时，你必须在回答的最后添加工具调用标记。
+
+格式（必须严格遵守）：
+
+<TOOL_CALL>
+{"function":"工具名称","arguments":{"参数名":"参数值"}}
+</TOOL_CALL>
+
+支持的工具：
+1. generate_word - 生成Word文档
+   必填参数：title(文档标题), content(完整内容，支持Markdown格式)
+   可选参数：template(模板类型，可不填)
+
+2. generate_excel - 生成Excel表格
+   必填参数：title(表格标题), data(数据数组)
+   可选参数：template(模板类型，可不填)
+
+3. generate_ppt - 生成PPT演示
+   必填参数：title(PPT标题), slides(幻灯片数组，每个对象包含title和content)
+   可选参数：template(模板类型，可不填)
+
+注意：
+1. template字段完全可选，不确定时可以不填，系统会自动选择合适的模板
+2. 工具调用标记不会显示给用户，会被系统自动处理
+3. 必须在回答内容之后添加工具调用标记
+
+示例1 - 生成Word：
+用户："帮我生成项目进度报告"
+你的回答：
+好的，我来为您整理项目进度报告。
+
+## 项目进度
+本周完成了以下工作：
+1. 完成设计方案初稿
+2. 提交评审材料
+
+<TOOL_CALL>
+{"function":"generate_word","arguments":{"title":"项目进度报告","content":"## 项目进度\\n本周完成了以下工作：\\n1. 完成设计方案初稿\\n2. 提交评审材料"}}
+</TOOL_CALL>
+
+示例2 - 生成Excel：
+用户："生成工程算量表"
+你的回答：
+好的，我来为您生成工程算量表。
+
+<TOOL_CALL>
+{"function":"generate_excel","arguments":{"title":"工程算量表","data":[{"分项名称":"混凝土","单位":"m³","工程量":125.6,"单价":450},{"分项名称":"钢筋","单位":"吨","工程量":8.2,"单价":4200}]}}
+</TOOL_CALL>
+
+示例3 - 生成PPT：
+用户："做个项目汇报PPT"
+你的回答：
+好的，我来为您生成项目汇报PPT。
+
+<TOOL_CALL>
+{"function":"generate_ppt","arguments":{"title":"项目汇报","slides":[{"title":"项目概况","content":"..."},{"title":"进展情况","content":"..."}]}}
+</TOOL_CALL>`;
 
     // 重新构建消息数组
     const chatMessages = [
       {
         role: 'system',
-        content: `你是MST智能设计平台的专业助手。${systemContext ? '请结合以下参考资料回答用户问题：\n' + systemContext : '请简洁准确地回答用户问题。'}
-
-**重要：在回答时请引用来源！**
-当引用知识库内容时，使用 [来源X] 标记，例如：
-- "根据[来源1]，建筑高度不应超过100米。"
-- "根据[来源1]和[来源2]，住宅建筑需要满足..."
-引用编号对应上方参考资料中的编号。
-
-当用户要求生成文档时，请在回答的**最后**添加一个JSON格式的工具调用指令（使用<TOOL_CALL>标记）：
-
-支持的工具：
-1. generate_word: 生成Word文档 - 用于报告、方案、纪要等文本内容
-2. generate_excel: 生成Excel表格 - 用于数据统计、清单、算量表等表格数据
-3. generate_ppt: 生成PPT演示 - 用于演示汇报、展示材料
-
-**重要：根据用户需求选择正确的工具！**
-- 表格、清单、算量、统计 → 使用 generate_excel
-- 文档、报告、方案、纪要 → 使用 generate_word
-- 演示、汇报、PPT → 使用 generate_ppt
-
-示例1 - 生成Word文档：
-用户："帮我生成会议周报"
-回答："好的，我来为您生成会议周报。
-
-会议周报内容...
-
-<TOOL_CALL>
-{"function":"generate_word","arguments":{"title":"会议周报","content":"# 会议周报\\n\\n## 项目进展\\n...","template":"meeting_minutes"}}
-</TOOL_CALL>"
-
-示例2 - 生成Excel表格：
-用户："生成工程算量表"
-回答："好的，我来为您生成工程算量表。
-
-<TOOL_CALL>
-{"function":"generate_excel","arguments":{"title":"工程算量表","data":[{"分项名称":"混凝土","单位":"m³","工程量":125.6,"单价":450},{"分项名称":"钢筋","单位":"吨","工程量":8.2,"单价":4200}],"template":"general"}}
-</TOOL_CALL>"
-
-示例3 - 生成PPT：
-用户："做个项目汇报PPT"
-回答："好的，我来为您生成项目汇报PPT。
-
-<TOOL_CALL>
-{"function":"generate_ppt","arguments":{"title":"项目汇报","slides":[{"title":"项目概况","content":"..."},{"title":"进展情况","content":"..."}],"template":"project_report"}}
-</TOOL_CALL>"`
+        content: systemPrompt
       },
       ...conversationHistory,  // 添加历史对话
       {
@@ -415,28 +359,73 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
       }
     ];
 
-    // 流式响应 - 使用提示词工程方案
+    // 流式响应 - 过滤工具调用标记
     let fullResponse = '';
+    let displayBuffer = ''; // 用于发送给用户的内容
+    let isInToolCall = false;
     await UnifiedLLMService.generateStreamWithMessages(chatMessages, {
-      temperature: 0.7,
-      max_tokens: 2000
+      temperature: 0.3,  // 降低温度提高稳定性
+      max_tokens: 4000   // 增加token限制
     }, async (chunk) => {
-      // 累积完整响应（用于后续检测工具调用）
       if (chunk.content) {
         fullResponse += chunk.content;
+
+        // 逐字符检查是否进入工具调用
+        for (let char of chunk.content) {
+          displayBuffer += char;
+
+          // 检测到 <TOOL_CALL> 开始
+          if (displayBuffer.endsWith('<TOOL_CALL>')) {
+            isInToolCall = true;
+            // 移除 <TOOL_CALL> 标记
+            displayBuffer = displayBuffer.slice(0, -11);
+            // 发送缓冲区内容
+            if (displayBuffer) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: displayBuffer
+              })}\n\n`);
+              if (res.flush) res.flush();
+              displayBuffer = '';
+            }
+          }
+
+          // 检测到 </TOOL_CALL> 结束
+          if (displayBuffer.endsWith('</TOOL_CALL>')) {
+            isInToolCall = false;
+            displayBuffer = ''; // 清空缓冲区
+          }
+
+          // 如果不在工具调用内，积累内容准备发送
+          if (!isInToolCall && displayBuffer.length > 50) {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: displayBuffer
+            })}\n\n`);
+            if (res.flush) res.flush();
+            displayBuffer = '';
+          }
+        }
       }
 
-      // 流式输出文本内容
-      if (chunk.content || chunk.thinking) {
-        const data = `data: ${JSON.stringify({
+      // 发送thinking（如果有）
+      if (chunk.thinking) {
+        res.write(`data: ${JSON.stringify({
           type: 'chunk',
-          content: chunk.content || '',
-          thinking: chunk.thinking || ''
-        })}\n\n`;
-        res.write(data);
+          thinking: chunk.thinking
+        })}\n\n`);
         if (res.flush) res.flush();
       }
     });
+
+    // 发送剩余内容
+    if (displayBuffer && !isInToolCall) {
+      res.write(`data: ${JSON.stringify({
+        type: 'chunk',
+        content: displayBuffer
+      })}\n\n`);
+      if (res.flush) res.flush();
+    }
 
     // 检测并处理工具调用（提示词工程方案）
     const toolCallMatch = fullResponse.match(/<TOOL_CALL>([\s\S]*?)<\/TOOL_CALL>/);
@@ -455,7 +444,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
           const result = await WordGeneratorService.generate({
             title: args.title,
             content: args.content,
-            template: args.template || 'general',
+            template: args.template || 'general', // ✅ 默认使用general
             author: req.user.name,
             metadata: { project_name: args.project_name }
           });
@@ -473,7 +462,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
           const result = await ExcelGeneratorService.generate({
             title: args.title,
             data: args.data,
-            template: args.template || 'general',
+            template: args.template || 'general', // ✅ 默认使用general
             metadata: {}
           });
 
@@ -489,7 +478,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
           const result = await PPTGeneratorService.generate({
             title: args.title,
             slides: args.slides,
-            template: args.template || 'general',
+            template: args.template || 'general', // ✅ 默认使用general
             metadata: { author: req.user.name }
           });
 
