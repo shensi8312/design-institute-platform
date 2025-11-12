@@ -215,22 +215,24 @@ const Dashboard: React.FC = () => {
               const userMenuData = response.data.data;
               // 后端已经返回了树形结构，直接使用
               const formattedMenus = formatMenus(userMenuData);
-              
-              // 添加首页
-              formattedMenus.unshift({
-                key: '',
-                label: '首页',
-                icon: <HomeOutlined />
-              });
-              
+
+              // 确保首页只添加一次（检查是否已存在）
+              if (!formattedMenus.some(menu => menu.key === '' || menu.label === '首页')) {
+                formattedMenus.unshift({
+                  key: '',
+                  label: '首页',
+                  icon: <HomeOutlined />
+                });
+              }
+
               setUserMenus(formattedMenus);
               // 只存储必要的数据，避免循环引用
               const normalUserMenuData = formattedMenus.map((m: any) => ({
                 key: m.key,
                 label: m.label,
-                children: m.children?.map((c: any) => ({ 
-                  key: c.key, 
-                  label: c.label 
+                children: m.children?.map((c: any) => ({
+                  key: c.key,
+                  label: c.label
                 }))
               }));
               localStorage.setItem('menus', JSON.stringify(normalUserMenuData));
