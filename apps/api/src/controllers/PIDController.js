@@ -1,5 +1,6 @@
 const PIDRecognitionService = require('../services/pid/PIDRecognitionService')
 const PIDRecognitionVLService = require('../services/pid/PIDRecognitionVLService')
+const PIDTopologyLearner = require('../services/learning/PIDTopologyLearner')
 const db = require('../config/database')
 
 const pidService = new PIDRecognitionService()
@@ -636,6 +637,83 @@ class PIDController {
       success: false,
       message: '功能开发中'
     })
+  }
+
+  /**
+   * 从PID识别结果学习装配规则
+   * POST /api/pid/:id/learn
+   */
+  async learnFromPID(req, res) {
+    try {
+      const { id } = req.params
+
+      console.log(`[PID学习] 开始从 ${id} 学习规则...`)
+
+      const rules = await PIDTopologyLearner.learnFromPID(id)
+
+      res.json({
+        success: true,
+        message: `成功学习到 ${rules.length} 条规则`,
+        data: rules,
+        count: rules.length
+      })
+    } catch (error) {
+      console.error('[PID学习失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  /**
+   * 批量学习（所有已确认的PID）
+   * POST /api/pid/learn/batch
+   */
+  async learnBatch(req, res) {
+    try {
+      console.log('[PID批量学习] 开始...')
+
+      const rules = await PIDTopologyLearner.learnFromAllConfirmed()
+
+      res.json({
+        success: true,
+        message: `批量学习完成，共学习到 ${rules.length} 条规则`,
+        data: rules,
+        count: rules.length
+      })
+    } catch (error) {
+      console.error('[PID批量学习失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  /**
+   * 获取从PID学习到的规则
+   * GET /api/pid/learned-rules
+   */
+  async getLearnedRules(req, res) {
+    try {
+      const rules = await db('assembly_rules')
+        .where('source', 'pid_topology')
+        .orderBy('confidence', 'desc')
+        .orderBy('sample_count', 'desc')
+
+      res.json({
+        success: true,
+        data: rules,
+        count: rules.length
+      })
+    } catch (error) {
+      console.error('[获取PID学习规则失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
   }
 }
 
