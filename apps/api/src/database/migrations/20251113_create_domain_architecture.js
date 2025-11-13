@@ -35,8 +35,8 @@ exports.up = async function(knex) {
     table.unique(['domain_id', 'engine_id'])
   })
 
-  // 4. 知识库分类
-  await knex.schema.createTable('knowledge_bases', table => {
+  // 4. 工程知识库注册表 (重命名以避免与RAGFlow用户知识库冲突)
+  await knex.schema.createTable('engineering_knowledge_base_registry', table => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.string('kb_code', 50).notNullable().unique()
     table.string('kb_name', 100).notNullable()
@@ -47,11 +47,11 @@ exports.up = async function(knex) {
     table.timestamps(true, true)
   })
 
-  // 5. 领域-知识库映射
-  await knex.schema.createTable('domain_knowledge_bases', table => {
+  // 5. 领域-知识库映射 (重命名)
+  await knex.schema.createTable('domain_knowledge_base_mappings', table => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.uuid('domain_id').references('id').inTable('domains').onDelete('CASCADE')
-    table.uuid('kb_id').references('id').inTable('knowledge_bases').onDelete('CASCADE')
+    table.uuid('kb_id').references('id').inTable('engineering_knowledge_base_registry').onDelete('CASCADE')
     table.boolean('is_required').defaultTo(false)
     table.timestamps(true, true)
     table.unique(['domain_id', 'kb_id'])
@@ -106,8 +106,8 @@ exports.down = async function(knex) {
   await knex.schema.dropTableIfExists('hazard_isolation_distances')
   await knex.schema.dropTableIfExists('flange_standards')
   await knex.schema.dropTableIfExists('thread_standards')
-  await knex.schema.dropTableIfExists('domain_knowledge_bases')
-  await knex.schema.dropTableIfExists('knowledge_bases')
+  await knex.schema.dropTableIfExists('domain_knowledge_base_mappings')
+  await knex.schema.dropTableIfExists('engineering_knowledge_base_registry')
   await knex.schema.dropTableIfExists('domain_engines')
   await knex.schema.dropTableIfExists('solver_engines')
   await knex.schema.dropTableIfExists('domains')
