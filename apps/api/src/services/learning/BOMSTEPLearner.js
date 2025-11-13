@@ -24,6 +24,25 @@ class BOMSTEPLearner {
     // 语义相似度阈值
     this.SIMILARITY_THRESHOLD = 0.65;
   }
+
+  /**
+   * 生成规则ID（限制20字符）
+   */
+  _generateRuleId(type) {
+    const typeMap = {
+      'BOLT_NUT': 'BLT',
+      'FLANGE_GASKET': 'FLG',
+      'VCR': 'VCR',
+      'VALVE_GASKET': 'VLV',
+      'SENSOR_SUPPORT': 'SNS',
+      'PIPE_FITTING': 'PIP',
+      'STEP': 'STP'
+    };
+    const shortType = typeMap[type] || 'UNK';
+    const timestamp = Date.now().toString(36).substr(-6);
+    const random = Math.random().toString(36).substr(2, 2);
+    return `BM_${shortType}_${timestamp}_${random}`;
+  }
   /**
    * 从BOM和STEP文件学习装配规则
    * @param {Array} bomData - BOM数据 [{partNumber, partName, quantity, type}]
@@ -65,19 +84,35 @@ class BOMSTEPLearner {
     console.log('🧠 [AI学习] 开始分析BOM数据...');
 
     // 1. 螺栓-螺母配对规则（支持中英文混合）
-    const bolts = bomData.filter(p => /螺栓|bolt|screw/i.test(p.partName));
+    const bolts = bomData.filter(p => /螺栓|bolt/i.test(p.partName) && !/螺母|nut/i.test(p.partName));
+    const screws = bomData.filter(p => /screw/i.test(p.partName) && !/螺母|nut/i.test(p.partName) && !/螺栓|bolt/i.test(p.partName));
     const nuts = bomData.filter(p => /螺母|nut/i.test(p.partName));
 
-    console.log(`  📌 识别到 ${bolts.length} 个螺栓, ${nuts.length} 个螺母`);
+    // 合并螺栓和螺丝
+    const allBolts = [...bolts, ...screws];
 
-    bolts.forEach(bolt => {
-      const matchingNuts = nuts.filter(nut =>
-        this._threadMatches(bolt.partName, nut.partName)
-      );
+    console.log(`  📌 识别到 ${allBolts.length} 个螺栓/螺丝 (${bolts.length} 螺栓 + ${screws.length} 螺丝), ${nuts.length} 个螺母`);
+
+    allBolts.forEach(bolt => {
+      // 🔧 只匹配螺母，不匹配其他螺栓/螺丝
+      const matchingNuts = nuts.filter(nut => {
+        // 防止自匹配
+        if (bolt.partNumber === nut.partNumber) return false;
+
+        // 防止同类零件配对（名称相似度检查）
+        const nameSimilarity = this._calculateSemanticSimilarity(bolt.partName, nut.partName);
+        if (nameSimilarity > 0.8) {
+          console.log(`  ⚠️  阻止同类配对: "${bolt.partName}" ↔ "${nut.partName}" (相似度: ${nameSimilarity.toFixed(2)})`);
+          return false;
+        }
+
+        // 检查螺纹规格匹配
+        return this._threadMatches(bolt.partName, nut.partName);
+      });
 
       matchingNuts.forEach(nut => {
         rules.push({
-          rule_id: `BOM_BOLT_NUT_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          rule_id: this._generateRuleId('BOLT_NUT'),
           name: `螺栓-螺母配对: ${bolt.partNumber} + ${nut.partNumber}`,
           description: `${bolt.partName} 需要配套 ${nut.partName}`,
           priority: 10,
@@ -100,19 +135,29 @@ class BOMSTEPLearner {
     });
 
     // 2. 法兰-密封件配对规则（支持多种表述）
-    const flanges = bomData.filter(p => /法兰|flange/i.test(p.partName));
-    const gaskets = bomData.filter(p => /密封|垫片|gasket|o-ring|seal/i.test(p.partName));
+    const flanges = bomData.filter(p => /法兰|flange/i.test(p.partName) && !/密封|垫片|gasket|seal/i.test(p.partName));
+    const gaskets = bomData.filter(p => /密封|垫片|gasket|o-ring|seal/i.test(p.partName) && !/法兰|flange/i.test(p.partName));
 
     console.log(`  📌 识别到 ${flanges.length} 个法兰, ${gaskets.length} 个密封件`);
 
     flanges.forEach(flange => {
-      const matchingGaskets = gaskets.filter(gasket =>
-        this._sizeMatches(flange.partName, gasket.partName)
-      );
+      const matchingGaskets = gaskets.filter(gasket => {
+        // 防止自匹配
+        if (flange.partNumber === gasket.partNumber) return false;
+
+        // 防止同类零件配对
+        const nameSimilarity = this._calculateSemanticSimilarity(flange.partName, gasket.partName);
+        if (nameSimilarity > 0.8) {
+          console.log(`  ⚠️  阻止同类配对: "${flange.partName}" ↔ "${gasket.partName}" (相似度: ${nameSimilarity.toFixed(2)})`);
+          return false;
+        }
+
+        return this._sizeMatches(flange.partName, gasket.partName);
+      });
 
       matchingGaskets.forEach(gasket => {
         rules.push({
-          rule_id: `BOM_FLANGE_GASKET_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          rule_id: this._generateRuleId('FLANGE_GASKET'),
           name: `法兰-密封件配对: ${flange.partNumber} + ${gasket.partNumber}`,
           description: `${flange.partName} 需要配套 ${gasket.partName}`,
           priority: 9,
@@ -133,28 +178,53 @@ class BOMSTEPLearner {
       });
     });
 
-    // 3. VCR接头配对规则
-    const vcrParts = bomData.filter(p => /VCR|vcr/i.test(p.partName));
+    // 3. VCR接头配对规则（按功能分类配对）
+    // VCR系统分为：Gland（螺纹接头）、Cap/Plug（封堵件）
+    // 只有不同功能类的才配对，同类不配对
+    const vcrGlands = bomData.filter(p =>
+      /VCR|vcr/i.test(p.partName) &&
+      /gland/i.test(p.partName) &&
+      !/gasket|seal|nut/i.test(p.partName)
+    );
 
-    console.log(`  📌 识别到 ${vcrParts.length} 个VCR接头`);
+    const vcrCapsPlugs = bomData.filter(p =>
+      /VCR|vcr/i.test(p.partName) &&
+      /cap|plug/i.test(p.partName) &&
+      !/gasket|seal|nut/i.test(p.partName)
+    );
 
-    for (let i = 0; i < vcrParts.length; i++) {
-      for (let j = i + 1; j < vcrParts.length; j++) {
-        const part1 = vcrParts[i];
-        const part2 = vcrParts[j];
+    console.log(`  📌 识别到 ${vcrGlands.length} 个VCR Gland（螺纹接头）, ${vcrCapsPlugs.length} 个VCR Cap/Plug（封堵件）`);
 
-        if (this._sizeMatches(part1.partName, part2.partName)) {
+    // 🔍 详细记录所有VCR零件
+    console.log(`  🔍 [VCR详细] Gland清单:`);
+    vcrGlands.forEach(g => console.log(`     - ${g.partNumber}: ${g.partName}`));
+    console.log(`  🔍 [VCR详细] Cap/Plug清单:`);
+    vcrCapsPlugs.forEach(c => console.log(`     - ${c.partNumber}: ${c.partName}`));
+
+    // 只配对：Gland ↔ Cap/Plug（不同功能的才配对）
+    let vcrPairCount = 0;
+    vcrGlands.forEach(gland => {
+      vcrCapsPlugs.forEach(capPlug => {
+        // 防止自匹配
+        if (gland.partNumber === capPlug.partNumber) {
+          console.log(`  ⚠️  [VCR] 自匹配阻止: ${gland.partNumber} (${gland.partName})`);
+          return;
+        }
+
+        if (this._sizeMatches(gland.partName, capPlug.partName)) {
+          console.log(`  ✅ [VCR配对] ${gland.partNumber}(${gland.partName}) ↔ ${capPlug.partNumber}(${capPlug.partName})`);
+          vcrPairCount++;
           rules.push({
-            rule_id: `BOM_VCR_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-            name: `VCR接头配对: ${part1.partNumber} + ${part2.partNumber}`,
-            description: `VCR接头同轴配合`,
+            rule_id: this._generateRuleId('VCR'),
+            name: `VCR接头配对: ${gland.partNumber} + ${capPlug.partNumber}`,
+            description: `${gland.partName} 需要配套 ${capPlug.partName}`,
             priority: 10,
             constraint_type: 'CONCENTRIC',
             condition_logic: {
               type: 'vcr_pair',
-              part1: part1.partNumber,
-              part2: part2.partNumber,
-              size: this._extractSize(part1.partName)
+              gland: gland.partNumber,
+              capPlug: capPlug.partNumber,
+              size: this._extractSize(gland.partName)
             },
             action_template: {
               type: 'CONCENTRIC',
@@ -164,14 +234,138 @@ class BOMSTEPLearner {
             confidence: 0.95,
             sample_count: 1
           });
+        } else {
+          console.log(`  ❌ [VCR不配对] ${gland.partNumber}(${gland.partName}) ✗ ${capPlug.partNumber}(${capPlug.partName}) - 尺寸不匹配`);
         }
-      }
-    }
+      });
+    });
+
+    console.log(`  📊 [VCR统计] 生成 ${vcrPairCount} 个VCR配对规则`);
+
+    // 🆕 4. 阀门-垫片配对规则
+    const valves = bomData.filter(p => /阀|valve/i.test(p.partName) && !/密封|垫片|gasket|seal/i.test(p.partName));
+    console.log(`  📌 识别到 ${valves.length} 个阀门`);
+
+    valves.forEach(valve => {
+      gaskets.forEach(gasket => {
+        // 防止自匹配
+        if (valve.partNumber === gasket.partNumber) return;
+
+        // 防止同类零件配对
+        const nameSimilarity = this._calculateSemanticSimilarity(valve.partName, gasket.partName);
+        if (nameSimilarity > 0.8) {
+          console.log(`  ⚠️  阻止同类配对: "${valve.partName}" ↔ "${gasket.partName}" (相似度: ${nameSimilarity.toFixed(2)})`);
+          return;
+        }
+
+        // 阀门通常需要垫片
+        rules.push({
+          rule_id: this._generateRuleId('VALVE_GASKET'),
+          name: `阀门-垫片配对: ${valve.partNumber} + ${gasket.partNumber}`,
+          description: `${valve.partName} 可能需要配套 ${gasket.partName}`,
+          priority: 6,
+          constraint_type: 'COINCIDENT',
+          condition_logic: {
+            type: 'valve_gasket',
+            valve: valve.partNumber,
+            gasket: gasket.partNumber
+          },
+          action_template: {
+            type: 'COINCIDENT',
+            parameters: { alignment: 'ALIGNED', flip: false }
+          },
+          source: 'bom_matching',
+          confidence: 0.7,
+          sample_count: 1
+        });
+      });
+    });
+
+    // 🆕 5. 传感器-支架配对规则
+    const sensors = bomData.filter(p => /sensor|transducer|switch|detector|传感器/i.test(p.partName) && !/support|bracket|支架/i.test(p.partName));
+    const supports = bomData.filter(p => /support|bracket|支架/i.test(p.partName) && !/sensor|transducer|switch|detector|传感器/i.test(p.partName));
+    console.log(`  📌 识别到 ${sensors.length} 个传感器, ${supports.length} 个支架`);
+
+    sensors.forEach(sensor => {
+      supports.forEach(support => {
+        // 防止自匹配
+        if (sensor.partNumber === support.partNumber) return;
+
+        // 防止同类零件配对
+        const nameSimilarity = this._calculateSemanticSimilarity(sensor.partName, support.partName);
+        if (nameSimilarity > 0.8) {
+          console.log(`  ⚠️  阻止同类配对: "${sensor.partName}" ↔ "${support.partName}" (相似度: ${nameSimilarity.toFixed(2)})`);
+          return;
+        }
+
+        rules.push({
+          rule_id: this._generateRuleId('SENSOR_SUPPORT'),
+          name: `传感器-支架配对: ${sensor.partNumber} + ${support.partNumber}`,
+          description: `${sensor.partName} 需要配套 ${support.partName}`,
+          priority: 7,
+          constraint_type: 'FIXED',
+          condition_logic: {
+            type: 'sensor_support',
+            sensor: sensor.partNumber,
+            support: support.partNumber
+          },
+          action_template: {
+            type: 'FIXED',
+            parameters: {}
+          },
+          source: 'bom_matching',
+          confidence: 0.8,
+          sample_count: 1
+        });
+      });
+    });
+
+    // 🆕 6. 管道-接头配对规则
+    const pipes = bomData.filter(p => /pipe|tube|tubing|hose|管/i.test(p.partName) && !/fitting|connector|接头/i.test(p.partName));
+    const fittings = bomData.filter(p => /fitting|connector|接头/i.test(p.partName) && !/valve/i.test(p.partName) && !/pipe|tube|tubing|hose|管/i.test(p.partName));
+    console.log(`  📌 识别到 ${pipes.length} 个管道, ${fittings.length} 个接头`);
+
+    pipes.forEach(pipe => {
+      fittings.forEach(fitting => {
+        // 防止自匹配
+        if (pipe.partNumber === fitting.partNumber) return;
+
+        // 防止同类零件配对
+        const nameSimilarity = this._calculateSemanticSimilarity(pipe.partName, fitting.partName);
+        if (nameSimilarity > 0.8) {
+          console.log(`  ⚠️  阻止同类配对: "${pipe.partName}" ↔ "${fitting.partName}" (相似度: ${nameSimilarity.toFixed(2)})`);
+          return;
+        }
+
+        rules.push({
+          rule_id: this._generateRuleId('PIPE_FITTING'),
+          name: `管道-接头配对: ${pipe.partNumber} + ${fitting.partNumber}`,
+          description: `${pipe.partName} 需要配套 ${fitting.partNumber}`,
+          priority: 8,
+          constraint_type: 'CONCENTRIC',
+          condition_logic: {
+            type: 'pipe_fitting',
+            pipe: pipe.partNumber,
+            fitting: fitting.partNumber
+          },
+          action_template: {
+            type: 'CONCENTRIC',
+            parameters: { alignment: 'ALIGNED' }
+          },
+          source: 'bom_matching',
+          confidence: 0.85,
+          sample_count: 1
+        });
+      });
+    });
 
     console.log(`✅ [AI学习] BOM分析完成，生成 ${rules.length} 条配套规则`);
     console.log(`  - 螺栓-螺母: ${rules.filter(r => r.constraint_type === 'SCREW').length} 条`);
-    console.log(`  - 法兰-密封: ${rules.filter(r => r.constraint_type === 'COINCIDENT').length} 条`);
-    console.log(`  - VCR接头: ${rules.filter(r => r.constraint_type === 'CONCENTRIC').length} 条`);
+    console.log(`  - 法兰-密封: ${rules.filter(r => r.condition_logic.type === 'flange_gasket_pair').length} 条`);
+    console.log(`  - VCR接头: ${rules.filter(r => r.condition_logic.type === 'vcr_pair').length} 条`);
+    console.log(`  - 阀门-垫片: ${rules.filter(r => r.condition_logic.type === 'valve_gasket').length} 条`);
+    console.log(`  - 传感器-支架: ${rules.filter(r => r.condition_logic.type === 'sensor_support').length} 条`);
+    console.log(`  - 管道-接头: ${rules.filter(r => r.condition_logic.type === 'pipe_fitting').length} 条`);
 
     return rules;
   }
@@ -244,7 +438,7 @@ class BOMSTEPLearner {
       const { type, part1, part2, parameters, confidence } = constraint;
 
       return {
-        rule_id: `STEP_${type}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        rule_id: this._generateRuleId('STEP'),
         name: `STEP几何约束: ${part1} + ${part2}`,
         description: `从STEP文件学习的${type}约束`,
         priority: 7,
@@ -312,7 +506,20 @@ class BOMSTEPLearner {
    * 🧠 AI增强：智能匹配（规则 + 语义）
    * 结合正则表达式和语义相似度
    */
-  _smartMatch(name1, name2, extractFn) {
+  _smartMatch(name1, name2, extractFn, requireDifferent = false) {
+    // 🔧 防止自匹配：相同名称不应配对
+    if (name1 === name2) {
+      return { match: false, score: 0, method: 'self-match-blocked' };
+    }
+
+    // 🔧 防止高相似度误匹配：如果两个名称过于相似（>90%），可能是同类零件
+    if (requireDifferent) {
+      const baseSimilarity = this._calculateSemanticSimilarity(name1, name2);
+      if (baseSimilarity > 0.9) {
+        return { match: false, score: baseSimilarity, method: 'too-similar-blocked' };
+      }
+    }
+
     // 1. 优先使用精确匹配（规则）
     const value1 = extractFn(name1);
     const value2 = extractFn(name2);
@@ -322,7 +529,7 @@ class BOMSTEPLearner {
 
     // 2. 退而求其次：语义相似度（AI）
     const similarity = this._calculateSemanticSimilarity(name1, name2);
-    if (similarity >= this.SIMILARITY_THRESHOLD) {
+    if (similarity >= this.SIMILARITY_THRESHOLD && similarity <= 0.9) {
       return { match: true, score: similarity, method: 'semantic' };
     }
 
@@ -336,7 +543,8 @@ class BOMSTEPLearner {
     const result = this._smartMatch(
       name1,
       name2,
-      this._extractThread.bind(this)
+      this._extractThread.bind(this),
+      true  // 🔧 启用相似度阻断：防止Screw+Screw这种误匹配
     );
 
     if (result.match) {
@@ -353,7 +561,8 @@ class BOMSTEPLearner {
     const result = this._smartMatch(
       name1,
       name2,
-      this._extractSize.bind(this)
+      this._extractSize.bind(this),
+      false  // 法兰-垫片可以名称相似，只要尺寸匹配
     );
 
     if (result.match) {
@@ -371,8 +580,22 @@ class BOMSTEPLearner {
 
     for (const rule of rules) {
       try {
+        // 🔧 映射字段名：confidence → confidence_boost, source → learned_from
+        const dbRule = {
+          rule_id: rule.rule_id,
+          name: rule.name,
+          description: rule.description,
+          priority: rule.priority,
+          constraint_type: rule.constraint_type,
+          condition_logic: rule.condition_logic,
+          action_template: rule.action_template,
+          confidence_boost: rule.confidence || 0,  // 🔧 confidence → confidence_boost
+          learned_from: rule.source || 'bom_step',  // 🔧 source → learned_from
+          is_active: true
+        };
+
         const [savedRule] = await knex('assembly_rules')
-          .insert(rule)
+          .insert(dbRule)
           .returning('*');
         saved.push(savedRule);
       } catch (error) {
