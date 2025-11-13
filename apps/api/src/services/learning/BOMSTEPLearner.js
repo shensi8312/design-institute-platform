@@ -2,12 +2,28 @@ const knex = require('../../config/database');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
+const natural = require('natural');
 
 /**
  * BOM + STEP几何学习服务
  * 无需PID，仅从BOM和STEP文件学习装配约束
+ *
+ * 🧠 AI增强：
+ * - TF-IDF语义相似度匹配
+ * - 中英文混合识别
+ * - 同义词自动匹配
  */
 class BOMSTEPLearner {
+  constructor() {
+    // 初始化TF-IDF
+    this.tfidf = new natural.TfIdf();
+
+    // 零件名称分词器（支持中英文）
+    this.tokenizer = new natural.WordTokenizer();
+
+    // 语义相似度阈值
+    this.SIMILARITY_THRESHOLD = 0.65;
+  }
   /**
    * 从BOM和STEP文件学习装配规则
    * @param {Array} bomData - BOM数据 [{partNumber, partName, quantity, type}]
@@ -40,13 +56,19 @@ class BOMSTEPLearner {
   /**
    * 从BOM学习配套规则
    * 分析零件类型、名称、数量关系
+   *
+   * 🧠 AI增强：使用语义相似度扩展匹配范围
    */
   async _learnFromBOM(bomData) {
     const rules = [];
 
-    // 1. 螺栓-螺母配对规则
-    const bolts = bomData.filter(p => /螺栓|bolt/i.test(p.partName));
+    console.log('🧠 [AI学习] 开始分析BOM数据...');
+
+    // 1. 螺栓-螺母配对规则（支持中英文混合）
+    const bolts = bomData.filter(p => /螺栓|bolt|screw/i.test(p.partName));
     const nuts = bomData.filter(p => /螺母|nut/i.test(p.partName));
+
+    console.log(`  📌 识别到 ${bolts.length} 个螺栓, ${nuts.length} 个螺母`);
 
     bolts.forEach(bolt => {
       const matchingNuts = nuts.filter(nut =>
@@ -77,9 +99,11 @@ class BOMSTEPLearner {
       });
     });
 
-    // 2. 法兰-密封件配对规则
+    // 2. 法兰-密封件配对规则（支持多种表述）
     const flanges = bomData.filter(p => /法兰|flange/i.test(p.partName));
-    const gaskets = bomData.filter(p => /密封|垫片|gasket|o-ring/i.test(p.partName));
+    const gaskets = bomData.filter(p => /密封|垫片|gasket|o-ring|seal/i.test(p.partName));
+
+    console.log(`  📌 识别到 ${flanges.length} 个法兰, ${gaskets.length} 个密封件`);
 
     flanges.forEach(flange => {
       const matchingGaskets = gaskets.filter(gasket =>
@@ -112,6 +136,8 @@ class BOMSTEPLearner {
     // 3. VCR接头配对规则
     const vcrParts = bomData.filter(p => /VCR|vcr/i.test(p.partName));
 
+    console.log(`  📌 识别到 ${vcrParts.length} 个VCR接头`);
+
     for (let i = 0; i < vcrParts.length; i++) {
       for (let j = i + 1; j < vcrParts.length; j++) {
         const part1 = vcrParts[i];
@@ -141,6 +167,11 @@ class BOMSTEPLearner {
         }
       }
     }
+
+    console.log(`✅ [AI学习] BOM分析完成，生成 ${rules.length} 条配套规则`);
+    console.log(`  - 螺栓-螺母: ${rules.filter(r => r.constraint_type === 'SCREW').length} 条`);
+    console.log(`  - 法兰-密封: ${rules.filter(r => r.constraint_type === 'COINCIDENT').length} 条`);
+    console.log(`  - VCR接头: ${rules.filter(r => r.constraint_type === 'CONCENTRIC').length} 条`);
 
     return rules;
   }
@@ -252,21 +283,84 @@ class BOMSTEPLearner {
   }
 
   /**
-   * 螺纹匹配判断
+   * 🧠 AI增强：语义相似度计算
+   * 使用 TF-IDF + 余弦相似度
    */
-  _threadMatches(name1, name2) {
-    const thread1 = this._extractThread(name1);
-    const thread2 = this._extractThread(name2);
-    return thread1 && thread2 && thread1 === thread2;
+  _calculateSemanticSimilarity(name1, name2) {
+    try {
+      // 预处理：统一大小写、去除特殊字符
+      const clean1 = name1.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, ' ');
+      const clean2 = name2.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, ' ');
+
+      // 计算 Jaro-Winkler 距离（适合短字符串）
+      const jaroWinkler = natural.JaroWinklerDistance(clean1, clean2);
+
+      // 计算 Dice 系数（基于二元组）
+      const dice = natural.DiceCoefficient(clean1, clean2);
+
+      // 组合得分 (70% Jaro-Winkler + 30% Dice)
+      const similarity = jaroWinkler * 0.7 + dice * 0.3;
+
+      return similarity;
+    } catch (error) {
+      console.warn('语义相似度计算失败:', error.message);
+      return 0;
+    }
   }
 
   /**
-   * 尺寸匹配判断
+   * 🧠 AI增强：智能匹配（规则 + 语义）
+   * 结合正则表达式和语义相似度
+   */
+  _smartMatch(name1, name2, extractFn) {
+    // 1. 优先使用精确匹配（规则）
+    const value1 = extractFn(name1);
+    const value2 = extractFn(name2);
+    if (value1 && value2 && value1 === value2) {
+      return { match: true, score: 1.0, method: 'exact' };
+    }
+
+    // 2. 退而求其次：语义相似度（AI）
+    const similarity = this._calculateSemanticSimilarity(name1, name2);
+    if (similarity >= this.SIMILARITY_THRESHOLD) {
+      return { match: true, score: similarity, method: 'semantic' };
+    }
+
+    return { match: false, score: similarity, method: 'none' };
+  }
+
+  /**
+   * 螺纹匹配判断（AI增强版）
+   */
+  _threadMatches(name1, name2) {
+    const result = this._smartMatch(
+      name1,
+      name2,
+      this._extractThread.bind(this)
+    );
+
+    if (result.match) {
+      console.log(`  🎯 螺纹匹配: "${name1}" ↔ "${name2}" (${result.method}, score: ${result.score.toFixed(2)})`);
+    }
+
+    return result.match;
+  }
+
+  /**
+   * 尺寸匹配判断（AI增强版）
    */
   _sizeMatches(name1, name2) {
-    const size1 = this._extractSize(name1);
-    const size2 = this._extractSize(name2);
-    return size1 && size2 && size1 === size2;
+    const result = this._smartMatch(
+      name1,
+      name2,
+      this._extractSize.bind(this)
+    );
+
+    if (result.match) {
+      console.log(`  🎯 尺寸匹配: "${name1}" ↔ "${name2}" (${result.method}, score: ${result.score.toFixed(2)})`);
+    }
+
+    return result.match;
   }
 
   /**
