@@ -1,11 +1,14 @@
 const xlsx = require('xlsx')
 const { v4: uuidv4 } = require('uuid')
+const natural = require('natural')
 const llmService = require('../llm/UnifiedLLMService')
 const { loadRulesFromDatabase, evaluateCondition, generateAction, generateReasoning } = require('./_rule_helpers')
+const ChemicalKnowledgeBase = require('../knowledge/ChemicalKnowledgeBase')
+const CollisionDetector = require('./CollisionDetector')
 
 /**
- * 装配约束推理服务 (MVP - P0阶段)
- * 基于规则的简单推理 + 可选LLM增强
+ * 装配约束推理服务
+ * 完整工程级推理：规则+LLM+化学知识+碰撞检测+人体工程学
  */
 class AssemblyReasoningService {
   constructor() {
@@ -13,6 +16,10 @@ class AssemblyReasoningService {
     this.rulesCache = null
     this.rulesCacheTime = 0
     this.CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
+
+    // 领域知识库
+    this.chemicalKB = new ChemicalKnowledgeBase()
+    this.collisionDetector = new CollisionDetector()
 
     // 标准件库 (简化版 - 实际应从数据库加载)
     this.standardParts = {
@@ -228,6 +235,12 @@ class AssemblyReasoningService {
         for (let j = i + 1; j < enrichedParts.length; j++) {
           const partA = enrichedParts[i]
           const partB = enrichedParts[j]
+
+          // 🔧 防止自匹配：相同或过于相似的零件不应配对
+          if (this._arePartsSimilar(partA, partB)) {
+            console.log(`[AssemblyReasoning] ⏭️  跳过自匹配: "${partA.name}" ↔ "${partB.name}"`)
+            continue
+          }
 
           // 尝试匹配规则（已按优先级排序）
           for (const rule of dbRules) {
@@ -487,47 +500,158 @@ class AssemblyReasoningService {
       const workbook = xlsx.read(buffer, { type: 'buffer' })
       const sheetName = workbook.SheetNames[0]
       const sheet = workbook.Sheets[sheetName]
-      const data = xlsx.utils.sheet_to_json(sheet)
 
-      console.log(`[AssemblyReasoning] BOM原始数据列: ${Object.keys(data[0] || {}).join(', ')}`)
+      // 🔧 修复1: 先读取原始数据（包含第一行）
+      const rawData = xlsx.utils.sheet_to_json(sheet, { header: 1 })
+
+      console.log(`[AssemblyReasoning] 📋 原始数据行数: ${rawData.length}`)
+      console.log(`[AssemblyReasoning] 🔍 第一行: ${JSON.stringify(rawData[0])}`)
+
+      // 🔧 修复2: 智能检测标题行（可能在第1或第2行）
+      let headerRow = 0
+      let columnMapping = {}
+
+      // 检测前3行，找到真正的标题行
+      for (let i = 0; i < Math.min(3, rawData.length); i++) {
+        const row = rawData[i]
+        if (!row || row.length === 0) continue
+
+        // 检测是否包含标题关键词（至少匹配3个）
+        const keywordMatches = row.filter(cell =>
+          cell && typeof cell === 'string' &&
+          /NO|PN|Part.*Name|Vendor|Brand|Q[`']?TY|Remark|数量|零件|名称|编号|型号|规格/i.test(cell)
+        ).length
+
+        if (keywordMatches >= 3) {
+          console.log(`[AssemblyReasoning] ✅ 检测到标题行在第${i + 1}行，匹配${keywordMatches}个关键词`)
+          headerRow = i + 1  // 数据从下一行开始
+
+          // 🔧 修复3: 建立列名映射
+          row.forEach((header, index) => {
+            if (header) {
+              const cleanHeader = String(header).trim()
+              columnMapping[index] = cleanHeader
+              console.log(`  列${index}: "${cleanHeader}"`)
+            }
+          })
+          break
+        }
+      }
+
+      // 使用正确的起始行解析数据
+      const data = []
+      for (let i = headerRow; i < rawData.length; i++) {
+        const row = rawData[i]
+        if (!row || row.length === 0) continue
+
+        const rowObj = {}
+        row.forEach((cell, index) => {
+          const colName = columnMapping[index] || `col_${index}`
+          rowObj[colName] = cell
+        })
+        data.push(rowObj)
+      }
+
+      console.log(`[AssemblyReasoning] 📊 解析数据行数: ${data.length}`)
+      console.log(`[AssemblyReasoning] 🔑 识别的列: ${Object.keys(columnMapping).map(k => columnMapping[k]).join(', ')}`)
 
       return data.map((row, index) => {
-        const name = row['零件名称'] || row['Part Name'] || row['name'] || row['TITLE'] || `零件${index + 1}`
-        const description = row['描述'] || row['Description'] || row['说明'] || row['TITLE'] || row['零件类型'] || ''
+        // 🔧 修复4: 智能字段提取（支持更多列名变体）
+        const name = row['PartName'] || row['Part Name'] || row['Name'] ||
+                     row['零件名称'] || row['TITLE'] || row['name'] ||
+                     row['col_2'] || `零件${index + 1}`
 
-        // 自动识别零件类型
+        const partNumber = row['PN'] || row['Part Number'] || row['partNumber'] ||
+                          row['零件号'] || row['图号'] || row['编号'] ||
+                          row['col_1'] || ''
+
+        const quantity = parseInt(
+          row['Q`TY'] || row["Q'TY"] || row['QTY'] || row['Quantity'] ||
+          row['数量'] || row['qty'] || row['col_5'] || 1
+        )
+
+        const vendorNo = row['Vendor No'] || row['型号'] || row['规格'] || row['col_3'] || ''
+        const brand = row['Brand'] || row['品牌'] || row['厂家'] || row['col_4'] || ''
+        const description = row['Remark1'] || row['Remark2'] || row['描述'] ||
+                           row['Description'] || row['说明'] || ''
+
+        // 🔧 修复5: 增强类型识别（添加设备类型）
         let type = null
-        if (/螺栓|bolt|screw(?!driver)/i.test(name + description)) {
+        const searchText = (name + vendorNo + description).toLowerCase()
+
+        // 紧固件
+        if (/螺栓|bolt|screw(?!driver)/i.test(searchText)) {
           type = '螺栓'
-        } else if (/螺母|nut/i.test(name + description)) {
+        } else if (/螺母|nut/i.test(searchText)) {
           type = '螺母'
-        } else if (/法兰|flange/i.test(name + description)) {
-          type = '法兰'
-        } else if (/接头|connector|fitting/i.test(name + description)) {
-          type = '接头'
-        } else if (/垫片|gasket|washer/i.test(name + description)) {
+        } else if (/垫片|gasket|washer|seal/i.test(searchText)) {
           type = '垫片'
+        } else if (/法兰|flange/i.test(searchText)) {
+          type = '法兰'
+        }
+        // 🆕 阀门类型
+        else if (/阀|valve|gate|ball|check|globe|butterfly/i.test(searchText)) {
+          type = '阀门'
+          // 细分阀门类型
+          if (/ball/i.test(searchText)) type = '球阀'
+          else if (/gate/i.test(searchText)) type = '闸阀'
+          else if (/check/i.test(searchText)) type = '止回阀'
+          else if (/diaphragm/i.test(searchText)) type = '隔膜阀'
+          else if (/butterfly/i.test(searchText)) type = '蝶阀'
+        }
+        // 🆕 传感器类型
+        else if (/sensor|transducer|switch|gauge|meter|detector/i.test(searchText)) {
+          type = '传感器'
+          if (/pressure/i.test(searchText)) type = '压力传感器'
+          else if (/temperature|temp/i.test(searchText)) type = '温度传感器'
+          else if (/flow/i.test(searchText)) type = '流量传感器'
+          else if (/level/i.test(searchText)) type = '液位传感器'
+        }
+        // 🆕 接头类型
+        else if (/接头|connector|fitting|coupling|adapter/i.test(searchText)) {
+          type = '接头'
+          if (/vcr/i.test(searchText)) type = 'VCR接头'
+          else if (/swagelok/i.test(searchText)) type = 'Swagelok接头'
+        }
+        // 🆕 管道类型
+        else if (/管|pipe|tube|tubing|hose/i.test(searchText)) {
+          type = '管道'
+        }
+        // 🆕 泵类型
+        else if (/泵|pump/i.test(searchText)) {
+          type = '泵'
         }
 
-        // 自动提取螺纹规格
+        // 自动提取规格信息
         let thread = null
-        const threadMatch = (name + description).match(/M(\d+)(?:x([\d.]+))?/i)
+        const threadMatch = searchText.match(/M(\d+)(?:x([\d.]+))?/i)
         if (threadMatch) {
           thread = threadMatch[2]
             ? `M${threadMatch[1]}x${threadMatch[2]}`
             : `M${threadMatch[1]}`
         }
 
+        // 提取DN规格
+        let dn = null
+        const dnMatch = searchText.match(/DN\s*(\d+)/i)
+        if (dnMatch) {
+          dn = parseInt(dnMatch[1])
+        }
+
+        console.log(`  [${index + 1}] ${partNumber}: ${name} => ${type || 'unknown'}`)
+
         return {
           name,
-          partNumber: row['零件号'] || row['Part Number'] || row['partNumber'] || row['图号'] || row['编号'] || row['SAP料号'] || '',
-          quantity: parseInt(row['数量'] || row['Quantity'] || row['qty'] || row['总数'] || row['件数'] || 1),
-          spec: row['规格'] || row['Spec'] || row['specification'] || row['描述'] || row['Description'] || '',
+          partNumber,
+          quantity,
+          spec: vendorNo,
+          vendor: brand,
           description,
-          type,     // 自动识别的类型
-          thread    // 自动提取的螺纹
+          type,
+          thread,
+          dn
         }
-      })
+      }).filter(part => part.name && part.name.trim() !== '')
     } catch (error) {
       console.error('[AssemblyReasoning] BOM解析失败:', error)
       throw new Error('BOM文件格式错误: ' + error.message)
@@ -1104,6 +1228,12 @@ ${unknownParts.map((p, i) => `${i + 1}. 名称: ${p.name}, 规格: ${p.spec}, �
           const partA = enrichedParts[i]
           const partB = enrichedParts[j]
 
+          // 🔧 防止自匹配：相同或过于相似的零件不应配对
+          if (this._arePartsSimilar(partA, partB)) {
+            console.log(`[AssemblyReasoning] ⏭️  跳过自匹配: "${partA.part_number}" ↔ "${partB.part_number}"`)
+            continue
+          }
+
           // 尝试匹配规则（按优先级）
           for (const rule of allRules) {
             let matched = false
@@ -1394,6 +1524,64 @@ ${unknownParts.map((p, i) => `${i + 1}. 名称: ${p.name}, 规格: ${p.spec}, �
     // P0阶段: 仅记录到日志
     // P1阶段: 写入数据库
     // P2阶段: 在线学习更新规则权重
+  }
+
+  /**
+   * 计算两个零件名称的语义相似度
+   * 使用 Jaro-Winkler (70%) + Dice Coefficient (30%)
+   */
+  _calculateSemanticSimilarity(name1, name2) {
+    try {
+      // 预处理：统一大小写、去除特殊字符
+      const clean1 = name1.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, ' ')
+      const clean2 = name2.toLowerCase().replace(/[^\w\u4e00-\u9fa5]/g, ' ')
+
+      // 计算 Jaro-Winkler 距离（适合短字符串）
+      const jaroWinkler = natural.JaroWinklerDistance(clean1, clean2)
+
+      // 计算 Dice 系数（基于二元组）
+      const dice = natural.DiceCoefficient(clean1, clean2)
+
+      // 组合得分 (70% Jaro-Winkler + 30% Dice)
+      const similarity = jaroWinkler * 0.7 + dice * 0.3
+
+      return similarity
+    } catch (error) {
+      console.warn('[AssemblyReasoning] ⚠️  语义相似度计算失败:', error.message)
+      return 0
+    }
+  }
+
+  /**
+   * 检查两个零件是否过于相似（自匹配检测）
+   * 防止 "Filter + Filter" 或 "Screw + Assembled Screw" 等错误匹配
+   */
+  _arePartsSimilar(partA, partB) {
+    // 1. 检查零件编号是否相同
+    const pnA = partA.partNumber || partA.part_number || ''
+    const pnB = partB.partNumber || partB.part_number || ''
+    if (pnA && pnB && pnA === pnB) {
+      return true
+    }
+
+    // 2. 检查名称是否相同
+    const nameA = partA.name || partA.partName || partA.part_name || pnA || ''
+    const nameB = partB.name || partB.partName || partB.part_name || pnB || ''
+
+    if (nameA === nameB) {
+      return true
+    }
+
+    // 3. 检查名称相似度是否过高（>0.9表示极度相似，可能是同类零件）
+    if (nameA && nameB) {
+      const similarity = this._calculateSemanticSimilarity(nameA, nameB)
+      if (similarity > 0.9) {
+        console.log(`[AssemblyReasoning] 🔍 高相似度检测: "${nameA}" ↔ "${nameB}" (${(similarity * 100).toFixed(0)}%)`)
+        return true
+      }
+    }
+
+    return false
   }
 }
 
