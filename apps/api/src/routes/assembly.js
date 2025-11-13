@@ -181,6 +181,20 @@ router.post('/learn/analyze-patterns', authenticate, AssemblyController.analyzeM
  */
 router.get('/learn/matching-rules', authenticate, AssemblyController.getMatchingRules)
 
+/**
+ * @route POST /api/assembly/learn-from-bom-step
+ * @desc 从BOM和STEP学习装配规则（无需PID）
+ * @body { bomData: Array, stepFiles: Array }
+ */
+router.post('/learn-from-bom-step', authenticate, AssemblyController.learnFromBOMAndSTEP)
+
+/**
+ * @route POST /api/assembly/auto-generate
+ * @desc 基于历史规则自动生成装配
+ * @body { bomData: Array, options: Object }
+ */
+router.post('/auto-generate', authenticate, AssemblyController.autoGenerateAssembly)
+
 // ========== 基于规则的装配生成 ==========
 
 /**
