@@ -5,6 +5,8 @@ const partsCatalog = require('../services/assembly/PartsCatalogService')
 const layoutSolver = require('../services/assembly/LayoutSolver')
 const validationService = require('../services/assembly/ValidationService')
 const AssemblyPositionCalculator = require('../services/assembly/AssemblyPositionCalculator')
+const BOMSTEPLearner = require('../services/learning/BOMSTEPLearner')
+const AutoAssemblyGenerator = require('../services/assembly/AutoAssemblyGenerator')
 const db = require('../config/database')
 
 class AssemblyController {
@@ -3109,6 +3111,79 @@ class AssemblyController {
     if (!text) return 'M16'
     const match = text.match(/M(\d+)/i)
     return match ? `M${match[1]}` : 'M16'
+  }
+
+  /**
+   * 从BOM和STEP学习（无需PID）
+   * POST /api/assembly/learn-from-bom-step
+   */
+  learnFromBOMAndSTEP = async (req, res) => {
+    try {
+      const { bomData, stepFiles } = req.body
+
+      if (!bomData || !Array.isArray(bomData)) {
+        return res.status(400).json({
+          success: false,
+          message: 'bomData is required and must be an array'
+        })
+      }
+
+      console.log(`[BOM+STEP学习] 开始...`)
+
+      const rules = await BOMSTEPLearner.learnFromBOMAndSTEP(
+        bomData,
+        stepFiles || []
+      )
+
+      res.json({
+        success: true,
+        message: `成功学习到 ${rules.length} 条规则`,
+        data: rules,
+        count: rules.length
+      })
+    } catch (error) {
+      console.error('[BOM+STEP学习失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  /**
+   * 基于历史规则自动生成装配
+   * POST /api/assembly/auto-generate
+   */
+  autoGenerateAssembly = async (req, res) => {
+    try {
+      const { bomData, options } = req.body
+
+      if (!bomData || !Array.isArray(bomData)) {
+        return res.status(400).json({
+          success: false,
+          message: 'bomData is required and must be an array'
+        })
+      }
+
+      console.log(`[自动装配] 开始生成...`)
+
+      const result = await AutoAssemblyGenerator.generateFromBOM(
+        bomData,
+        options || {}
+      )
+
+      res.json({
+        success: true,
+        message: `自动生成装配成功：${result.stats.constraintCount} 个约束`,
+        data: result
+      })
+    } catch (error) {
+      console.error('[自动装配失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
   }
 }
 
