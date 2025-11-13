@@ -5,6 +5,8 @@ const partsCatalog = require('../services/assembly/PartsCatalogService')
 const layoutSolver = require('../services/assembly/LayoutSolver')
 const validationService = require('../services/assembly/ValidationService')
 const AssemblyPositionCalculator = require('../services/assembly/AssemblyPositionCalculator')
+const BOMSTEPLearner = require('../services/learning/BOMSTEPLearner')
+const AutoAssemblyGenerator = require('../services/assembly/AutoAssemblyGenerator')
 const db = require('../config/database')
 
 class AssemblyController {
@@ -44,6 +46,13 @@ class AssemblyController {
         constraintsCount: result.constraints?.length,
         partsCount: result.metadata?.partsCount
       })
+
+      // 🎓 自动学习：在后台从推理结果学习装配规则
+      if (result.success && result.parts && result.parts.length > 0) {
+        this._learnFromInferenceResult(result, drawingFiles).catch(err => {
+          console.error('[AssemblyController] 后台学习失败:', err.message)
+        })
+      }
 
       res.json(result)
     } catch (error) {
@@ -3109,6 +3118,112 @@ class AssemblyController {
     if (!text) return 'M16'
     const match = text.match(/M(\d+)/i)
     return match ? `M${match[1]}` : 'M16'
+  }
+
+  /**
+   * 从BOM和STEP学习（无需PID）
+   * POST /api/assembly/learn-from-bom-step
+   */
+  learnFromBOMAndSTEP = async (req, res) => {
+    try {
+      const { bomData, stepFiles } = req.body
+
+      if (!bomData || !Array.isArray(bomData)) {
+        return res.status(400).json({
+          success: false,
+          message: 'bomData is required and must be an array'
+        })
+      }
+
+      console.log(`[BOM+STEP学习] 开始...`)
+
+      const rules = await BOMSTEPLearner.learnFromBOMAndSTEP(
+        bomData,
+        stepFiles || []
+      )
+
+      res.json({
+        success: true,
+        message: `成功学习到 ${rules.length} 条规则`,
+        data: rules,
+        count: rules.length
+      })
+    } catch (error) {
+      console.error('[BOM+STEP学习失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  /**
+   * 基于历史规则自动生成装配
+   * POST /api/assembly/auto-generate
+   */
+  autoGenerateAssembly = async (req, res) => {
+    try {
+      const { bomData, options } = req.body
+
+      if (!bomData || !Array.isArray(bomData)) {
+        return res.status(400).json({
+          success: false,
+          message: 'bomData is required and must be an array'
+        })
+      }
+
+      console.log(`[自动装配] 开始生成...`)
+
+      const result = await AutoAssemblyGenerator.generateFromBOM(
+        bomData,
+        options || {}
+      )
+
+      res.json({
+        success: true,
+        message: `自动生成装配成功：${result.stats.constraintCount} 个约束`,
+        data: result
+      })
+    } catch (error) {
+      console.error('[自动装配失败]:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message
+      })
+    }
+  }
+
+  /**
+   * 从推理结果自动学习装配规则（后台异步执行）
+   * @private
+   */
+  async _learnFromInferenceResult(inferResult, drawingFiles) {
+    try {
+      console.log('🎓 [后台学习] 开始从推理结果学习装配规则...')
+
+      // 1. 准备BOM数据
+      const bomData = inferResult.parts.map(part => ({
+        partNumber: part.partNumber || part.id,
+        partName: part.name || part.partNumber,
+        quantity: part.quantity || 1,
+        type: part.type || 'unknown'
+      }))
+
+      // 2. 准备STEP文件路径（如果有）
+      const stepFiles = drawingFiles
+        .filter(f => /\.step$/i.test(f.name))
+        .map(f => f.path || f.name)
+
+      // 3. 调用BOM+STEP学习服务
+      const rules = await BOMSTEPLearner.learnFromBOMAndSTEP(bomData, stepFiles)
+
+      console.log(`✅ [后台学习] 成功学习 ${rules.length} 条规则`)
+
+      return rules
+    } catch (error) {
+      console.error('❌ [后台学习] 失败:', error.message)
+      throw error
+    }
   }
 }
 
