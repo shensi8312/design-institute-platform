@@ -47,6 +47,13 @@ class AssemblyController {
         partsCount: result.metadata?.partsCount
       })
 
+      // 🎓 自动学习：在后台从推理结果学习装配规则
+      if (result.success && result.parts && result.parts.length > 0) {
+        this._learnFromInferenceResult(result, drawingFiles).catch(err => {
+          console.error('[AssemblyController] 后台学习失败:', err.message)
+        })
+      }
+
       res.json(result)
     } catch (error) {
       console.error('[AssemblyController] 推理失败:', error)
@@ -3183,6 +3190,39 @@ class AssemblyController {
         success: false,
         message: error.message
       })
+    }
+  }
+
+  /**
+   * 从推理结果自动学习装配规则（后台异步执行）
+   * @private
+   */
+  async _learnFromInferenceResult(inferResult, drawingFiles) {
+    try {
+      console.log('🎓 [后台学习] 开始从推理结果学习装配规则...')
+
+      // 1. 准备BOM数据
+      const bomData = inferResult.parts.map(part => ({
+        partNumber: part.partNumber || part.id,
+        partName: part.name || part.partNumber,
+        quantity: part.quantity || 1,
+        type: part.type || 'unknown'
+      }))
+
+      // 2. 准备STEP文件路径（如果有）
+      const stepFiles = drawingFiles
+        .filter(f => /\.step$/i.test(f.name))
+        .map(f => f.path || f.name)
+
+      // 3. 调用BOM+STEP学习服务
+      const rules = await BOMSTEPLearner.learnFromBOMAndSTEP(bomData, stepFiles)
+
+      console.log(`✅ [后台学习] 成功学习 ${rules.length} 条规则`)
+
+      return rules
+    } catch (error) {
+      console.error('❌ [后台学习] 失败:', error.message)
+      throw error
     }
   }
 }
