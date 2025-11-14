@@ -59,3 +59,14 @@ temp/
 *_test.json
 *_result.json
 venv_gemini/
+
+# CAD files (测试文件)
+*.STEP
+*.step
+*.SLDPRT
+*.sldprt
+*.SLDASM
+*.sldasm
+*.STL
+*.stl
+docs/solidworks/
