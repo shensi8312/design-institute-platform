@@ -3,7 +3,7 @@
  * 支持章节树、富文本编辑、修订追踪、审批等核心功能
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Layout,
   Tree,
@@ -26,7 +26,8 @@ import {
   List,
   Avatar,
   Divider,
-  FloatButton
+  FloatButton,
+  Empty
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import {
@@ -48,7 +49,8 @@ import {
   InsertRowBelowOutlined,
   SwapOutlined,
   PlusCircleOutlined,
-  CommentOutlined
+  CommentOutlined,
+  FileAddOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../utils/axios';
@@ -62,6 +64,7 @@ const { Option } = Select;
 interface Section {
   id: string;
   title: string;
+  section_code?: string;
   content: string;
   level: number;
   parent_id: string | null;
@@ -69,6 +72,12 @@ interface Section {
   approval_status: string;
   editable: boolean;
   deletable: boolean;
+}
+
+interface TemplateTreeNode {
+  code: string;
+  title: string;
+  children?: TemplateTreeNode[];
 }
 
 interface Document {
@@ -90,6 +99,49 @@ interface ChatMessage {
     content: string;
   };
 }
+
+const convertTemplateTreeToData = (nodes: TemplateTreeNode[]): DataNode[] =>
+  nodes.map((node) => ({
+    key: node.code,
+    title: (
+      <span>
+        <span style={{ color: '#1890ff', fontFamily: 'monospace', marginRight: 8 }}>
+          {node.code}
+        </span>
+        {node.title}
+      </span>
+    ),
+    children: node.children && node.children.length > 0 ? convertTemplateTreeToData(node.children) : undefined,
+  }));
+
+const flattenTemplateCodes = (nodes: TemplateTreeNode[]): string[] => {
+  let result: string[] = [];
+  nodes.forEach((node) => {
+    result.push(node.code);
+    if (node.children && node.children.length > 0) {
+      result = result.concat(flattenTemplateCodes(node.children));
+    }
+  });
+  return result;
+};
+
+const truncateTreeByCodes = (
+  nodes: TemplateTreeNode[],
+  allowed: Set<string>
+): TemplateTreeNode[] => {
+  return nodes
+    .map((node) => {
+      const children = node.children ? truncateTreeByCodes(node.children, allowed) : [];
+      if (allowed.has(node.code) || children.length > 0) {
+        return {
+          ...node,
+          children,
+        };
+      }
+      return null;
+    })
+    .filter((node): node is TemplateTreeNode => Boolean(node));
+};
 
 const DocumentEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -114,6 +166,141 @@ const DocumentEditor: React.FC = () => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string>('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [templateOptions, setTemplateOptions] = useState<any[]>([]);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateTreeData, setTemplateTreeData] = useState<DataNode[]>([]);
+  const [templateTreeLoading, setTemplateTreeLoading] = useState(false);
+  const [templateSectionCodes, setTemplateSectionCodes] = useState<string[]>([]);
+  const [importingTemplate, setImportingTemplate] = useState(false);
+
+  // 加载文档
+  const loadDocument = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/api/unified-document/documents/${id}`, {
+        params: { includeSections: true }
+      });
+
+      if (response.data.success) {
+        setDocument(response.data.data);
+        setSections(response.data.data.sections || []);
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '加载文档失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const loadTemplateSectionTree = useCallback(async (templateId: string) => {
+    setTemplateTreeLoading(true);
+    try {
+      const response = await axios.get(`/api/unified-document/templates/${templateId}/sections-tree`, {
+        params: { editableOnly: true }
+      });
+      if (response.data.success) {
+        let nodes: TemplateTreeNode[] = response.data.data || [];
+        let defaults = flattenTemplateCodes(nodes);
+        if (defaults.length > 10) {
+          defaults = defaults.slice(0, 10);
+          const allowedSet = new Set(defaults);
+          nodes = truncateTreeByCodes(nodes, allowedSet);
+        }
+
+        setTemplateTreeData(convertTemplateTreeToData(nodes));
+        setTemplateSectionCodes(defaults);
+      }
+    } catch (error: any) {
+      console.error('加载模板章节失败', error);
+      message.error(error.response?.data?.message || '加载模板章节失败');
+      setTemplateTreeData([]);
+      setTemplateSectionCodes([]);
+    } finally {
+      setTemplateTreeLoading(false);
+    }
+  }, []);
+
+  const handleTemplateSelect = useCallback((value?: string) => {
+    let templateId = value || null;
+    setTemplateTreeData([]);
+    setTemplateSectionCodes([]);
+
+    if (!templateId) {
+      if (templateOptions.length === 0) {
+        setSelectedTemplateId(null);
+        return;
+      }
+      templateId = templateOptions[0].id;
+    }
+
+    setSelectedTemplateId(templateId);
+    loadTemplateSectionTree(templateId);
+  }, [templateOptions, loadTemplateSectionTree]);
+
+  const loadImportTemplates = useCallback(async () => {
+    if (!document?.document_type) return;
+    setTemplateLoading(true);
+    try {
+      const response = await axios.get('/api/unified-document/templates', {
+        params: {
+          templateType: document.document_type,
+          status: 'published'
+        }
+      });
+      if (response.data.success) {
+        const list = response.data.data || [];
+        setTemplateOptions(list);
+        if (!selectedTemplateId && list.length > 0) {
+          handleTemplateSelect(list[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('加载模板列表失败', error);
+    } finally {
+      setTemplateLoading(false);
+    }
+  }, [document?.document_type, selectedTemplateId, handleTemplateSelect]);
+
+  const handleTemplateTreeCheck = useCallback((checkedKeys: any) => {
+    const list = Array.isArray(checkedKeys)
+      ? checkedKeys
+      : checkedKeys.checked || [];
+    setTemplateSectionCodes(list.map((key: React.Key) => String(key)));
+  }, []);
+
+  const handleCloseImportModal = useCallback(() => {
+    setImportModalVisible(false);
+    setSelectedTemplateId(null);
+    setTemplateTreeData([]);
+    setTemplateSectionCodes([]);
+  }, []);
+
+  const handleImportTemplateSubmit = useCallback(async () => {
+    if (!selectedTemplateId) {
+      message.error('请选择要导入的模板');
+      return;
+    }
+    if (!templateSectionCodes.length) {
+      message.error('请选择要导入的章节');
+      return;
+    }
+    setImportingTemplate(true);
+    try {
+      await axios.post(`/api/unified-document/documents/${id}/import-template`, {
+        templateId: selectedTemplateId,
+        sectionCodes: templateSectionCodes,
+      });
+      message.success('模板章节导入成功');
+      handleCloseImportModal();
+      await loadDocument();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '导入失败');
+    } finally {
+      setImportingTemplate(false);
+    }
+  }, [selectedTemplateId, templateSectionCodes, id, handleCloseImportModal, loadDocument]);
 
   // Quill编辑器配置
   const modules = useMemo(() => ({
@@ -151,30 +338,17 @@ const DocumentEditor: React.FC = () => {
     'link', 'image', 'video'
   ];
 
-  // 加载文档
-  const loadDocument = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`/api/unified-document/documents/${id}`, {
-        params: { includeSections: true }
-      });
-
-      if (response.data.success) {
-        setDocument(response.data.data);
-        setSections(response.data.data.sections || []);
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '加载文档失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (id) {
       loadDocument();
     }
-  }, [id]);
+  }, [id, loadDocument]);
+
+  useEffect(() => {
+    if (importModalVisible) {
+      loadImportTemplates();
+    }
+  }, [importModalVisible, loadImportTemplates]);
 
   // 将章节数组转换为树形结构
   const convertToTreeData = (sections: Section[]): DataNode[] => {
@@ -182,6 +356,9 @@ const DocumentEditor: React.FC = () => {
       key: section.id,
       title: (
         <Space>
+          <span style={{ color: '#1890ff', fontFamily: 'monospace' }}>
+            {section.section_code || '--'}
+          </span>
           <span>{section.title}</span>
           {section.approval_status && section.approval_status !== 'draft' && (
             <Tag color={getApprovalStatusColor(section.approval_status)}>
@@ -556,6 +733,12 @@ const DocumentEditor: React.FC = () => {
           </Space>
 
           <Space>
+            <Button
+              icon={<FileAddOutlined />}
+              onClick={() => setImportModalVisible(true)}
+            >
+              导入模板
+            </Button>
             <Tooltip title="AI写作助手">
               <Button
                 icon={<RobotOutlined />}
@@ -581,7 +764,12 @@ const DocumentEditor: React.FC = () => {
         <div style={{ flex: 1, padding: 24, overflow: 'auto' }}>
           {selectedSection ? (
             <div>
-              <h2>{selectedSection.title}</h2>
+              <h2>
+                <span style={{ color: '#1890ff', marginRight: 8 }}>
+                  {selectedSection.section_code || '--'}
+                </span>
+                {selectedSection.title}
+              </h2>
               <ReactQuill
                 ref={quillRef}
                 theme="snow"
@@ -610,6 +798,61 @@ const DocumentEditor: React.FC = () => {
           )}
         </div>
       </Content>
+
+      {/* 模板导入 */}
+      <Modal
+        title="导入模板章节"
+        open={importModalVisible}
+        onCancel={handleCloseImportModal}
+        onOk={handleImportTemplateSubmit}
+        confirmLoading={importingTemplate}
+        width={640}
+      >
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>选择模板</div>
+            <Select
+              placeholder="请选择模板"
+              allowClear
+              loading={templateLoading}
+              value={selectedTemplateId || undefined}
+              onChange={(value) => handleTemplateSelect(value)}
+              onClear={() => handleTemplateSelect(undefined)}
+              style={{ width: '100%' }}
+            >
+              {templateOptions.map((template) => (
+                <Option key={template.id} value={template.id}>
+                  {template.name}
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>选择章节</div>
+            <div style={{ border: '1px solid #f0f0f0', borderRadius: 4, padding: 12, maxHeight: 320, overflow: 'auto' }}>
+              {!selectedTemplateId ? (
+                <Empty description="请选择模板以加载章节" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              ) : templateTreeLoading ? (
+                <div style={{ textAlign: 'center', padding: 32 }}>
+                  <Spin />
+                </div>
+              ) : templateTreeData.length > 0 ? (
+                <Tree
+                  checkable
+                  selectable={false}
+                  checkedKeys={templateSectionCodes}
+                  onCheck={handleTemplateTreeCheck}
+                  treeData={templateTreeData}
+                  defaultExpandAll
+                />
+              ) : (
+                <Empty description="没有可导入的章节" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              )}
+            </div>
+          </div>
+        </Space>
+      </Modal>
 
       {/* 新增章节模态框 */}
       <Modal

@@ -231,7 +231,8 @@ class SectionService {
     sortOrder = 0,
     isRequired = true,
     isEditable = true,
-    metadata = {}
+    metadata = {},
+    editableUserIds = []
   }) {
     // 如果没有提供 code，自动计算
     if (!code) {
@@ -250,6 +251,7 @@ class SectionService {
       is_required: isRequired,
       is_editable: isEditable,
       metadata: JSON.stringify(metadata),
+      editable_user_ids: editableUserIds || [],
     }).returning('*');
 
     return section;
@@ -296,6 +298,9 @@ class SectionService {
     if (updates.is_required !== undefined) updateData.is_required = updates.is_required;
     if (updates.is_editable !== undefined) updateData.is_editable = updates.is_editable;
     if (updates.metadata !== undefined) updateData.metadata = JSON.stringify(updates.metadata);
+    if (updates.editable_user_ids !== undefined) {
+      updateData.editable_user_ids = updates.editable_user_ids || [];
+    }
 
     await knex('template_sections')
       .where({ id: sectionId })

@@ -61,6 +61,12 @@ router.get('/documents/:id', UnifiedDocumentController.getDocument);
 // 更新文档
 router.put('/documents/:id', UnifiedDocumentController.updateDocument);
 
+// 导出已编辑章节
+router.get('/documents/:id/export-edited', UnifiedDocumentController.exportEditedSections);
+
+// 导入模板章节
+router.post('/documents/:id/import-template', UnifiedDocumentController.importDocumentTemplate);
+
 // 删除文档
 router.delete('/documents/:id', UnifiedDocumentController.deleteDocument);
 
@@ -79,6 +85,7 @@ router.get('/templates', UnifiedDocumentController.getTemplates);
 
 // 获取模板章节结构（必须在 /templates/:id 之前）
 router.get('/templates/:id/sections', UnifiedDocumentController.getTemplateSections);
+router.get('/templates/:id/sections-tree', UnifiedDocumentController.getTemplateSectionTree);
 
 // 获取单个章节详情（必须在 /templates/:id 之前）
 router.get('/templates/:templateId/sections/:sectionId', UnifiedDocumentController.getTemplateSection);

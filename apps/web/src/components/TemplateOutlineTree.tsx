@@ -1,6 +1,6 @@
 /**
- * 模板目录树组件（可编辑版）
- * 展示模板的章节层级结构，支持编辑、删除、拖拽排序
+ * 模板目录树组件（可编辑版 + 懒加载）
+ * 展示模板的章节层级结构，支持编辑、删除、拖拽排序、懒加载子节点
  */
 
 import React, { useState, useEffect } from 'react';
@@ -27,14 +27,19 @@ interface OutlineNode {
   sort_order: number;
   parent_code?: string | null;
   description?: string;
-  children?: OutlineNode[];
+  template_content?: string;
+  is_required?: boolean;
+  is_editable?: boolean;
+  isLeaf?: boolean;
+  editable_user_ids?: string[];
+  metadata?: Record<string, any>;
 }
 
 interface Props {
   templateId: string;
-  editable?: boolean;  // 是否可编辑模式
+  editable?: boolean;
   onSelectNode?: (node: OutlineNode) => void;
-  onSectionsChange?: () => void;  // 章节变化回调
+  onSectionsChange?: () => void;
 }
 
 const TemplateOutlineTree: React.FC<Props> = ({
@@ -44,6 +49,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
   onSectionsChange
 }) => {
   const [sections, setSections] = useState<OutlineNode[]>([]);
+  const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchValue, setSearchValue] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -53,23 +59,19 @@ const TemplateOutlineTree: React.FC<Props> = ({
   const [form] = Form.useForm();
 
   useEffect(() => {
-    loadSections();
+    loadRootSections();
   }, [templateId]);
 
-  const loadSections = async () => {
+  // 加载根节点
+  const loadRootSections = async () => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/unified-document/templates/${templateId}/sections`);
 
       if (response.data.success) {
-        const sectionsData = response.data.data;
-        setSections(sectionsData);
-
-        // 默认展开第一层
-        if (sectionsData.length > 0) {
-          const firstLevelKeys = sectionsData.map((n: OutlineNode) => n.id);
-          setExpandedKeys(firstLevelKeys);
-        }
+        const rootNodes = response.data.data;
+        setSections(rootNodes);
+        setTreeData(convertToTreeData(rootNodes));
       }
     } catch (error: any) {
       console.error('加载章节失败:', error);
@@ -77,6 +79,45 @@ const TemplateOutlineTree: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // 懒加载子节点
+  const onLoadData = async (treeNode: any): Promise<void> => {
+    if (treeNode.children && treeNode.children.length > 0) {
+      return Promise.resolve();
+    }
+
+    try {
+      const response = await axios.get(
+        `/api/unified-document/templates/${templateId}/sections?parentCode=${encodeURIComponent(treeNode.code)}`
+      );
+
+      if (response.data.success) {
+        const childNodes = response.data.data;
+
+        // 更新树数据
+        setTreeData((prevData) => updateTreeNode(prevData, treeNode.key, convertToTreeData(childNodes)));
+
+        // 更新sections数据（用于查找节点）
+        setSections((prev) => [...prev, ...childNodes]);
+      }
+    } catch (error: any) {
+      console.error('加载子节点失败:', error);
+      message.error('加载子节点失败');
+    }
+  };
+
+  // 更新树节点的children
+  const updateTreeNode = (nodes: DataNode[], key: string, children: DataNode[]): DataNode[] => {
+    return nodes.map((node) => {
+      if (node.key === key) {
+        return { ...node, children };
+      }
+      if (node.children) {
+        return { ...node, children: updateTreeNode(node.children, key, children) };
+      }
+      return node;
+    });
   };
 
   // 双击编辑章节属性
@@ -112,7 +153,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
       setEditModalVisible(false);
       setEditingNode(null);
       form.resetFields();
-      await loadSections();
+      await loadRootSections();
       onSectionsChange?.();
     } catch (error: any) {
       message.error(error.response?.data?.message || '更新失败');
@@ -127,22 +168,13 @@ const TemplateOutlineTree: React.FC<Props> = ({
       let sortOrder = 0;
 
       if (type === 'child' && parentNode) {
-        // 添加子章节
         parentCode = parentNode.code;
         level = parentNode.level + 1;
-        // 查找当前子章节数量
-        const children = findNodeChildren(sections, parentNode.code);
-        sortOrder = children.length + 1;
+        sortOrder = 1;
       } else if (type === 'sibling' && parentNode) {
-        // 添加同级章节
         parentCode = parentNode.parent_code || null;
         level = parentNode.level;
-        // 查找同级章节数量
-        const siblings = findNodeChildren(sections, parentCode);
-        sortOrder = siblings.length + 1;
-      } else {
-        // 添加顶级章节
-        sortOrder = sections.length + 1;
+        sortOrder = parentNode.sort_order + 1;
       }
 
       const response = await axios.post(`/api/unified-document/templates/${templateId}/sections`, {
@@ -158,10 +190,9 @@ const TemplateOutlineTree: React.FC<Props> = ({
 
       if (response.data.success) {
         message.success('章节创建成功');
-        await loadSections();
+        await loadRootSections();
         onSectionsChange?.();
 
-        // 选中新创建的章节
         const newSection = response.data.data;
         setSelectedKeys([newSection.id]);
         onSelectNode?.(newSection);
@@ -184,7 +215,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
         try {
           await axios.delete(`/api/unified-document/templates/${templateId}/sections/${node.id}`);
           message.success('章节删除成功');
-          await loadSections();
+          await loadRootSections();
           onSectionsChange?.();
           setSelectedKeys([]);
         } catch (error: any) {
@@ -201,7 +232,6 @@ const TemplateOutlineTree: React.FC<Props> = ({
     const dropPos = info.node.pos.split('-');
     const dropPosition = info.dropPosition - Number(dropPos[dropPos.length - 1]);
 
-    // 查找被拖拽的节点和目标节点
     const dragNode = findNode(sections, dragKey);
     const dropNode = findNode(sections, dropKey);
 
@@ -213,13 +243,10 @@ const TemplateOutlineTree: React.FC<Props> = ({
       let newSortOrder = dropNode.sort_order;
 
       if (dropPosition === 0) {
-        // 放到目标节点内部（成为子节点）
         newParentCode = dropNode.code;
         newLevel = dropNode.level + 1;
-        const children = findNodeChildren(sections, dropNode.code);
-        newSortOrder = children.length + 1;
+        newSortOrder = 1;
       } else {
-        // 放到目标节点前面或后面（成为同级）
         newParentCode = dropNode.parent_code || null;
         newLevel = dropNode.level;
         newSortOrder = dropPosition < 0 ? dropNode.sort_order : dropNode.sort_order + 1;
@@ -235,7 +262,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
       );
 
       message.success('章节移动成功');
-      await loadSections();
+      await loadRootSections();
       onSectionsChange?.();
     } catch (error: any) {
       message.error(error.response?.data?.message || '移动章节失败');
@@ -246,34 +273,13 @@ const TemplateOutlineTree: React.FC<Props> = ({
   const findNode = (nodes: OutlineNode[], id: string): OutlineNode | null => {
     for (const node of nodes) {
       if (node.id === id) return node;
-      if (node.children) {
-        const found = findNode(node.children, id);
-        if (found) return found;
-      }
     }
     return null;
-  };
-
-  // 辅助函数：查找子节点
-  const findNodeChildren = (nodes: OutlineNode[], parentCode: string | null): OutlineNode[] => {
-    const result: OutlineNode[] = [];
-    for (const node of nodes) {
-      if (node.parent_code === parentCode) {
-        result.push(node);
-      }
-      if (node.children) {
-        result.push(...findNodeChildren(node.children, parentCode));
-      }
-    }
-    return result;
   };
 
   // 转换为Antd Tree所需的数据格式
   const convertToTreeData = (nodes: OutlineNode[]): DataNode[] => {
     return nodes.map((node) => {
-      const hasChildren = node.children && node.children.length > 0;
-
-      // 右键菜单
       const menuItems: MenuProps['items'] = editable ? [
         {
           key: 'add-child',
@@ -299,6 +305,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
 
       return {
         key: node.id,
+        code: node.code,
         title: editable ? (
           <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
             <div
@@ -339,39 +346,28 @@ const TemplateOutlineTree: React.FC<Props> = ({
             {node.code} {node.title}
           </span>
         ),
-        icon: hasChildren ? <FolderOutlined /> : <FileTextOutlined />,
-        children: hasChildren ? convertToTreeData(node.children!) : undefined,
+        icon: node.isLeaf ? <FileTextOutlined /> : <FolderOutlined />,
+        isLeaf: node.isLeaf,
       };
     });
   };
 
-  // 过滤搜索
-  const filterTree = (nodes: OutlineNode[], searchTerm: string): OutlineNode[] => {
-    return nodes.filter((node) => {
-      const matchTitle = node.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCode = node.code.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchChildren = node.children
-        ? filterTree(node.children, searchTerm).length > 0
-        : false;
-      return matchTitle || matchCode || matchChildren;
-    }).map((node) => ({
-      ...node,
-      children: node.children ? filterTree(node.children, searchTerm) : undefined,
-    }));
-  };
-
-  const displaySections = searchValue
-    ? filterTree(sections, searchValue)
-    : sections;
-
-  const treeData = convertToTreeData(displaySections);
-
   const handleSelect = (selectedKeys: React.Key[], info: any) => {
+    console.log('[TemplateOutlineTree] handleSelect called', { selectedKeys, sectionsCount: sections.length });
     if (selectedKeys.length > 0 && onSelectNode) {
       const selectedNode = findNode(sections, selectedKeys[0] as string);
+      console.log('[TemplateOutlineTree] Found node:', {
+        code: selectedNode?.code,
+        title: selectedNode?.title,
+        has_template_content: selectedNode?.template_content !== undefined,
+        template_content_length: selectedNode?.template_content?.length || 0
+      });
       if (selectedNode) {
         setSelectedKeys([selectedNode.id]);
+        console.log('[TemplateOutlineTree] Calling onSelectNode with:', selectedNode);
         onSelectNode(selectedNode);
+      } else {
+        console.warn('[TemplateOutlineTree] Node not found in sections array!');
       }
     }
   };
@@ -414,17 +410,12 @@ const TemplateOutlineTree: React.FC<Props> = ({
         style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}
         className="template-outline-tree"
       >
-        <style>{`
-          .template-outline-tree .ant-tree-treenode:hover .tree-node-actions {
-            display: inline-block !important;
-          }
-        `}</style>
         {treeData.length > 0 ? (
           <Tree
             showIcon
+            loadData={onLoadData}
             draggable={editable}
             onDrop={editable ? handleDrop : undefined}
-            defaultExpandAll={!searchValue}
             expandedKeys={expandedKeys}
             selectedKeys={selectedKeys}
             onExpand={(keys) => setExpandedKeys(keys as string[])}
@@ -434,7 +425,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
           />
         ) : (
           <Empty
-            description={searchValue ? '未找到匹配的章节' : '暂无章节'}
+            description="暂无章节"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             style={{ marginTop: 40 }}
           />

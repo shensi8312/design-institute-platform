@@ -5,6 +5,7 @@
 
 const knex = require('../../config/database');
 const DocumentDomainConfig = require('../../config/DocumentDomainConfig');
+const TemplateService = require('./TemplateService');
 
 class UnifiedDocumentService {
   constructor() {
@@ -51,7 +52,9 @@ class UnifiedDocumentService {
     documentType,
     projectId,
     templateId,
-    createdBy
+    selectedSectionCodes = [],
+    createdBy,
+    userContext = null
   }) {
     // 验证文档类型
     const domain = this.domainConfig.getDomain(documentType);
@@ -68,7 +71,23 @@ class UnifiedDocumentService {
 
     // 如果指定了模板，从模板复制章节结构
     if (templateId) {
-      await this._copyTemplateStructure(document.id, templateId);
+      const user = userContext || { id: createdBy };
+      let allowedCodes = await TemplateService.getAllowedSectionCodes(templateId, user);
+
+      if (Array.isArray(selectedSectionCodes) && selectedSectionCodes.length > 0) {
+        const permittedSet = new Set(allowedCodes);
+        const invalid = selectedSectionCodes.filter(code => !permittedSet.has(code));
+        if (invalid.length > 0) {
+          throw new Error(`无权导入以下章节: ${invalid.join(', ')}`);
+        }
+        allowedCodes = selectedSectionCodes;
+      }
+
+      if (!allowedCodes.length) {
+        throw new Error('当前账号没有可导入的模板章节');
+      }
+
+      await this._copyTemplateStructure(document.id, templateId, allowedCodes);
     }
 
     // 创建修订设置
@@ -81,61 +100,152 @@ class UnifiedDocumentService {
    * 从模板复制章节结构
    * @private
    */
-  async _copyTemplateStructure(documentId, templateId) {
-    const template = await knex('document_templates').where({ id: templateId }).first();
-    if (!template) return;
+  async _copyTemplateStructure(documentId, templateId, allowedSectionCodes = null) {
+    const templateSections = await knex('template_sections')
+      .where({ template_id: templateId })
+      .orderBy('level')
+      .orderBy('sort_order');
 
-    const sectionStructure = JSON.parse(template.section_structure || '[]');
-    const sections = this._flattenSectionStructure(sectionStructure);
+    if (!templateSections.length) return;
 
-    for (const section of sections) {
-      await knex('document_sections').insert({
+    const allowSet = Array.isArray(allowedSectionCodes) && allowedSectionCodes.length > 0
+      ? new Set(allowedSectionCodes)
+      : null;
+
+    const filteredSections = allowSet
+      ? templateSections.filter(section => allowSet.has(section.code))
+      : templateSections;
+
+    if (!filteredSections.length) return;
+
+    filteredSections.sort((a, b) => {
+      if (a.level === b.level) {
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      }
+      return a.level - b.level;
+    });
+
+    const codeToDocumentId = new Map();
+
+    for (const section of filteredSections) {
+      const parentId = section.parent_code && codeToDocumentId.has(section.parent_code)
+        ? codeToDocumentId.get(section.parent_code)
+        : null;
+
+      const [documentSection] = await knex('document_sections').insert({
         document_id: documentId,
         section_code: section.code,
         title: section.title,
         level: section.level,
-        parent_id: section.parentId,
-        sort_order: section.order,
+        parent_id: parentId,
+        sort_order: section.sort_order,
+        content: section.template_content || '',
+        content_format: 'html',
         from_template: true,
         template_section_id: section.id,
-        editable: section.editable !== false,
-        deletable: section.deletable !== false,
-      });
+        editable: section.is_editable !== false,
+        deletable: section.is_required ? false : true,
+      }).returning('*');
+
+      codeToDocumentId.set(section.code, documentSection.id);
     }
   }
 
-  /**
-   * 展平章节结构（递归）
-   * @private
-   */
-  _flattenSectionStructure(structure, parentId = null, level = 1) {
-    const sections = [];
+  async importTemplateSections(documentId, templateId, sectionCodes = [], userContext = null) {
+    if (!templateId) {
+      throw new Error('请提供要导入的模板');
+    }
 
-    structure.forEach((section, index) => {
-      const flatSection = {
-        id: section.id,
-        code: section.code,
-        title: section.title,
-        level: level,
-        order: index,
-        parentId: parentId,
-        editable: section.editable,
-        deletable: section.deletable,
-      };
+    const document = await this.getDocument(documentId);
+    if (!document) {
+      throw new Error('文档不存在');
+    }
 
-      sections.push(flatSection);
+    const user = userContext || { id: document.created_by };
 
-      if (section.children && section.children.length > 0) {
-        const childSections = this._flattenSectionStructure(
-          section.children,
-          section.id,
-          level + 1
-        );
-        sections.push(...childSections);
+    const templateSections = await knex('template_sections')
+      .where({ template_id: templateId })
+      .orderBy('level')
+      .orderBy('sort_order');
+
+    if (!templateSections.length) {
+      throw new Error('模板暂无章节');
+    }
+
+    const templateMap = new Map(templateSections.map(section => [section.code, section]));
+    const allowedCodes = await TemplateService.getAllowedSectionCodes(templateId, user);
+
+    if (!allowedCodes.length) {
+      throw new Error('您没有可导入的模板章节');
+    }
+
+    const requestedCodes = Array.isArray(sectionCodes) && sectionCodes.length > 0
+      ? sectionCodes
+      : allowedCodes;
+
+    const allowedSet = new Set(allowedCodes);
+    const invalidCodes = requestedCodes.filter(code => !allowedSet.has(code));
+    if (invalidCodes.length > 0) {
+      throw new Error(`无权导入以下章节: ${invalidCodes.join(', ')}`);
+    }
+
+    const ensureAncestors = (code, collector) => {
+      let current = templateMap.get(code);
+      while (current) {
+        if (collector.has(current.code)) break;
+        collector.add(current.code);
+        if (!current.parent_code) break;
+        current = templateMap.get(current.parent_code);
       }
+    };
+
+    const toImport = new Set();
+    requestedCodes.forEach(code => {
+      if (!templateMap.has(code)) {
+        throw new Error(`模板章节不存在: ${code}`);
+      }
+      ensureAncestors(code, toImport);
     });
 
-    return sections;
+    const sectionsToInsert = templateSections.filter(section => toImport.has(section.code));
+    if (!sectionsToInsert.length) {
+      return [];
+    }
+
+    const existingSections = await knex('document_sections')
+      .where({ document_id: documentId })
+      .select('id', 'section_code');
+
+    const existingMap = new Map(existingSections.map(section => [section.section_code, section.id]));
+    const insertedSections = [];
+
+    for (const section of sectionsToInsert) {
+      const parentId = section.parent_code ? existingMap.get(section.parent_code) : null;
+
+      if (existingMap.has(section.code)) {
+        continue;
+      }
+
+      const [docSection] = await knex('document_sections').insert({
+        document_id: documentId,
+        section_code: section.code,
+        title: section.title,
+        level: section.level,
+        parent_id: parentId,
+        sort_order: section.sort_order,
+        content: section.template_content || '',
+        content_format: 'html',
+        from_template: true,
+        template_section_id: section.id,
+        editable: section.is_editable !== false,
+        deletable: section.is_required ? false : true,
+      }).returning('*');
+
+      existingMap.set(section.code, docSection.id);
+      insertedSections.push(docSection);
+    }
+
+    return insertedSections;
   }
 
   /**
