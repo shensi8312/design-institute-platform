@@ -58,3 +58,10 @@ temp/
 *_test.json
 *_result.json
 venv_gemini/
+.worktrees/
+
+# Documentation and large CAD files (not needed in repo)
+docs/solidworks/
+docs/specs/
+docs/specs_zh/
+docs/给AI的文件/
