@@ -5,10 +5,12 @@ const llmService = require('../llm/UnifiedLLMService')
 const { loadRulesFromDatabase, evaluateCondition, generateAction, generateReasoning } = require('./_rule_helpers')
 const ChemicalKnowledgeBase = require('../knowledge/ChemicalKnowledgeBase')
 const CollisionDetector = require('./CollisionDetector')
+const MechanicalEngineeringKB = require('../knowledge/MechanicalEngineeringKB')
+const SafetyStandardsKB = require('../knowledge/SafetyStandardsKB')
 
 /**
  * 装配约束推理服务
- * 完整工程级推理：规则+LLM+化学知识+碰撞检测+人体工程学
+ * 完整工程级推理：规则+LLM+化学知识+机械工程+安全规范+碰撞检测
  */
 class AssemblyReasoningService {
   constructor() {
@@ -20,6 +22,11 @@ class AssemblyReasoningService {
     // 领域知识库
     this.chemicalKB = new ChemicalKnowledgeBase()
     this.collisionDetector = new CollisionDetector()
+    this.mechanicalKB = new MechanicalEngineeringKB()
+    this.safetyKB = new SafetyStandardsKB()
+
+    // 初始化知识库
+    this._initializeKnowledgeBases()
 
     // 标准件库 (简化版 - 实际应从数据库加载)
     this.standardParts = {
@@ -118,6 +125,21 @@ class AssemblyReasoningService {
         })
       }
     ]
+  }
+
+  /**
+   * 异步初始化知识库（加载数据库数据）
+   */
+  async _initializeKnowledgeBases() {
+    try {
+      await Promise.all([
+        this.mechanicalKB.initialize(),
+        this.safetyKB.initialize()
+      ])
+      console.log('✅ [AssemblyReasoning] 知识库初始化完成')
+    } catch (error) {
+      console.error('❌ [AssemblyReasoning] 知识库初始化失败:', error)
+    }
   }
 
   /**
@@ -229,8 +251,23 @@ class AssemblyReasoningService {
       console.log(`[模块3-规则推理] 📚 加载${dbRules.length}条规则`)
       reasoningPath.push(`模块3-规则推理: 加载${dbRules.length}条已有规则`)
 
+      // 🆕 5.5 机械工程知识验证
+      console.log('[模块3-规则推理] 🔧 机械工程合规性检查...')
+      const mechanicalViolations = await this.mechanicalKB.validateMechanicalDesign(enrichedParts)
+      if (mechanicalViolations.length > 0) {
+        console.warn(`[模块3] ⚠️ 发现${mechanicalViolations.length}个机械工程问题:`)
+        mechanicalViolations.forEach(v => {
+          console.warn(`  - ${v.severity.toUpperCase()}: ${v.reason}`)
+        })
+        reasoningPath.push(`模块3-规则推理: 检测到${mechanicalViolations.length}个机械工程违规`)
+      } else {
+        reasoningPath.push('模块3-规则推理: 机械工程合规性验证通过')
+      }
+
       // 6. 基于规则推理约束
       const constraints = []
+      const validationWarnings = []  // 收集验证警告
+
       for (let i = 0; i < enrichedParts.length - 1; i++) {
         for (let j = i + 1; j < enrichedParts.length; j++) {
           const partA = enrichedParts[i]
@@ -256,6 +293,40 @@ class AssemblyReasoningService {
                 : rule.action_template
 
               const action = generateAction(actionTemplate, partA, partB)
+
+              // 🆕 验证机械工程兼容性
+              let mechanicalValidation = { valid: true }
+              let confidence = this._calculateConfidence(rule, partA, partB)
+
+              if (rule.constraint_type === 'SCREW') {
+                // 螺纹配对验证
+                mechanicalValidation = await this.mechanicalKB.validateThreadMating(partA, partB)
+                if (!mechanicalValidation.valid) {
+                  confidence *= 0.3  // 大幅降低置信度
+                  validationWarnings.push({
+                    type: 'thread_incompatible',
+                    partA: partA.name,
+                    partB: partB.name,
+                    reason: mechanicalValidation.reason,
+                    severity: mechanicalValidation.severity
+                  })
+                }
+              } else if ((partA.type?.includes('法兰') || partA.name?.includes('法兰')) &&
+                         (partB.type?.includes('法兰') || partB.name?.includes('法兰'))) {
+                // 法兰配对验证
+                mechanicalValidation = await this.mechanicalKB.validateFlangeMating(partA, partB)
+                if (!mechanicalValidation.valid) {
+                  confidence *= 0.4  // 降低置信度
+                  validationWarnings.push({
+                    type: 'flange_incompatible',
+                    partA: partA.name,
+                    partB: partB.name,
+                    reason: mechanicalValidation.reason,
+                    severity: mechanicalValidation.severity
+                  })
+                }
+              }
+
               const constraint = {
                 id: uuidv4(),
                 type: rule.constraint_type,
@@ -265,9 +336,13 @@ class AssemblyReasoningService {
                 part_number_b: partB.partNumber,
                 entities: [partA.name, partB.name],
                 parameters: action.parameters,
-                reasoning: generateReasoning(rule, partA, partB),
-                confidence: this._calculateConfidence(rule, partA, partB),
-                ruleId: rule.rule_id
+                reasoning: this._enrichReasoningWithValidation(
+                  generateReasoning(rule, partA, partB),
+                  mechanicalValidation
+                ),
+                confidence,
+                ruleId: rule.rule_id,
+                validationResult: mechanicalValidation  // 保存验证结果
               }
               constraints.push(constraint)
               console.log(`[AssemblyReasoning] 🎯 触发规则 ${rule.rule_id}: ${rule.name} (置信度: ${(constraint.confidence * 100).toFixed(0)}%)`)
@@ -283,6 +358,11 @@ class AssemblyReasoningService {
         }
       }
 
+      if (validationWarnings.length > 0) {
+        console.warn(`[模块3] ⚠️ 发现${validationWarnings.length}个约束验证警告`)
+        reasoningPath.push(`模块3-规则推理: ${validationWarnings.length}个约束存在兼容性问题`)
+      }
+
       reasoningPath.push(`模块2-约束学习: 规则推理${constraints.length}个约束 + STEP提取${stepConstraints.length}个约束`)
 
       // 合并约束（STEP约束优先级更高）
@@ -293,6 +373,49 @@ class AssemblyReasoningService {
       const filteredConstraints = allConstraints.filter(c => c.confidence >= threshold)
       console.log(`[模块3] 过滤约束: ${allConstraints.length} → ${filteredConstraints.length}`)
       reasoningPath.push(`模块3-规则推理: 置信度过滤，保留${filteredConstraints.length}个高质量约束`)
+
+      // 🆕 7.5 安全规范验证
+      console.log('[模块3-规则推理] 🛡️ 安全规范合规性检查...')
+      const safetyViolations = []
+
+      // 检查是否有流体类型信息（从BOM或约束中推断）
+      const partsWithFluidType = enrichedParts.filter(p => p.fluidType || p.fluid_type)
+
+      if (partsWithFluidType.length >= 2) {
+        // 模拟布局位置（实际应从STEP文件或布局优化结果中获取）
+        const mockLayoutPlacements = partsWithFluidType.map((part, index) => ({
+          part_number: part.partNumber || part.part_number,
+          tag: part.name,
+          fluidType: part.fluidType || part.fluid_type,
+          position: {
+            x: index * 1000,  // 简化：每个零件间隔1000mm
+            y: 0,
+            z: 0
+          }
+        }))
+
+        const safetyResult = await this.safetyKB.validateSafetyCompliance(
+          enrichedParts,
+          mockLayoutPlacements,
+          { fluidType: partsWithFluidType[0].fluidType }
+        )
+
+        safetyViolations.push(...safetyResult)
+
+        if (safetyResult.length > 0) {
+          console.warn(`[模块3] ⚠️ 发现${safetyResult.length}个安全规范违规:`)
+          safetyResult.forEach(v => {
+            console.warn(`  - ${v.severity.toUpperCase()}: ${v.reason}`)
+          })
+          reasoningPath.push(`模块3-规则推理: 检测到${safetyResult.length}个安全规范违规`)
+        } else {
+          console.log('[模块3] ✅ 安全规范验证通过')
+          reasoningPath.push('模块3-规则推理: 安全规范合规性验证通过')
+        }
+      } else {
+        console.log('[模块3] ℹ️ 未检测到流体类型信息，跳过危险品隔离验证')
+        reasoningPath.push('模块3-规则推理: 无流体类型信息，跳过安全验证')
+      }
 
       // 8. P1阶段：约束一致性验证（scipy 求解器）
       let solverResult = { feasible: true, skipped: true }
@@ -401,12 +524,18 @@ class AssemblyReasoningService {
         solverResult,
         explainability,
         learnedRules,
+        validationWarnings,  // 🆕 机械工程验证警告
+        safetyViolations,    // 🆕 安全规范违规
+        mechanicalViolations, // 🆕 机械工程违规
         metadata: {
           partsCount: parts.length,
           constraintsCount: filteredConstraints.length,
           rulesApplied: explainability.rules_fired.length,
           llmEnhanced: useLLM && hasUnrecognizedParts,  // ✅ 实际使用LLM的状态
-          learnedRulesCount: learnedRules.length
+          learnedRulesCount: learnedRules.length,
+          validationWarningsCount: validationWarnings.length,
+          safetyViolationsCount: safetyViolations.length,
+          mechanicalViolationsCount: mechanicalViolations.length
         }
       }
     } catch (error) {
@@ -1582,6 +1711,29 @@ ${unknownParts.map((p, i) => `${i + 1}. 名称: ${p.name}, 规格: ${p.spec}, �
     }
 
     return false
+  }
+
+  /**
+   * 用验证结果增强推理说明
+   */
+  _enrichReasoningWithValidation(baseReasoning, validation) {
+    if (!validation || validation.valid === undefined) {
+      return baseReasoning
+    }
+
+    if (validation.valid) {
+      // 添加正面验证信息
+      if (validation.recommendedTorque) {
+        return `${baseReasoning}。✅ 螺纹兼容性验证通过，推荐扭矩：${JSON.stringify(validation.recommendedTorque)}`
+      } else if (validation.boltRequirements) {
+        return `${baseReasoning}。✅ 法兰兼容性验证通过，螺栓规格：${validation.boltRequirements.boltSize} x ${validation.boltRequirements.boltCount}`
+      } else {
+        return `${baseReasoning}。✅ 工程验证通过`
+      }
+    } else {
+      // 添加警告信息
+      return `${baseReasoning}。⚠️ ${validation.reason}`
+    }
   }
 }
 

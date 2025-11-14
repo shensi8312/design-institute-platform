@@ -47,6 +47,8 @@ apps/api/coverage/
 tmp/
 temp/
 .DS_Store
+*.bak
+*.bak2
 
 # 清理后的忽略规则
 /apps/api/logs/
