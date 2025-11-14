@@ -80,6 +80,18 @@ router.get('/templates', UnifiedDocumentController.getTemplates);
 // 获取模板章节结构（必须在 /templates/:id 之前）
 router.get('/templates/:id/sections', UnifiedDocumentController.getTemplateSections);
 
+// 创建模板章节（必须在 /templates/:id 之前）
+router.post('/templates/:templateId/sections', UnifiedDocumentController.createTemplateSection);
+
+// 更新模板章节（必须在 /templates/:id 之前）
+router.put('/templates/:templateId/sections/:sectionId', UnifiedDocumentController.updateTemplateSection);
+
+// 移动模板章节（必须在 /templates/:id 之前）
+router.post('/templates/:templateId/sections/:sectionId/move', UnifiedDocumentController.moveTemplateSection);
+
+// 删除模板章节（必须在 /templates/:id 之前）
+router.delete('/templates/:templateId/sections/:sectionId', UnifiedDocumentController.deleteTemplateSection);
+
 // 获取模板目录大纲（必须在 /templates/:id 之前）
 router.get('/templates/:id/outline', UnifiedDocumentController.getTemplateOutline);
 
