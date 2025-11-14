@@ -441,6 +441,38 @@ class TemplateService {
    * @private
    */
   buildSectionTree(sections, parentCode = null) {
+    // 性能优化：如果所有记录的 parent_code 都是 null，使用优化的构建方式
+    if (parentCode === null && sections.length > 1000) {
+      const hasParentCode = sections.some(s => s.parent_code !== null && s.parent_code !== '');
+      if (!hasParentCode) {
+        // 使用 Map 来优化父子关系查找
+        const childrenMap = new Map();
+
+        // 预先计算每个节点的子节点
+        sections.forEach(section => {
+          const parent = this.inferParentCode(section.code);
+          if (!childrenMap.has(parent)) {
+            childrenMap.set(parent, []);
+          }
+          childrenMap.get(parent).push(section);
+        });
+
+        // 递归构建树
+        const buildTree = (code) => {
+          const children = childrenMap.get(code) || [];
+          return children.map(s => ({
+            key: s.code,
+            title: `${s.code} ${s.title}`,
+            ...s,
+            children: buildTree(s.code)
+          }));
+        };
+
+        return buildTree(null);
+      }
+    }
+
+    // 原有逻辑（使用 parent_code 字段）
     return sections
       .filter(s => s.parent_code === parentCode)
       .map(s => ({
@@ -449,6 +481,40 @@ class TemplateService {
         ...s,
         children: this.buildSectionTree(sections, s.code)
       }));
+  }
+
+  /**
+   * 根据 code 推断 parent_code
+   * 例如：'00 24 13.13' -> '00 24 13'
+   * @private
+   */
+  inferParentCode(code) {
+    if (!code) return null;
+
+    const trimmed = code.trim();
+
+    // 如果包含小数点，父节点是去掉最后一个小数点部分
+    if (trimmed.includes('.')) {
+      const parts = trimmed.split('.');
+      parts.pop();
+      return parts.join('.');
+    }
+
+    // 如果是空格分隔的编号，父节点是去掉最后一个部分
+    const parts = trimmed.split(/\s+/);
+    if (parts.length > 1) {
+      // 检查最后一个部分是否为 '00'
+      if (parts[parts.length - 1] === '00') {
+        parts.pop();
+        return parts.length > 0 ? parts.join(' ') : null;
+      }
+      // 否则去掉最后一个非零部分
+      parts.pop();
+      return parts.length > 0 ? parts.join(' ') : null;
+    }
+
+    // 顶级节点
+    return null;
   }
 }
 

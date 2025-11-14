@@ -76,12 +76,7 @@ const TemplateEditor: React.FC = () => {
   useEffect(() => {
     if (selectedSection) {
       form.setFieldsValue({
-        code: selectedSection.code,
-        title: selectedSection.title,
-        description: selectedSection.description || '',
         template_content: selectedSection.template_content || '',
-        is_required: selectedSection.is_required ?? true,
-        is_editable: selectedSection.is_editable ?? true,
       });
     } else {
       form.resetFields();
@@ -108,7 +103,7 @@ const TemplateEditor: React.FC = () => {
     setSelectedSection(section);
   };
 
-  // 保存章节
+  // 保存章节模板内容
   const handleSaveSection = async () => {
     if (!selectedSection || !id) return;
 
@@ -119,21 +114,16 @@ const TemplateEditor: React.FC = () => {
       await axios.put(
         `/api/unified-document/templates/${id}/sections/${selectedSection.id}`,
         {
-          code: values.code,
-          title: values.title,
-          description: values.description,
           template_content: values.template_content,
-          is_required: values.is_required,
-          is_editable: values.is_editable,
         }
       );
 
-      message.success('章节保存成功');
+      message.success('模板内容保存成功');
 
       // 更新本地状态
       setSelectedSection({
         ...selectedSection,
-        ...values,
+        template_content: values.template_content,
       });
     } catch (error: any) {
       message.error(error.response?.data?.message || '保存失败');
@@ -224,7 +214,7 @@ const TemplateEditor: React.FC = () => {
                 <Tag color="blue">可拖拽排序</Tag>
               </Space>
               <div style={{ marginTop: 4, fontSize: 12, color: '#8c8c8c' }}>
-                <InfoCircleOutlined /> 点击章节编辑，右键添加/删除，拖拽调整顺序
+                <InfoCircleOutlined /> 左侧：双击编辑章节属性，右键添加/删除，拖拽调整顺序
               </div>
             </div>
           </Space>
@@ -243,7 +233,7 @@ const TemplateEditor: React.FC = () => {
                 onClick={handleSaveSection}
                 loading={saving}
               >
-                保存章节
+                保存模板内容
               </Button>
             )}
           </Space>
@@ -281,7 +271,7 @@ const TemplateEditor: React.FC = () => {
               }}>
                 📖 模板目录
                 <div style={{ fontSize: 12, color: '#999', marginTop: 4, fontWeight: 'normal' }}>
-                  点击编辑，右键操作，拖拽排序
+                  双击编辑属性，右键操作，拖拽排序
                 </div>
               </div>
 
@@ -319,41 +309,20 @@ const TemplateEditor: React.FC = () => {
                 padding: 24,
                 overflow: 'auto'
               }}>
-                <h3 style={{ marginBottom: 24 }}>编辑章节</h3>
+                <div style={{ marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>
+                    {selectedSection.code} {selectedSection.title}
+                  </h3>
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+                    编辑此章节的模板内容
+                  </div>
+                </div>
+
                 <Form
                   form={form}
                   layout="vertical"
                   autoComplete="off"
                 >
-                  <Form.Item
-                    label="章节编号"
-                    name="code"
-                    rules={[{ required: true, message: '请输入章节编号' }]}
-                    extra="可手动修改编号，格式如：1, 1.1, 1.2.3"
-                  >
-                    <Input placeholder="1.2.3" />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="章节标题"
-                    name="title"
-                    rules={[{ required: true, message: '请输入章节标题' }]}
-                  >
-                    <Input placeholder="请输入章节标题" />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="章节描述"
-                    name="description"
-                  >
-                    <TextArea
-                      rows={3}
-                      placeholder="章节说明（可选）"
-                    />
-                  </Form.Item>
-
-                  <Divider />
-
                   <Form.Item
                     label="模板内容"
                     name="template_content"
@@ -362,32 +331,8 @@ const TemplateEditor: React.FC = () => {
                     <ReactQuill
                       theme="snow"
                       placeholder="请输入章节模板内容..."
-                      style={{ height: 300, marginBottom: 50 }}
+                      style={{ height: 500, marginBottom: 50 }}
                     />
-                  </Form.Item>
-
-                  <Divider />
-
-                  <div style={{ marginBottom: 24 }}>
-                    <h4>章节约束</h4>
-                  </div>
-
-                  <Form.Item
-                    label="是否必填章节"
-                    name="is_required"
-                    valuePropName="checked"
-                    extra="必填章节要求用户必须填写内容"
-                  >
-                    <Switch />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="是否允许用户编辑"
-                    name="is_editable"
-                    valuePropName="checked"
-                    extra="不可编辑的章节将锁定，用户无法修改"
-                  >
-                    <Switch />
                   </Form.Item>
                 </Form>
               </div>

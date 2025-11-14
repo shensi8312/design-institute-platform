@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Tree, Input, Dropdown, Modal, message, Spin, Empty, Button } from 'antd';
+import { Tree, Input, Dropdown, Modal, message, Spin, Empty, Button, Form } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   SearchOutlined,
@@ -17,6 +17,8 @@ import {
 import type { DataNode, TreeProps } from 'antd/es/tree';
 import axios from '../utils/axios';
 
+const { TextArea } = Input;
+
 interface OutlineNode {
   id: string;
   code: string;
@@ -24,6 +26,7 @@ interface OutlineNode {
   level: number;
   sort_order: number;
   parent_code?: string | null;
+  description?: string;
   children?: OutlineNode[];
 }
 
@@ -45,6 +48,9 @@ const TemplateOutlineTree: React.FC<Props> = ({
   const [searchValue, setSearchValue] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingNode, setEditingNode] = useState<OutlineNode | null>(null);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     loadSections();
@@ -70,6 +76,46 @@ const TemplateOutlineTree: React.FC<Props> = ({
       message.error('加载章节失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 双击编辑章节属性
+  const handleDoubleClick = (node: OutlineNode) => {
+    if (!editable) return;
+
+    setEditingNode(node);
+    form.setFieldsValue({
+      code: node.code,
+      title: node.title,
+      description: node.description || '',
+    });
+    setEditModalVisible(true);
+  };
+
+  // 保存章节属性
+  const handleSaveNodeProperties = async () => {
+    if (!editingNode) return;
+
+    try {
+      const values = await form.validateFields();
+
+      await axios.put(
+        `/api/unified-document/templates/${templateId}/sections/${editingNode.id}`,
+        {
+          code: values.code,
+          title: values.title,
+          description: values.description,
+        }
+      );
+
+      message.success('章节属性更新成功');
+      setEditModalVisible(false);
+      setEditingNode(null);
+      form.resetFields();
+      await loadSections();
+      onSectionsChange?.();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '更新失败');
     }
   };
 
@@ -262,6 +308,7 @@ const TemplateOutlineTree: React.FC<Props> = ({
                 justifyContent: 'space-between',
                 padding: '2px 0',
               }}
+              onDoubleClick={() => handleDoubleClick(node)}
             >
               <span
                 style={{
@@ -274,34 +321,6 @@ const TemplateOutlineTree: React.FC<Props> = ({
                 title={`${node.code} ${node.title}`}
               >
                 {node.code} {node.title}
-              </span>
-              <span
-                style={{
-                  opacity: 0.6,
-                  marginLeft: 8,
-                  display: 'none',
-                }}
-                className="tree-node-actions"
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddSection(node, 'child');
-                  }}
-                />
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSection(node);
-                  }}
-                />
               </span>
             </div>
           </Dropdown>
@@ -421,6 +440,52 @@ const TemplateOutlineTree: React.FC<Props> = ({
           />
         )}
       </div>
+
+      {/* 编辑章节属性对话框 */}
+      <Modal
+        title="编辑章节属性"
+        open={editModalVisible}
+        onOk={handleSaveNodeProperties}
+        onCancel={() => {
+          setEditModalVisible(false);
+          setEditingNode(null);
+          form.resetFields();
+        }}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          autoComplete="off"
+        >
+          <Form.Item
+            label="章节编号"
+            name="code"
+            rules={[{ required: true, message: '请输入章节编号' }]}
+          >
+            <Input placeholder="如：1.2.3" />
+          </Form.Item>
+
+          <Form.Item
+            label="章节标题"
+            name="title"
+            rules={[{ required: true, message: '请输入章节标题' }]}
+          >
+            <Input placeholder="请输入章节标题" />
+          </Form.Item>
+
+          <Form.Item
+            label="章节描述"
+            name="description"
+          >
+            <TextArea
+              rows={3}
+              placeholder="章节说明（可选）"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

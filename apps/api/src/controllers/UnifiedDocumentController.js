@@ -486,6 +486,36 @@ class UnifiedDocumentController {
   }
 
   /**
+   * 获取模板的单个章节详情（含template_content）
+   */
+  async getTemplateSection(req, res) {
+    try {
+      const { templateId, sectionId } = req.params;
+
+      const section = await knex('template_sections')
+        .where({ id: sectionId, template_id: templateId })
+        .first();
+
+      if (!section) {
+        return res.status(404).json({
+          success: false,
+          message: '章节不存在',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: section,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
    * 创建模板章节
    */
   async createTemplateSection(req, res) {
