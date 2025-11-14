@@ -486,6 +486,107 @@ class UnifiedDocumentController {
   }
 
   /**
+   * 创建模板章节
+   */
+  async createTemplateSection(req, res) {
+    try {
+      const { templateId } = req.params;
+      const sectionData = req.body;
+
+      const section = await SectionService.createTemplateSection({
+        templateId,
+        ...sectionData,
+      });
+
+      res.json({
+        success: true,
+        data: section,
+        message: '章节创建成功',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 更新模板章节
+   */
+  async updateTemplateSection(req, res) {
+    try {
+      const { templateId, sectionId } = req.params;
+      const updates = req.body;
+
+      const section = await SectionService.updateTemplateSection(
+        templateId,
+        sectionId,
+        updates
+      );
+
+      res.json({
+        success: true,
+        data: section,
+        message: '章节更新成功',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 移动模板章节
+   */
+  async moveTemplateSection(req, res) {
+    try {
+      const { templateId, sectionId } = req.params;
+      const moveParams = req.body;
+
+      const section = await SectionService.moveTemplateSection(
+        templateId,
+        sectionId,
+        moveParams
+      );
+
+      res.json({
+        success: true,
+        data: section,
+        message: '章节移动成功',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 删除模板章节
+   */
+  async deleteTemplateSection(req, res) {
+    try {
+      const { templateId, sectionId } = req.params;
+
+      await SectionService.deleteTemplateSection(templateId, sectionId);
+
+      res.json({
+        success: true,
+        message: '章节删除成功',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
    * 锁定章节
    */
   async lockSection(req, res) {

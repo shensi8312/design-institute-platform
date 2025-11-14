@@ -49,6 +49,7 @@ temp/
 .DS_Store
 *.bak
 *.bak2
+.worktrees/
 
 # 清理后的忽略规则
 /apps/api/logs/
@@ -58,10 +59,17 @@ temp/
 *_test.json
 *_result.json
 venv_gemini/
-.worktrees/
 
-# Documentation and large CAD files (not needed in repo)
+# CAD files (测试文件)
+*.STEP
+*.step
+*.SLDPRT
+*.sldprt
+*.SLDASM
+*.sldasm
+*.SLDDRW
+*.slddrw
+*.STL
+*.stl
 docs/solidworks/
-docs/specs/
-docs/specs_zh/
 docs/给AI的文件/
