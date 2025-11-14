@@ -1,7 +1,7 @@
 const db = require('../apps/api/src/config/database')
 
 /**
- * Week 3 演示数据
+ * Week 3/4 演示数据
  * 242装配体 - 16个装配对
  */
 async function seed242AssemblyDemo() {
