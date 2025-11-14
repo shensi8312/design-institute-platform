@@ -49,6 +49,7 @@ temp/
 .DS_Store
 *.bak
 *.bak2
+.worktrees/
 
 # 清理后的忽略规则
 /apps/api/logs/
