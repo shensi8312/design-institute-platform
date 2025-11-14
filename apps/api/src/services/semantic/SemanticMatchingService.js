@@ -1,204 +1,111 @@
 const db = require('../../config/database')
+const MilvusService = require('../rag/MilvusService')
+const EmbeddingService = require('../rag/EmbeddingService')
 
 /**
- * Week 3: TF-IDF语义匹配服务
+ * Week 3: 语义匹配服务（基于Milvus向量库 + BGE embedding）
  *
  * 功能：
- * 1. 零件名称TF-IDF向量化（支持中英文）
- * 2. 余弦相似度计算
+ * 1. 零件名称向量化（使用BGE-Large-Zh模型）
+ * 2. 向量相似度搜索（Milvus）
  * 3. 从历史装配数据中查找语义相似的零件对
  */
 class SemanticMatchingService {
   constructor() {
-    this.cache = new Map()
-    this.CACHE_TTL = 3600 * 1000 // 1小时缓存
-    this.SIMILARITY_THRESHOLD = 0.6 // 相似度阈值
+    this.embeddingService = new EmbeddingService()
+    this.milvusService = new MilvusService()
+
+    // 装配零件向量集合
+    this.collectionName = 'assembly_parts_vectors'
+    this.dimension = 1024 // bge-large-zh-v1.5 的维度
+
+    this.SIMILARITY_THRESHOLD = 0.75 // 余弦相似度阈值（向量模型更准确，可以提高阈值）
   }
 
   /**
-   * 标准化零件名称（去除空格、统一大小写、分词）
+   * 初始化Milvus集合
+   */
+  async initCollection() {
+    try {
+      const hasCollection = await this.milvusService.client.hasCollection({
+        collection_name: this.collectionName
+      })
+
+      if (hasCollection.value) {
+        console.log(`✅ Milvus集合已存在: ${this.collectionName}`)
+        return { success: true }
+      }
+
+      // 创建装配零件向量集合
+      await this.milvusService.client.createCollection({
+        collection_name: this.collectionName,
+        fields: [
+          {
+            name: 'id',
+            data_type: 5, // Int64
+            is_primary_key: true,
+            autoID: true
+          },
+          {
+            name: 'part_name',
+            data_type: 21, // VarChar
+            max_length: 200
+          },
+          {
+            name: 'part_name_normalized',
+            data_type: 21, // VarChar
+            max_length: 200
+          },
+          {
+            name: 'category',
+            data_type: 21, // VarChar
+            max_length: 50
+          },
+          {
+            name: 'occurrence_count',
+            data_type: 5 // Int64
+          },
+          {
+            name: 'embedding',
+            data_type: 101, // FloatVector
+            dim: this.dimension
+          }
+        ],
+        enable_dynamic_field: true
+      })
+
+      // 创建向量索引
+      await this.milvusService.client.createIndex({
+        collection_name: this.collectionName,
+        field_name: 'embedding',
+        index_type: 'IVF_FLAT',
+        metric_type: 'IP', // 内积距离（适合归一化向量）
+        params: { nlist: 128 }
+      })
+
+      // 加载集合到内存
+      await this.milvusService.client.loadCollection({
+        collection_name: this.collectionName
+      })
+
+      console.log(`✅ Milvus集合创建成功: ${this.collectionName}`)
+      return { success: true }
+    } catch (error) {
+      console.error('❌ 初始化Milvus集合失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 标准化零件名称
    * @param {string} partName - 零件名称
-   * @returns {Object} { normalized, tokens }
+   * @returns {string} 标准化后的名称
    */
   normalizeName(partName) {
-    // 1. 基础清理
-    let normalized = partName
+    return partName
       .trim()
       .replace(/\s+/g, ' ')
       .toUpperCase()
-
-    // 2. 分词（支持中英文）
-    const tokens = []
-
-    // 提取英文单词和数字
-    const englishPattern = /[A-Z0-9]+/g
-    const englishMatches = normalized.match(englishPattern) || []
-    tokens.push(...englishMatches)
-
-    // 提取中文字符（2-4字词组）
-    const chinesePattern = /[\u4e00-\u9fa5]+/g
-    const chineseMatches = normalized.match(chinesePattern) || []
-    for (const match of chineseMatches) {
-      // 2字词
-      for (let i = 0; i < match.length - 1; i++) {
-        tokens.push(match.substring(i, i + 2))
-      }
-      // 3字词
-      for (let i = 0; i < match.length - 2; i++) {
-        tokens.push(match.substring(i, i + 3))
-      }
-      // 4字词
-      for (let i = 0; i < match.length - 3; i++) {
-        tokens.push(match.substring(i, i + 4))
-      }
-    }
-
-    // 提取规格信息
-    const specs = this._extractSpecifications(normalized)
-    tokens.push(...specs)
-
-    return {
-      normalized,
-      tokens: [...new Set(tokens)] // 去重
-    }
-  }
-
-  /**
-   * 提取规格信息（螺纹、法兰、管道等）
-   * @private
-   */
-  _extractSpecifications(name) {
-    const specs = []
-
-    // 螺纹规格: M3, M8x1.25, 1/2", 3/4"
-    const threadPattern = /M\d+(?:X\d+(?:\.\d+)?)?|\d+\/\d+"/gi
-    const threads = name.match(threadPattern) || []
-    specs.push(...threads.map(t => t.toUpperCase()))
-
-    // 压力等级: 150#, 300#, PN16, PN40, Class150
-    const pressurePattern = /\d+#|PN\d+|CLASS\d+/gi
-    const pressures = name.match(pressurePattern) || []
-    specs.push(...pressures.map(p => p.toUpperCase()))
-
-    // 公称直径: DN50, DN100
-    const dnPattern = /DN\d+/gi
-    const dns = name.match(dnPattern) || []
-    specs.push(...dns.map(d => d.toUpperCase()))
-
-    // 材质: SS304, SS316, A105
-    const materialPattern = /SS\d+|A\d+|[A-Z]{2}\d{3}/gi
-    const materials = name.match(materialPattern) || []
-    specs.push(...materials.map(m => m.toUpperCase()))
-
-    return specs
-  }
-
-  /**
-   * 计算词频（Term Frequency）
-   * @param {Array} tokens - 词列表
-   * @returns {Object} { term: frequency }
-   */
-  calculateTF(tokens) {
-    const tf = {}
-    const totalTokens = tokens.length
-
-    for (const token of tokens) {
-      tf[token] = (tf[token] || 0) + 1
-    }
-
-    // 归一化
-    for (const term in tf) {
-      tf[term] = tf[term] / totalTokens
-    }
-
-    return tf
-  }
-
-  /**
-   * 从数据库计算IDF（Inverse Document Frequency）
-   * @param {Array} terms - 词列表
-   * @returns {Object} { term: idf }
-   */
-  async calculateIDF(terms) {
-    // 1. 查询所有已向量化的零件
-    const allVectors = await db('part_name_vectors')
-      .select('part_name', 'term_frequencies')
-
-    const totalDocs = allVectors.length || 1
-
-    // 2. 计算每个词的文档频率
-    const docFrequency = {}
-    for (const term of terms) {
-      let count = 0
-      for (const vec of allVectors) {
-        if (vec.term_frequencies && vec.term_frequencies[term]) {
-          count++
-        }
-      }
-      docFrequency[term] = count
-    }
-
-    // 3. 计算IDF
-    const idf = {}
-    for (const term of terms) {
-      const df = docFrequency[term] || 0
-      idf[term] = Math.log((totalDocs + 1) / (df + 1)) + 1 // +1平滑
-    }
-
-    return idf
-  }
-
-  /**
-   * 计算TF-IDF向量
-   * @param {string} partName - 零件名称
-   * @returns {Object} TF-IDF向量
-   */
-  async calculateTFIDF(partName) {
-    const { normalized, tokens } = this.normalizeName(partName)
-    const tf = this.calculateTF(tokens)
-    const idf = await this.calculateIDF(Object.keys(tf))
-
-    const tfidf = {}
-    for (const term in tf) {
-      tfidf[term] = tf[term] * (idf[term] || 1)
-    }
-
-    return {
-      normalized,
-      tokens,
-      tf,
-      tfidf
-    }
-  }
-
-  /**
-   * 余弦相似度计算
-   * @param {Object} vectorA - TF-IDF向量A
-   * @param {Object} vectorB - TF-IDF向量B
-   * @returns {number} 相似度 [0, 1]
-   */
-  cosineSimilarity(vectorA, vectorB) {
-    const allTerms = new Set([
-      ...Object.keys(vectorA),
-      ...Object.keys(vectorB)
-    ])
-
-    let dotProduct = 0
-    let magnitudeA = 0
-    let magnitudeB = 0
-
-    for (const term of allTerms) {
-      const a = vectorA[term] || 0
-      const b = vectorB[term] || 0
-
-      dotProduct += a * b
-      magnitudeA += a * a
-      magnitudeB += b * b
-    }
-
-    if (magnitudeA === 0 || magnitudeB === 0) return 0
-
-    return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB))
   }
 
   /**
@@ -234,42 +141,71 @@ class SemanticMatchingService {
   }
 
   /**
-   * 向量化单个零件并存储到数据库
+   * 向量化单个零件并存储到Milvus
    * @param {string} partName - 零件名称
    * @returns {Object} 向量记录
    */
   async vectorizePart(partName) {
-    // 1. 检查是否已存在
-    const existing = await db('part_name_vectors')
-      .where({ part_name: partName })
-      .first()
+    try {
+      const normalized = this.normalizeName(partName)
+      const category = this.inferCategory(partName)
 
-    if (existing) {
-      // 更新出现次数
-      await db('part_name_vectors')
+      // 1. 检查PostgreSQL中是否已存在（用于计数）
+      let pgRecord = await db('part_name_vectors')
         .where({ part_name: partName })
-        .increment('occurrence_count', 1)
+        .first()
 
-      return existing
-    }
+      if (pgRecord) {
+        // 更新出现次数
+        await db('part_name_vectors')
+          .where({ part_name: partName })
+          .increment('occurrence_count', 1)
 
-    // 2. 计算TF-IDF向量
-    const result = await this.calculateTFIDF(partName)
-    const category = this.inferCategory(partName)
+        console.log(`  ⏭️  零件已向量化: ${partName}`)
+        return pgRecord
+      }
 
-    // 3. 存储到数据库
-    const [record] = await db('part_name_vectors')
-      .insert({
-        part_name: partName,
-        part_name_normalized: result.normalized,
-        tfidf_vector: result.tfidf,
-        term_frequencies: result.tf,
-        category,
-        occurrence_count: 1
+      // 2. 生成embedding
+      console.log(`  🔄 正在向量化: ${partName}`)
+      const embeddingResult = await this.embeddingService.generateEmbedding(partName)
+
+      if (!embeddingResult.success) {
+        throw new Error(`Embedding生成失败: ${embeddingResult.error}`)
+      }
+
+      const embedding = embeddingResult.embedding
+
+      // 3. 插入到Milvus
+      const insertResult = await this.milvusService.client.insert({
+        collection_name: this.collectionName,
+        data: [{
+          part_name: partName,
+          part_name_normalized: normalized,
+          category,
+          occurrence_count: 1,
+          embedding
+        }]
       })
-      .returning('*')
 
-    return record
+      console.log(`  ✅ Milvus插入成功: ${partName}, ID=${insertResult.insert_cnt}`)
+
+      // 4. 保存到PostgreSQL（用于计数和查询）
+      const [record] = await db('part_name_vectors')
+        .insert({
+          part_name: partName,
+          part_name_normalized: normalized,
+          tfidf_vector: {}, // 保留字段兼容性
+          term_frequencies: {},
+          category,
+          occurrence_count: 1
+        })
+        .returning('*')
+
+      return record
+    } catch (error) {
+      console.error(`❌ 向量化失败: ${partName}`, error.message)
+      throw error
+    }
   }
 
   /**
@@ -277,7 +213,12 @@ class SemanticMatchingService {
    * @param {string} datasetName - 数据集名称
    */
   async vectorizeDataset(datasetName) {
-    // 1. 查询数据集中的所有零件名称
+    console.log(`📊 开始向量化数据集: ${datasetName}`)
+
+    // 1. 确保Milvus集合已创建
+    await this.initCollection()
+
+    // 2. 查询数据集中的所有零件名称
     const dataset = await db('assembly_dataset')
       .where({ dataset_name: datasetName })
       .select('part_a', 'part_b')
@@ -288,56 +229,75 @@ class SemanticMatchingService {
       allPartNames.add(row.part_b)
     }
 
-    console.log(`📊 正在向量化 ${allPartNames.size} 个零件...`)
+    console.log(`  找到 ${allPartNames.size} 个唯一零件`)
 
-    // 2. 批量向量化
+    // 3. 批量向量化
     const results = []
     for (const partName of allPartNames) {
-      const vector = await this.vectorizePart(partName)
-      results.push(vector)
+      try {
+        const vector = await this.vectorizePart(partName)
+        results.push(vector)
+      } catch (error) {
+        console.error(`  ⚠️  跳过零件 ${partName}: ${error.message}`)
+      }
     }
 
-    console.log(`✅ 向量化完成: ${results.length} 个零件`)
+    console.log(`✅ 向量化完成: ${results.length}/${allPartNames.size} 个零件`)
 
     return results
   }
 
   /**
-   * 查找相似零件
+   * 查找相似零件（基于Milvus向量搜索）
    * @param {string} partName - 查询零件名称
    * @param {number} topK - 返回前K个最相似的
    * @returns {Array} 相似零件列表
    */
   async findSimilarParts(partName, topK = 5) {
-    // 1. 计算查询零件的TF-IDF向量
-    const queryResult = await this.calculateTFIDF(partName)
-    const queryVector = queryResult.tfidf
+    try {
+      // 1. 生成查询向量
+      const embeddingResult = await this.embeddingService.generateEmbedding(partName)
 
-    // 2. 查询所有已向量化的零件
-    const allVectors = await db('part_name_vectors')
-      .select('*')
-
-    // 3. 计算相似度
-    const similarities = []
-    for (const vec of allVectors) {
-      if (vec.part_name === partName) continue // 跳过自己
-
-      const similarity = this.cosineSimilarity(queryVector, vec.tfidf_vector)
-
-      if (similarity >= this.SIMILARITY_THRESHOLD) {
-        similarities.push({
-          part_name: vec.part_name,
-          category: vec.category,
-          similarity: parseFloat(similarity.toFixed(4)),
-          occurrence_count: vec.occurrence_count
-        })
+      if (!embeddingResult.success) {
+        throw new Error(`Embedding生成失败: ${embeddingResult.error}`)
       }
-    }
 
-    // 4. 按相似度降序排序，返回topK
-    return similarities
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, topK)
+      // 2. Milvus向量搜索
+      const searchResult = await this.milvusService.client.search({
+        collection_name: this.collectionName,
+        vectors: [embeddingResult.embedding],
+        search_params: {
+          anns_field: 'embedding',
+          topk: topK + 1, // +1因为可能包含自己
+          metric_type: 'IP',
+          params: { nprobe: 10 }
+        },
+        output_fields: ['part_name', 'category', 'occurrence_count']
+      })
+
+      if (!searchResult.results || searchResult.results.length === 0) {
+        return []
+      }
+
+      // 3. 过滤并格式化结果
+      const similarities = searchResult.results
+        .filter(hit => {
+          // 跳过自己
+          return hit.part_name !== partName && hit.score >= this.SIMILARITY_THRESHOLD
+        })
+        .map(hit => ({
+          part_name: hit.part_name,
+          category: hit.category,
+          similarity: parseFloat(hit.score.toFixed(4)),
+          occurrence_count: hit.occurrence_count
+        }))
+        .slice(0, topK)
+
+      return similarities
+    } catch (error) {
+      console.error('❌ 向量搜索失败:', error.message)
+      return []
+    }
   }
 
   /**
@@ -347,48 +307,58 @@ class SemanticMatchingService {
    * @returns {Array} 推荐的约束类型
    */
   async recommendConstraints(partA, partB) {
-    // 1. 查找与partA相似的零件
-    const similarToA = await this.findSimilarParts(partA, 3)
+    try {
+      // 1. 查找与partA相似的零件
+      const similarToA = await this.findSimilarParts(partA, 3)
 
-    // 2. 查找与partB相似的零件
-    const similarToB = await this.findSimilarParts(partB, 3)
+      // 2. 查找与partB相似的零件
+      const similarToB = await this.findSimilarParts(partB, 3)
 
-    // 3. 查询历史装配数据
-    const constraints = []
+      if (similarToA.length === 0 || similarToB.length === 0) {
+        console.log(`  ℹ️  未找到足够的相似零件 (A: ${similarToA.length}, B: ${similarToB.length})`)
+        return []
+      }
 
-    for (const simA of similarToA) {
-      for (const simB of similarToB) {
-        const history = await db('assembly_dataset')
-          .where(function() {
-            this.where({ part_a: simA.part_name, part_b: simB.part_name })
-              .orWhere({ part_a: simB.part_name, part_b: simA.part_name })
-          })
-          .select('constraint_type', 'parameters', 'confidence')
+      // 3. 查询历史装配数据
+      const constraints = []
 
-        for (const record of history) {
-          // 计算综合置信度 = 历史置信度 × 语义相似度
-          const semanticConfidence = (simA.similarity + simB.similarity) / 2
-          const combinedConfidence = record.confidence * semanticConfidence
+      for (const simA of similarToA) {
+        for (const simB of similarToB) {
+          const history = await db('assembly_dataset')
+            .where(function() {
+              this.where({ part_a: simA.part_name, part_b: simB.part_name })
+                .orWhere({ part_a: simB.part_name, part_b: simA.part_name })
+            })
+            .select('constraint_type', 'parameters', 'confidence')
 
-          constraints.push({
-            constraint_type: record.constraint_type,
-            parameters: record.parameters,
-            confidence: parseFloat(combinedConfidence.toFixed(4)),
-            reason: `基于相似零件对 (${simA.part_name} ↔ ${simB.part_name})`,
-            similarity_a: simA.similarity,
-            similarity_b: simB.similarity,
-            historical_confidence: record.confidence
-          })
+          for (const record of history) {
+            // 计算综合置信度 = 历史置信度 × 语义相似度
+            const semanticConfidence = (simA.similarity + simB.similarity) / 2
+            const combinedConfidence = record.confidence * semanticConfidence
+
+            constraints.push({
+              constraint_type: record.constraint_type,
+              parameters: record.parameters,
+              confidence: parseFloat(combinedConfidence.toFixed(4)),
+              reason: `基于相似零件对 (${simA.part_name} ↔ ${simB.part_name})`,
+              similarity_a: simA.similarity,
+              similarity_b: simB.similarity,
+              historical_confidence: record.confidence
+            })
+          }
         }
       }
+
+      // 4. 去重并按置信度排序
+      const uniqueConstraints = this._deduplicateConstraints(constraints)
+
+      return uniqueConstraints
+        .sort((a, b) => b.confidence - a.confidence)
+        .slice(0, 5)
+    } catch (error) {
+      console.error('❌ 约束推荐失败:', error.message)
+      return []
     }
-
-    // 4. 去重并按置信度排序
-    const uniqueConstraints = this._deduplicateConstraints(constraints)
-
-    return uniqueConstraints
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 5)
   }
 
   /**
