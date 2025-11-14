@@ -7,10 +7,11 @@ const ChemicalKnowledgeBase = require('../knowledge/ChemicalKnowledgeBase')
 const CollisionDetector = require('./CollisionDetector')
 const MechanicalEngineeringKB = require('../knowledge/MechanicalEngineeringKB')
 const SafetyStandardsKB = require('../knowledge/SafetyStandardsKB')
+const SemanticMatchingService = require('../semantic/SemanticMatchingService')
 
 /**
- * 装配约束推理服务
- * 完整工程级推理：规则+LLM+化学知识+机械工程+安全规范+碰撞检测
+ * 装配约束推理服务 - Week 4语义增强版
+ * 混合推理策略：规则+语义+LLM+知识库+碰撞检测
  */
 class AssemblyReasoningService {
   constructor() {
@@ -24,6 +25,17 @@ class AssemblyReasoningService {
     this.collisionDetector = new CollisionDetector()
     this.mechanicalKB = new MechanicalEngineeringKB()
     this.safetyKB = new SafetyStandardsKB()
+
+    // 🆕 Week 4: 语义匹配服务
+    this.semanticService = new SemanticMatchingService()
+
+    // Week 4推理策略配置
+    this.reasoningConfig = {
+      enableSemanticFallback: true,   // 规则失败时启用语义回退
+      semanticThreshold: 0.70,         // 语义相似度阈值
+      maxSemanticCandidates: 3,        // 最多返回3个语义推荐
+      hybridMode: 'RULE_FIRST'         // 'RULE_FIRST' | 'SEMANTIC_FIRST' | 'PARALLEL'
+    }
 
     // 初始化知识库
     this._initializeKnowledgeBases()
@@ -1733,6 +1745,168 @@ ${unknownParts.map((p, i) => `${i + 1}. 名称: ${p.name}, 规格: ${p.spec}, �
     } else {
       // 添加警告信息
       return `${baseReasoning}。⚠️ ${validation.reason}`
+    }
+  }
+
+  /**
+   * 🆕 Week 4: 混合推理策略（规则优先+语义回退）
+   * @param {Object} partA - 零件A
+   * @param {Object} partB - 零件B
+   * @param {Array} dbRules - 数据库规则
+   * @param {Array} reasoningPath - 推理路径（用于调试）
+   * @returns {Promise<Object>} 推理结果
+   */
+  async _hybridReasoningForPair(partA, partB, dbRules, reasoningPath = []) {
+    const result = {
+      constraints: [],
+      matchType: null,  // 'RULE' | 'SEMANTIC' | 'NONE'
+      confidence: 0,
+      reasoning: ''
+    }
+
+    // 步骤1: 尝试精确规则匹配
+    for (const rule of dbRules) {
+      const conditionLogic = typeof rule.condition_logic === 'string'
+        ? JSON.parse(rule.condition_logic)
+        : rule.condition_logic
+
+      if (evaluateCondition(conditionLogic, partA, partB)) {
+        const actionTemplate = typeof rule.action_template === 'string'
+          ? JSON.parse(rule.action_template)
+          : rule.action_template
+
+        const action = generateAction(actionTemplate, partA, partB)
+        const confidence = this._calculateConfidence(rule, partA, partB)
+
+        result.constraints.push({
+          ...action,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          confidence,
+          matchType: 'RULE'
+        })
+
+        result.matchType = 'RULE'
+        result.confidence = confidence
+        result.reasoning = `精确规则匹配: ${rule.name}`
+
+        reasoningPath.push(`✅ 规则匹配: ${partA.name} ↔ ${partB.name} (${rule.name}, 置信度${(confidence * 100).toFixed(1)}%)`)
+        return result
+      }
+    }
+
+    // 步骤2: 规则失败，尝试语义相似度匹配
+    if (this.reasoningConfig.enableSemanticFallback) {
+      try {
+        const partAName = partA.name || partA.partNumber
+        const partBName = partB.name || partB.partNumber
+
+        const semanticRecommendations = await this.semanticService.recommendConstraints(
+          partAName,
+          partBName
+        )
+
+        if (semanticRecommendations.length > 0) {
+          const topRecommendation = semanticRecommendations[0]
+
+          if (topRecommendation.confidence >= this.reasoningConfig.semanticThreshold) {
+            result.constraints.push({
+              type: topRecommendation.constraint_type,
+              entities: [partAName, partBName],
+              parameters: topRecommendation.parameters || {},
+              confidence: topRecommendation.confidence,
+              matchType: 'SEMANTIC',
+              reasoning: topRecommendation.reason,
+              alternatives: semanticRecommendations.slice(1, this.reasoningConfig.maxSemanticCandidates)
+            })
+
+            result.matchType = 'SEMANTIC'
+            result.confidence = topRecommendation.confidence
+            result.reasoning = `语义相似度匹配: ${topRecommendation.reason}`
+
+            reasoningPath.push(`🔍 语义匹配: ${partAName} ↔ ${partBName} (相似度${(topRecommendation.confidence * 100).toFixed(1)}%)`)
+            return result
+          }
+        }
+      } catch (semanticError) {
+        console.warn('[Week4] 语义匹配失败:', semanticError.message)
+        reasoningPath.push('⚠️ 语义匹配失败(降级到无匹配)')
+      }
+    }
+
+    // 步骤3: 语义也失败，标记为未匹配
+    result.matchType = 'NONE'
+    result.confidence = 0
+    result.reasoning = '无规则或语义匹配'
+
+    return result
+  }
+
+  /**
+   * 🆕 Week 4: 查找相似装配案例
+   * @param {string} partA - 零件A名称
+   * @param {string} partB - 零件B名称
+   * @param {Object} options - 查询选项
+   * @returns {Promise<Array>} 相似案例列表
+   */
+  async findSimilarAssemblyCases(partA, partB, options = {}) {
+    const { topK = 5, includeDetails = true } = options
+
+    try {
+      // 使用语义匹配服务查找相似零件对
+      const recommendations = await this.semanticService.recommendConstraints(partA, partB)
+
+      if (!includeDetails) {
+        return recommendations.slice(0, topK)
+      }
+
+      // 增强推荐信息：添加机械工程和安全验证
+      const enrichedRecommendations = await Promise.all(
+        recommendations.slice(0, topK).map(async (rec) => {
+          // 机械工程验证
+          let mechanicalValidation = { valid: true, reason: '未验证' }
+          try {
+            if (rec.constraint_type === 'SCREW' && rec.parameters.threadSize) {
+              mechanicalValidation = await this.mechanicalKB.validateThreadCompatibility(
+                rec.parameters.threadSize,
+                rec.parameters.threadSize
+              )
+            }
+          } catch (err) {
+            console.warn('[Week4] 机械验证失败:', err.message)
+          }
+
+          // 安全标准验证
+          let safetyValidation = { compliant: true, warnings: [] }
+          try {
+            safetyValidation = await this.safetyKB.validateAssemblyConstraint({
+              type: rec.constraint_type,
+              parameters: rec.parameters
+            })
+          } catch (err) {
+            console.warn('[Week4] 安全验证失败:', err.message)
+          }
+
+          // 综合评分
+          const overallScore = rec.confidence *
+            (mechanicalValidation.valid ? 1.0 : 0.8) *
+            (safetyValidation.compliant ? 1.0 : 0.9)
+
+          return {
+            ...rec,
+            validation: {
+              mechanical: mechanicalValidation,
+              safety: safetyValidation
+            },
+            overallScore
+          }
+        })
+      )
+
+      return enrichedRecommendations.sort((a, b) => b.overallScore - a.overallScore)
+    } catch (error) {
+      console.error('[Week4] 查找相似案例失败:', error)
+      throw new Error(`查找相似案例失败: ${error.message}`)
     }
   }
 }

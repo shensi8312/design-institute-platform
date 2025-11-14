@@ -282,4 +282,110 @@ router.get('/models/:filename', authenticate, (req, res) => {
   }
 })
 
+// ========== Week 4: 语义增强 API ==========
+
+/**
+ * 🆕 Week 4: 查找相似装配案例
+ * GET /api/assembly/similar-cases?partA=xxx&partB=yyy
+ */
+router.get('/similar-cases', authenticate, async (req, res) => {
+  try {
+    const { partA, partB, topK = 5, includeDetails = 'true' } = req.query
+
+    if (!partA || !partB) {
+      return res.status(400).json({
+        success: false,
+        error: 'partA和partB参数必填'
+      })
+    }
+
+    const AssemblyReasoningService = require('../services/assembly/AssemblyReasoningService')
+    const assemblyService = new AssemblyReasoningService()
+
+    const similarCases = await assemblyService.findSimilarAssemblyCases(
+      partA,
+      partB,
+      {
+        topK: parseInt(topK),
+        includeDetails: includeDetails === 'true'
+      }
+    )
+
+    res.json({
+      success: true,
+      data: {
+        partA,
+        partB,
+        similarCases,
+        count: similarCases.length
+      }
+    })
+  } catch (error) {
+    console.error('[API] 查找相似案例失败:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
+/**
+ * 🆕 Week 4: 配置语义回退策略
+ * POST /api/assembly/config/semantic-fallback
+ * Body: { enabled: boolean, threshold: number }
+ */
+router.post('/config/semantic-fallback', authenticate, async (req, res) => {
+  try {
+    const { enabled, threshold, maxCandidates } = req.body
+
+    const AssemblyReasoningService = require('../services/assembly/AssemblyReasoningService')
+    const assemblyService = new AssemblyReasoningService()
+
+    if (typeof enabled === 'boolean') {
+      assemblyService.reasoningConfig.enableSemanticFallback = enabled
+    }
+
+    if (typeof threshold === 'number' && threshold >= 0 && threshold <= 1) {
+      assemblyService.reasoningConfig.semanticThreshold = threshold
+    }
+
+    if (typeof maxCandidates === 'number' && maxCandidates > 0) {
+      assemblyService.reasoningConfig.maxSemanticCandidates = maxCandidates
+    }
+
+    res.json({
+      success: true,
+      config: assemblyService.reasoningConfig
+    })
+  } catch (error) {
+    console.error('[API] 配置语义回退失败:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
+/**
+ * 🆕 Week 4: 获取语义回退配置
+ * GET /api/assembly/config/semantic-fallback
+ */
+router.get('/config/semantic-fallback', authenticate, async (req, res) => {
+  try {
+    const AssemblyReasoningService = require('../services/assembly/AssemblyReasoningService')
+    const assemblyService = new AssemblyReasoningService()
+
+    res.json({
+      success: true,
+      config: assemblyService.reasoningConfig
+    })
+  } catch (error) {
+    console.error('[API] 获取配置失败:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
 module.exports = router
