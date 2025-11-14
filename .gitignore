@@ -67,6 +67,9 @@ venv_gemini/
 *.sldprt
 *.SLDASM
 *.sldasm
+*.SLDDRW
+*.slddrw
 *.STL
 *.stl
 docs/solidworks/
+docs/给AI的文件/
