@@ -3,6 +3,7 @@ import { Card, Upload, Button, Table, Space, Tag, Modal, Form, Input, InputNumbe
 import { UploadOutlined, CheckOutlined, CloseOutlined, EditOutlined, DownloadOutlined, FileExcelOutlined, UnorderedListOutlined, ThunderboltOutlined, RobotOutlined, ExperimentOutlined, DeleteOutlined } from '@ant-design/icons'
 import axios from '../utils/axios'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 
 interface AssemblyConstraint {
   id: string
@@ -44,8 +45,8 @@ const AssemblyConstraintEngine: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0)
 
   const handleInfer = async () => {
-    if (!bomFile && drawingFiles.length === 0) {
-      message.warning('请至少上传BOM文件或STEP文件')
+    if (!bomFile) {
+      message.warning('请上传BOM文件')
       return
     }
 
@@ -53,41 +54,117 @@ const AssemblyConstraintEngine: React.FC = () => {
     setCurrentStep(0)
 
     try {
-      const formData = new FormData()
-      if (bomFile) {
-        formData.append('bom', bomFile)
+      setCurrentStep(1)
+
+      const reader = new FileReader()
+      reader.onload = async (e: any) => {
+        try {
+          const data = new Uint8Array(e.target.result)
+          const workbook = XLSX.read(data, { type: 'array' })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+
+          let headerRow = 0
+          for (let i = 0; i < Math.min(3, rawData.length); i++) {
+            const keywordMatches = rawData[i].filter((cell: any) =>
+              cell && typeof cell === 'string' &&
+              /NO|PN|Part.*Name|Vendor|Brand|Q[\`']?TY|Remark/i.test(cell)
+            ).length
+            if (keywordMatches >= 3) {
+              headerRow = i + 1
+              break
+            }
+          }
+
+          const bomData = []
+          for (let i = headerRow; i < rawData.length; i++) {
+            const row = rawData[i]
+            if (!row || row.length < 3) continue
+            bomData.push({
+              partNumber: row[1] || '',
+              partName: row[2] || '',
+              quantity: parseInt(row[5]) || 1
+            })
+          }
+
+          if (bomData.length === 0) {
+            message.error('BOM文件解析失败，未找到有效数据')
+            setLoading(false)
+            setCurrentStep(0)
+            return
+          }
+
+          setCurrentStep(2)
+
+          const learnResponse = await axios.post('/api/assembly/learn-from-bom-step', {
+            bomData: bomData,
+            stepFiles: []
+          }, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 120000
+          })
+
+          setCurrentStep(3)
+
+          if (learnResponse.data.success) {
+            const learnedRules = learnResponse.data.data || []
+
+            const formattedConstraints = learnedRules.map((rule: any) => {
+              const entities = rule.condition_logic || {}
+              const part1 = entities.valve || entities.sensor || entities.pipe || entities.bolt || entities.gland || entities.part1 || ''
+              const part2 = entities.gasket || entities.support || entities.fitting || entities.nut || entities.capPlug || entities.part2 || ''
+
+              return {
+                id: rule.id || rule.rule_id,
+                type: rule.constraint_type || 'UNKNOWN',
+                entities: [part1, part2],
+                parameters: rule.action_template?.parameters || {},
+                reasoning: rule.description || rule.name,
+                confidence: parseFloat(rule.confidence_boost || rule.confidence || 0),
+                ruleId: rule.rule_id,
+                review_status: 'pending' as const
+              }
+            })
+
+            setConstraints(formattedConstraints)
+            setInferResult({
+              success: true,
+              taskId: Date.now().toString(),
+              constraints: formattedConstraints,
+              explainability: {
+                reasoning_path: [`解析BOM文件: ${bomData.length} 个零件`, `AI学习装配规则`, `生成 ${formattedConstraints.length} 个装配约束`],
+                rules_fired: learnedRules.map((r: any) => r.rule_id)
+              },
+              metadata: {
+                partsCount: bomData.length,
+                constraintsCount: formattedConstraints.length,
+                rulesApplied: formattedConstraints.length,
+                llmEnhanced: true
+              }
+            })
+
+            message.success(`✅ 学习完成！识别到 ${formattedConstraints.length} 个装配约束`)
+          } else {
+            message.error(learnResponse.data.message || '学习失败')
+          }
+        } catch (error: any) {
+          message.error(`学习失败: ${error.response?.data?.message || error.message || '请检查文件格式'}`)
+          setCurrentStep(0)
+        } finally {
+          setLoading(false)
+        }
       }
-      drawingFiles.forEach(file => {
-        formData.append('drawings', file)
-      })
 
-      // 模拟进度
-      const progressInterval = setInterval(() => {
-        setCurrentStep(prev => Math.min(prev + 1, 2))
-      }, 800)
-
-      const response = await axios.post('/api/assembly/infer', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000
-      })
-
-      clearInterval(progressInterval)
-      setCurrentStep(3)
-
-      if (response.data.success) {
-        setInferResult(response.data)
-        setConstraints(response.data.constraints.map((c: AssemblyConstraint) => ({
-          ...c,
-          review_status: 'pending'
-        })))
-        message.success(`✅ 学习完成！识别到 ${response.data.constraints.length} 个装配约束`)
-      } else {
-        message.error(response.data.message || '学习失败')
+      reader.onerror = () => {
+        message.error('文件读取失败')
+        setLoading(false)
+        setCurrentStep(0)
       }
+
+      reader.readAsArrayBuffer(bomFile)
     } catch (error: any) {
       setCurrentStep(0)
-      message.error(`学习失败: ${error.response?.data?.message || error.message || '请检查文件格式'}`)
-    } finally {
+      message.error(`学习失败: ${error.message || '请检查文件格式'}`)
       setLoading(false)
     }
   }
