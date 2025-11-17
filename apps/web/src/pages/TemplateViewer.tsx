@@ -2,7 +2,7 @@
  * 模板查看页面 - 左侧目录树，右侧章节内容（可编辑）
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Layout,
@@ -29,26 +29,72 @@ import {
   HomeOutlined,
   FileWordOutlined
 } from '@ant-design/icons';
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import axios from '../utils/axios';
 
 const { Sider, Content } = Layout;
 const { Title, Paragraph } = Typography;
 
+// 注册自定义的margin-left格式以保留Word导入的缩进
+const Parchment = Quill.import('parchment');
+const MarginLeftAttributor = new Parchment.Attributor.Style('marginLeft', 'margin-left', {
+  scope: Parchment.Scope.BLOCK,
+  whitelist: null  // 允许任意margin-left值
+});
+Quill.register(MarginLeftAttributor, true);
+
 // 富文本编辑器配置
+const applyMarginLeftToDelta = (delta: any, marginLeft: string) => {
+  if (!delta?.ops) return delta;
+
+  return {
+    ...delta,
+    ops: delta.ops.map((op: any) => {
+      const insert = op.insert;
+      const hasNewline =
+        typeof insert === 'string' && insert.includes('\n');
+
+      if (insert === '\n' || hasNewline) {
+        return {
+          ...op,
+          attributes: {
+            ...(op.attributes || {}),
+            marginLeft
+          }
+        };
+      }
+      return op;
+    })
+  };
+};
+
 const quillModules = {
   toolbar: [
-    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-    [{ 'font': [] }],
-    [{ 'size': ['small', false, 'large', 'huge'] }],
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    [{ font: [] }],
+    [{ size: ['small', false, 'large', 'huge'] }],
     ['bold', 'italic', 'underline', 'strike'],
-    [{ 'color': [] }, { 'background': [] }],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    [{ 'align': [] }],
+    [{ color: [] }, { background: [] }],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ indent: '-1' }, { indent: '+1' }],
+    [{ align: [] }],
     ['link', 'image'],
     ['clean']
-  ]
+  ],
+  clipboard: {
+    matchers: [
+      [
+        'p',
+        (node: HTMLElement, delta: any) => {
+          const marginLeft = node?.style?.marginLeft;
+          if (!marginLeft) return delta;
+
+          return applyMarginLeftToDelta(delta, marginLeft);
+        }
+      ]
+    ]
+  }
 };
 
 const quillFormats = [
@@ -56,8 +102,10 @@ const quillFormats = [
   'bold', 'italic', 'underline', 'strike',
   'color', 'background',
   'list', 'bullet',
+  'indent',
   'align',
-  'link', 'image'
+  'link', 'image',
+  'marginLeft'  // 添加自定义格式以保留margin-left
 ];
 
 interface TemplateSection {
@@ -66,6 +114,7 @@ interface TemplateSection {
   title: string;
   level: number;
   description?: string;
+  template_content?: string;  // Word导入的HTML内容
   parent_code: string | null;
   sort_order: number;
   children?: TemplateSection[];
@@ -84,6 +133,7 @@ interface Template {
 const TemplateViewer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const quillRef = useRef<ReactQuill | null>(null);
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [sections, setSections] = useState<TemplateSection[]>([]);
@@ -195,7 +245,8 @@ const TemplateViewer: React.FC = () => {
   // 进入编辑模式
   const handleEdit = () => {
     if (!selectedSection) return;
-    setEditContent(selectedSection.description || '');
+    // 优先使用template_content（Word导入的HTML），如果没有则使用description
+    setEditContent(selectedSection.template_content || selectedSection.description || '');
     setIsEditing(true);
   };
 
@@ -204,6 +255,30 @@ const TemplateViewer: React.FC = () => {
     setIsEditing(false);
     setEditContent('');
   };
+
+  const applyStoredMargins = useCallback((html: string) => {
+    if (typeof window === 'undefined' || !quillRef.current || !html) return;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const margins = Array.from(doc.querySelectorAll('p')).map(p => p.style.marginLeft || '');
+    const editor = quillRef.current.getEditor();
+    const blocks = editor.root.querySelectorAll('p');
+    blocks.forEach((block, index) => {
+      const margin = margins[index];
+      if (margin) {
+        (block as HTMLElement).style.marginLeft = margin;
+      } else {
+        (block as HTMLElement).style.marginLeft = '';
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isEditing && editContent) {
+      setTimeout(() => applyStoredMargins(editContent), 0);
+    }
+  }, [isEditing, editContent, applyStoredMargins]);
 
   // 保存编辑
   const handleSave = async () => {
@@ -440,9 +515,13 @@ const TemplateViewer: React.FC = () => {
                       </Space>
                     </div>
                     <ReactQuill
+                      ref={quillRef}
                       theme="snow"
                       value={editContent}
-                      onChange={setEditContent}
+                      onChange={(value) => {
+                        setEditContent(value);
+                        applyStoredMargins(value);
+                      }}
                       modules={quillModules}
                       formats={quillFormats}
                       style={{
@@ -452,7 +531,7 @@ const TemplateViewer: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  selectedSection.description ? (
+                  (selectedSection.template_content || selectedSection.description) ? (
                     <div>
                       <div style={{ marginBottom: 12, color: '#8c8c8c', fontSize: 12 }}>
                         点击右上角"编辑模板内容"按钮可以修改此章节
@@ -467,7 +546,7 @@ const TemplateViewer: React.FC = () => {
                           lineHeight: '1.8',
                           border: '1px solid #f0f0f0'
                         }}
-                        dangerouslySetInnerHTML={{ __html: selectedSection.description }}
+                        dangerouslySetInnerHTML={{ __html: selectedSection.template_content || selectedSection.description || '' }}
                       />
                     </div>
                   ) : (

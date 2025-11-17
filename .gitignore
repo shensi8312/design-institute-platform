@@ -73,3 +73,9 @@ venv_gemini/
 *.stl
 docs/solidworks/
 docs/给AI的文件/
+# 大文件和数据不提交到git
+docs/specs_zh/
+docs/solidworks/
+volumes/
+*.sql.backup
+*.dump

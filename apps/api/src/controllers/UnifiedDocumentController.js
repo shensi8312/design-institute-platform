@@ -10,6 +10,9 @@ const RevisionTrackingService = require('../services/document/RevisionTrackingSe
 const SectionApprovalService = require('../services/document/SectionApprovalService');
 const ArchiveService = require('../services/document/ArchiveService');
 const DocumentAIService = require('../services/document/DocumentAIService');
+const knex = require('../config/database');
+const JSZip = require('jszip');
+const htmlToDocx = require('html-to-docx');
 
 class UnifiedDocumentController {
   // ============================================
@@ -46,7 +49,7 @@ class UnifiedDocumentController {
    */
   async createDocument(req, res) {
     try {
-      const { title, documentType, projectId, templateId } = req.body;
+      const { title, documentType, projectId, templateId, sectionCodes } = req.body;
       const userId = req.user.id;
 
       const document = await UnifiedDocumentService.createDocument({
@@ -55,6 +58,8 @@ class UnifiedDocumentController {
         projectId,
         templateId,
         createdBy: userId,
+        selectedSectionCodes: sectionCodes,
+        userContext: req.user,
       });
 
       res.json({
@@ -158,6 +163,91 @@ class UnifiedDocumentController {
         data: documents,
       });
     } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async importDocumentTemplate(req, res) {
+    try {
+      const { id } = req.params;
+      const { templateId, sectionCodes } = req.body;
+
+      if (!templateId) {
+        return res.status(400).json({
+          success: false,
+          message: '请选择要导入的模板',
+        });
+      }
+
+      const inserted = await UnifiedDocumentService.importTemplateSections(
+        id,
+        templateId,
+        sectionCodes,
+        req.user
+      );
+
+      res.json({
+        success: true,
+        data: {
+          imported: inserted.length,
+        },
+        message: inserted.length > 0 ? '模板章节导入成功' : '没有新的章节导入',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async exportEditedSections(req, res) {
+    try {
+      const { id } = req.params;
+      const document = await UnifiedDocumentService.getDocument(id);
+
+      const sections = await knex('document_sections')
+        .where({ document_id: id })
+        .orderBy('sort_order');
+
+      const editedSections = sections.filter(section =>
+        this._hasSectionContent(section.content)
+      );
+
+      if (!editedSections.length) {
+        return res.status(400).json({
+          success: false,
+          message: '暂无已编辑的章节可导出',
+        });
+      }
+
+      const zip = new JSZip();
+      for (const section of editedSections) {
+        const html = section.content || '';
+        const buffer = await htmlToDocx(html, null, {
+          table: { row: { cantSplit: true } },
+        });
+        const safeName = this._sanitizeFilename(
+          `${section.section_code || ''} ${section.title}`.trim() || section.title
+        );
+        zip.file(`${safeName || 'section'}.docx`, buffer);
+      }
+
+      const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const filename = this._sanitizeFilename(`${document.title}-edited-sections.zip`);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+      );
+      res.setHeader('Content-Length', zipBuffer.length);
+      res.send(zipBuffer);
+    } catch (error) {
+      console.error('[exportEditedSections] 错误:', error);
       res.status(500).json({
         success: false,
         message: error.message,
@@ -278,19 +368,43 @@ class UnifiedDocumentController {
   }
 
   /**
-   * 获取模板章节结构
+   * 获取模板章节结构（支持懒加载）
    */
   async getTemplateSections(req, res) {
     try {
       const { id } = req.params;
+      const { parentCode } = req.query;
 
-      const sections = await TemplateService.getTemplateSections(id);
+      const sections = await TemplateService.getTemplateSections(id, parentCode || null);
 
       res.json({
         success: true,
         data: sections,
       });
     } catch (error) {
+      console.error('[getTemplateSections] 错误:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async getTemplateSectionTree(req, res) {
+    try {
+      const { id } = req.params;
+      const { editableOnly } = req.query;
+
+      const tree = await TemplateService.getTemplateSectionsTree(id, {
+        onlyEditableForUser: editableOnly === 'true' ? req.user : null,
+      });
+
+      res.json({
+        success: true,
+        data: tree,
+      });
+    } catch (error) {
+      console.error('[getTemplateSectionTree] 错误:', error);
       res.status(500).json({
         success: false,
         message: error.message,
@@ -476,6 +590,36 @@ class UnifiedDocumentController {
       res.json({
         success: true,
         message: '章节删除成功',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 获取模板的单个章节详情（含template_content）
+   */
+  async getTemplateSection(req, res) {
+    try {
+      const { templateId, sectionId } = req.params;
+
+      const section = await knex('template_sections')
+        .where({ id: sectionId, template_id: templateId })
+        .first();
+
+      if (!section) {
+        return res.status(404).json({
+          success: false,
+          message: '章节不存在',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: section,
       });
     } catch (error) {
       res.status(500).json({
@@ -1024,7 +1168,6 @@ class UnifiedDocumentController {
       }
 
       const DocxParserService = require('../services/document/DocxParserService');
-      const knex = require('../config/database');
       const path = require('path');
       const results = [];
 
@@ -1112,6 +1255,25 @@ class UnifiedDocumentController {
         message: error.message,
       });
     }
+  }
+
+  _stripHtml(content = '') {
+    if (!content) return '';
+    return content
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ');
+  }
+
+  _hasSectionContent(content) {
+    return this._stripHtml(content).trim().length > 0;
+  }
+
+  _sanitizeFilename(name = 'section') {
+    return (name || 'section')
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/\s+/g, '_')
+      .substring(0, 120) || 'section';
   }
 }
 

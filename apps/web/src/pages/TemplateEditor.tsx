@@ -4,7 +4,7 @@
  * 右侧：章节属性编辑表单
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Layout,
@@ -16,9 +16,8 @@ import {
   Spin,
   Form,
   Input,
-  Switch,
-  Divider,
-  Empty
+  Empty,
+  Select
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -29,12 +28,81 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import TemplateOutlineTree from '../components/TemplateOutlineTree';
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import axios from '../utils/axios';
 
 const { Sider, Content } = Layout;
-const { TextArea } = Input;
+
+// 注册自定义的margin-left格式以保留Word导入的缩进
+const Parchment = Quill.import('parchment');
+const MarginLeftAttributor = new Parchment.Attributor.Style('marginLeft', 'margin-left', {
+  scope: Parchment.Scope.BLOCK,
+  whitelist: null  // 允许任意margin-left值
+});
+Quill.register(MarginLeftAttributor, true);
+
+// ReactQuill配置
+const applyMarginLeftToDelta = (delta: any, marginLeft: string) => {
+  if (!delta?.ops) return delta;
+
+  return {
+    ...delta,
+    ops: delta.ops.map((op: any) => {
+      const insert = op.insert;
+      const hasNewline =
+        typeof insert === 'string' && insert.includes('\n');
+
+      if (insert === '\n' || hasNewline) {
+        return {
+          ...op,
+          attributes: {
+            ...(op.attributes || {}),
+            marginLeft
+          }
+        };
+      }
+      return op;
+    })
+  };
+};
+
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ color: [] }, { background: [] }],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ indent: '-1' }, { indent: '+1' }],
+    [{ align: [] }],
+    ['link', 'image'],
+    ['clean']
+  ],
+  clipboard: {
+    matchers: [
+      [
+        'p',
+        (node: HTMLElement, delta: any) => {
+          const marginLeft = node?.style?.marginLeft;
+          if (!marginLeft) return delta;
+
+          return applyMarginLeftToDelta(delta, marginLeft);
+        }
+      ]
+    ]
+  }
+};
+
+const quillFormats = [
+  'header',
+  'bold', 'italic', 'underline', 'strike',
+  'color', 'background',
+  'list', 'bullet',
+  'indent',
+  'align',
+  'link', 'image',
+  'marginLeft'  // 添加自定义格式以保留margin-left
+];
 
 interface Template {
   id: string;
@@ -54,18 +122,27 @@ interface TemplateSection {
   is_required?: boolean;
   is_editable?: boolean;
   sort_order: number;
+  editable_user_ids?: string[];
+}
+
+interface UserOption {
+  label: string;
+  value: string;
 }
 
 const TemplateEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const quillRef = useRef<ReactQuill | null>(null);
 
   const [collapsed, setCollapsed] = useState(false);
   const [template, setTemplate] = useState<Template | null>(null);
   const [selectedSection, setSelectedSection] = useState<TemplateSection | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userOptions, setUserOptions] = useState<UserOption[]>([]);
+  const [userLoading, setUserLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -73,20 +150,60 @@ const TemplateEditor: React.FC = () => {
     }
   }, [id]);
 
+  const applyStoredMargins = useCallback((html: string) => {
+    if (typeof window === 'undefined' || !quillRef.current) return;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html || '<p></p>', 'text/html');
+    const margins = Array.from(doc.querySelectorAll('p')).map(p => p.style.marginLeft || '');
+
+    const editor = quillRef.current.getEditor();
+    const blocks = editor.root.querySelectorAll('p');
+    blocks.forEach((block, index) => {
+      const margin = margins[index] || '';
+      (block as HTMLElement).style.marginLeft = margin;
+    });
+  }, []);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setUserLoading(true);
+      const response = await axios.get('/api/users', {
+        params: { page: 1, pageSize: 200 },
+      });
+      const list = response.data?.data?.list || response.data?.data || [];
+      const options = Array.isArray(list)
+        ? list.map((user: any) => ({
+            label: user.name || user.real_name || user.username,
+            value: user.id,
+          }))
+        : [];
+      setUserOptions(options);
+    } catch (error) {
+      console.error('加载用户失败', error);
+    } finally {
+      setUserLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
   useEffect(() => {
     if (selectedSection) {
+      console.log('[TemplateEditor] Setting form value:', selectedSection.template_content);
       form.setFieldsValue({
-        code: selectedSection.code,
-        title: selectedSection.title,
-        description: selectedSection.description || '',
-        template_content: selectedSection.template_content || '',
-        is_required: selectedSection.is_required ?? true,
-        is_editable: selectedSection.is_editable ?? true,
+        template_content: selectedSection.template_content ?? '',
+        editable_user_ids: selectedSection.editable_user_ids || [],
       });
+      setTimeout(() => {
+        applyStoredMargins(selectedSection.template_content ?? '');
+      }, 0);
     } else {
       form.resetFields();
     }
-  }, [selectedSection, form]);
+  }, [selectedSection, form, applyStoredMargins]);
 
   // 加载模板信息
   const loadTemplate = async () => {
@@ -105,10 +222,16 @@ const TemplateEditor: React.FC = () => {
 
   // 处理章节选中
   const handleSelectSection = (section: TemplateSection) => {
+    console.log('[TemplateEditor] handleSelectSection called with:', {
+      code: section.code,
+      title: section.title,
+      has_template_content: section.template_content !== undefined,
+      template_content: section.template_content
+    });
     setSelectedSection(section);
   };
 
-  // 保存章节
+  // 保存章节模板内容
   const handleSaveSection = async () => {
     if (!selectedSection || !id) return;
 
@@ -119,21 +242,18 @@ const TemplateEditor: React.FC = () => {
       await axios.put(
         `/api/unified-document/templates/${id}/sections/${selectedSection.id}`,
         {
-          code: values.code,
-          title: values.title,
-          description: values.description,
           template_content: values.template_content,
-          is_required: values.is_required,
-          is_editable: values.is_editable,
+          editable_user_ids: values.editable_user_ids || [],
         }
       );
 
-      message.success('章节保存成功');
+      message.success('模板内容保存成功');
 
       // 更新本地状态
       setSelectedSection({
         ...selectedSection,
-        ...values,
+        template_content: values.template_content,
+        editable_user_ids: values.editable_user_ids || [],
       });
     } catch (error: any) {
       message.error(error.response?.data?.message || '保存失败');
@@ -224,7 +344,7 @@ const TemplateEditor: React.FC = () => {
                 <Tag color="blue">可拖拽排序</Tag>
               </Space>
               <div style={{ marginTop: 4, fontSize: 12, color: '#8c8c8c' }}>
-                <InfoCircleOutlined /> 点击章节编辑，右键添加/删除，拖拽调整顺序
+                <InfoCircleOutlined /> 左侧：双击编辑章节属性，右键添加/删除，拖拽调整顺序
               </div>
             </div>
           </Space>
@@ -243,7 +363,7 @@ const TemplateEditor: React.FC = () => {
                 onClick={handleSaveSection}
                 loading={saving}
               >
-                保存章节
+                保存模板内容
               </Button>
             )}
           </Space>
@@ -281,7 +401,7 @@ const TemplateEditor: React.FC = () => {
               }}>
                 📖 模板目录
                 <div style={{ fontSize: 12, color: '#999', marginTop: 4, fontWeight: 'normal' }}>
-                  点击编辑，右键操作，拖拽排序
+                  双击编辑属性，右键操作，拖拽排序
                 </div>
               </div>
 
@@ -319,75 +439,53 @@ const TemplateEditor: React.FC = () => {
                 padding: 24,
                 overflow: 'auto'
               }}>
-                <h3 style={{ marginBottom: 24 }}>编辑章节</h3>
+                <div style={{ marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>
+                    {selectedSection.code} {selectedSection.title}
+                  </h3>
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+                    编辑此章节的模板内容
+                  </div>
+                </div>
+
                 <Form
                   form={form}
                   layout="vertical"
                   autoComplete="off"
                 >
                   <Form.Item
-                    label="章节编号"
-                    name="code"
-                    rules={[{ required: true, message: '请输入章节编号' }]}
-                    extra="可手动修改编号，格式如：1, 1.1, 1.2.3"
-                  >
-                    <Input placeholder="1.2.3" />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="章节标题"
-                    name="title"
-                    rules={[{ required: true, message: '请输入章节标题' }]}
-                  >
-                    <Input placeholder="请输入章节标题" />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="章节描述"
-                    name="description"
-                  >
-                    <TextArea
-                      rows={3}
-                      placeholder="章节说明（可选）"
-                    />
-                  </Form.Item>
-
-                  <Divider />
-
-                  <Form.Item
                     label="模板内容"
                     name="template_content"
                     extra="此内容将作为模板，在创建文档时预填充到对应章节"
                   >
                     <ReactQuill
+                      ref={quillRef}
                       theme="snow"
+                      modules={quillModules}
+                      formats={quillFormats}
+                      value={selectedSection.template_content ?? ''}
+                      onChange={(content) => {
+                        form.setFieldsValue({ template_content: content });
+                        applyStoredMargins(content);
+                      }}
                       placeholder="请输入章节模板内容..."
-                      style={{ height: 300, marginBottom: 50 }}
+                      style={{ height: 500, marginBottom: 50 }}
                     />
                   </Form.Item>
-
-                  <Divider />
-
-                  <div style={{ marginBottom: 24 }}>
-                    <h4>章节约束</h4>
-                  </div>
-
                   <Form.Item
-                    label="是否必填章节"
-                    name="is_required"
-                    valuePropName="checked"
-                    extra="必填章节要求用户必须填写内容"
+                    label="允许编辑的成员"
+                    name="editable_user_ids"
+                    extra="不选择则默认所有成员都可以编辑此章节"
                   >
-                    <Switch />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="是否允许用户编辑"
-                    name="is_editable"
-                    valuePropName="checked"
-                    extra="不可编辑的章节将锁定，用户无法修改"
-                  >
-                    <Switch />
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      showSearch
+                      placeholder="选择可编辑成员"
+                      options={userOptions}
+                      loading={userLoading}
+                      optionFilterProp="label"
+                    />
                   </Form.Item>
                 </Form>
               </div>

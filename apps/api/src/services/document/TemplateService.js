@@ -14,6 +14,73 @@ class TemplateService {
     this.domainConfig = DocumentDomainConfig;
     this.llmService = UnifiedLLMService;
     this.masterFormatMatcher = MasterFormatMatcher;
+    this._hasEditableUsersColumnPromise = null;
+  }
+
+  async _supportsEditableUsersColumn() {
+    if (!this._hasEditableUsersColumnPromise) {
+      this._hasEditableUsersColumnPromise = knex.schema
+        .hasColumn('template_sections', 'editable_user_ids')
+        .catch(() => false);
+    }
+    return this._hasEditableUsersColumnPromise;
+  }
+
+  async _selectTemplateSectionRows(builder) {
+    const baseFields = [
+      'id',
+      'template_id',
+      'code',
+      'title',
+      'level',
+      'parent_code',
+      'description',
+      'template_content',
+      'metadata',
+      'sort_order',
+      'is_required',
+      'is_editable'
+    ];
+
+    const supportsEditableUsers = await this._supportsEditableUsersColumn();
+    const fields = supportsEditableUsers
+      ? [...baseFields, 'editable_user_ids']
+      : baseFields;
+
+    return builder.clone().select(fields);
+  }
+
+  _parseJsonArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  _normalizeSectionRow(row) {
+    const metadata = typeof row.metadata === 'string'
+      ? (row.metadata ? JSON.parse(row.metadata) : {})
+      : row.metadata || {};
+
+    return {
+      ...row,
+      metadata,
+      editable_user_ids: this._parseJsonArray(row.editable_user_ids || []),
+    };
+  }
+
+  _canUserEditSection(section, user) {
+    if (!section.is_editable) return false;
+    const allowedUsers = section.editable_user_ids || [];
+    if (allowedUsers.length === 0) return true;
+    return !!user && allowedUsers.includes(user.id);
+  }
+
+  _filterSectionsForUser(sections, user) {
+    return sections.filter(section => this._canUserEditSection(section, user));
   }
 
   /**
@@ -312,15 +379,27 @@ class TemplateService {
   }
 
   /**
-   * 获取模板的章节结构（用于DocumentEditor）
+   * 获取模板的章节结构（懒加载）
    * @param {string} templateId
+   * @param {string|null} parentCode - 父节点code，null表示获取根节点
    * @returns {Promise<Array>}
    */
-  async getTemplateSections(templateId) {
-    // 获取所有章节并转换code为数字进行排序
-    const sections = await knex('template_sections')
-      .where({ template_id: templateId })
-      .orderBy('sort_order');
+  async getTemplateSections(templateId, parentCode = null) {
+    // 只获取直接子节点，不递归
+    const rawSections = await this._selectTemplateSectionRows(
+      knex('template_sections')
+        .where({ template_id: templateId })
+        .andWhere(function() {
+          if (parentCode === null) {
+            this.whereNull('parent_code');
+          } else {
+            this.where('parent_code', parentCode);
+          }
+        })
+        .orderBy('sort_order')
+    );
+
+    const sections = rawSections.map(section => this._normalizeSectionRow(section));
 
     // 按code的数字值重新排序（去除空格后作为数字比较）
     sections.sort((a, b) => {
@@ -329,7 +408,104 @@ class TemplateService {
       return codeA - codeB;
     });
 
-    return this.buildSectionTree(sections);
+    // 检查每个节点是否有子节点，并确保返回所有字段
+    const result = [];
+    for (const section of sections) {
+      const hasChildren = await knex('template_sections')
+        .where({ template_id: templateId, parent_code: section.code })
+        .count('* as count')
+        .first();
+
+      result.push({
+        id: section.id,
+        code: section.code,
+        title: section.title,
+        level: section.level,
+        sort_order: section.sort_order,
+        parent_code: section.parent_code,
+        description: section.description,
+        template_content: section.template_content,
+        is_required: section.is_required,
+        is_editable: section.is_editable,
+        editable_user_ids: section.editable_user_ids,
+        metadata: section.metadata,
+        isLeaf: parseInt(hasChildren.count) === 0
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取完整章节树
+   * @param {string} templateId
+   * @param {Object} options
+   * @param {Object|null} options.onlyEditableForUser - 仅返回当前用户可编辑的章节
+   */
+  async getTemplateSectionsTree(templateId, { onlyEditableForUser = null } = {}) {
+    const rows = await this._selectTemplateSectionRows(
+      knex('template_sections')
+        .where({ template_id: templateId })
+        .orderBy('level')
+        .orderBy('sort_order')
+    );
+
+    const normalized = rows.map(row => this._normalizeSectionRow(row));
+    const scopedSections = onlyEditableForUser
+      ? this._filterSectionsForUser(normalized, onlyEditableForUser)
+      : normalized;
+
+    const nodeMap = new Map();
+    const roots = [];
+
+    scopedSections.forEach(section => {
+      nodeMap.set(section.code, {
+        id: section.id,
+        code: section.code,
+        title: section.title,
+        level: section.level,
+        parent_code: section.parent_code,
+        sort_order: section.sort_order,
+        template_content: section.template_content,
+        is_editable: section.is_editable,
+        editable_user_ids: section.editable_user_ids,
+        metadata: section.metadata,
+        children: []
+      });
+    });
+
+    scopedSections.forEach(section => {
+      const node = nodeMap.get(section.code);
+      if (section.parent_code && nodeMap.has(section.parent_code)) {
+        nodeMap.get(section.parent_code).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    const sortChildren = (nodes = []) => {
+      nodes.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      nodes.forEach(child => sortChildren(child.children));
+    };
+
+    sortChildren(roots);
+    return roots;
+  }
+
+  async getAllowedSectionCodes(templateId, user) {
+    const supportsEditableUsers = await this._supportsEditableUsersColumn();
+    const columns = ['code', 'is_editable'];
+    if (supportsEditableUsers) {
+      columns.push('editable_user_ids');
+    }
+
+    const rows = await knex('template_sections')
+      .select(columns)
+      .where({ template_id: templateId });
+
+    const normalized = rows.map(row => this._normalizeSectionRow(row));
+    const scoped = this._filterSectionsForUser(normalized, user);
+    return scoped.map(section => section.code);
   }
 
   /**
@@ -441,6 +617,38 @@ class TemplateService {
    * @private
    */
   buildSectionTree(sections, parentCode = null) {
+    // 性能优化：如果所有记录的 parent_code 都是 null，使用优化的构建方式
+    if (parentCode === null && sections.length > 1000) {
+      const hasParentCode = sections.some(s => s.parent_code !== null && s.parent_code !== '');
+      if (!hasParentCode) {
+        // 使用 Map 来优化父子关系查找
+        const childrenMap = new Map();
+
+        // 预先计算每个节点的子节点
+        sections.forEach(section => {
+          const parent = this.inferParentCode(section.code);
+          if (!childrenMap.has(parent)) {
+            childrenMap.set(parent, []);
+          }
+          childrenMap.get(parent).push(section);
+        });
+
+        // 递归构建树
+        const buildTree = (code) => {
+          const children = childrenMap.get(code) || [];
+          return children.map(s => ({
+            key: s.code,
+            title: `${s.code} ${s.title}`,
+            ...s,
+            children: buildTree(s.code)
+          }));
+        };
+
+        return buildTree(null);
+      }
+    }
+
+    // 原有逻辑（使用 parent_code 字段）
     return sections
       .filter(s => s.parent_code === parentCode)
       .map(s => ({
@@ -449,6 +657,40 @@ class TemplateService {
         ...s,
         children: this.buildSectionTree(sections, s.code)
       }));
+  }
+
+  /**
+   * 根据 code 推断 parent_code
+   * 例如：'00 24 13.13' -> '00 24 13'
+   * @private
+   */
+  inferParentCode(code) {
+    if (!code) return null;
+
+    const trimmed = code.trim();
+
+    // 如果包含小数点，父节点是去掉最后一个小数点部分
+    if (trimmed.includes('.')) {
+      const parts = trimmed.split('.');
+      parts.pop();
+      return parts.join('.');
+    }
+
+    // 如果是空格分隔的编号，父节点是去掉最后一个部分
+    const parts = trimmed.split(/\s+/);
+    if (parts.length > 1) {
+      // 检查最后一个部分是否为 '00'
+      if (parts[parts.length - 1] === '00') {
+        parts.pop();
+        return parts.length > 0 ? parts.join(' ') : null;
+      }
+      // 否则去掉最后一个非零部分
+      parts.pop();
+      return parts.length > 0 ? parts.join(' ') : null;
+    }
+
+    // 顶级节点
+    return null;
   }
 }
 

@@ -3,7 +3,7 @@
  * 支持SPEC、合同、招投标三种文档类型
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -18,7 +18,10 @@ import {
   Menu,
   Row,
   Col,
-  Tooltip
+  Tooltip,
+  Tree,
+  Empty,
+  Spin
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -29,8 +32,9 @@ import {
   FileTextOutlined,
   FileProtectOutlined,
   FileSearchOutlined,
-  InboxOutlined
+  CloudDownloadOutlined
 } from '@ant-design/icons';
+import type { DataNode } from 'antd/es/tree';
 import { useNavigate } from 'react-router-dom';
 import axios from '../utils/axios';
 
@@ -47,6 +51,37 @@ interface Document {
   created_by: string;
 }
 
+interface TemplateSectionNode {
+  code: string;
+  title: string;
+  children?: TemplateSectionNode[];
+}
+
+const convertToTreeData = (nodes: TemplateSectionNode[]): DataNode[] =>
+  nodes.map((node) => ({
+    key: node.code,
+    title: (
+      <span>
+        <span style={{ color: '#1890ff', fontFamily: 'monospace', marginRight: 8 }}>
+          {node.code}
+        </span>
+        {node.title}
+      </span>
+    ),
+    children: node.children && node.children.length > 0 ? convertToTreeData(node.children) : undefined,
+  }));
+
+const flattenCodes = (nodes: TemplateSectionNode[]): string[] => {
+  let result: string[] = [];
+  nodes.forEach((node) => {
+    result.push(node.code);
+    if (node.children && node.children.length > 0) {
+      result = result.concat(flattenCodes(node.children));
+    }
+  });
+  return result;
+};
+
 const DocumentManagement: React.FC = () => {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>('spec');
@@ -55,6 +90,11 @@ const DocumentManagement: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [sectionTreeData, setSectionTreeData] = useState<DataNode[]>([]);
+  const [sectionCodes, setSectionCodes] = useState<string[]>([]);
+  const [sectionLoading, setSectionLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   // 文档类型配置
@@ -120,6 +160,34 @@ const DocumentManagement: React.FC = () => {
     }
   };
 
+  const loadTemplateSectionTree = useCallback(async (templateId: string) => {
+    setSectionLoading(true);
+    try {
+      const response = await axios.get(`/api/unified-document/templates/${templateId}/sections-tree`, {
+        params: { editableOnly: true }
+      });
+
+      if (response.data.success) {
+        const treeNodes: TemplateSectionNode[] = response.data.data || [];
+        setSectionTreeData(convertToTreeData(treeNodes));
+        const defaultCodes = flattenCodes(treeNodes);
+        setSectionCodes(defaultCodes);
+        form.setFieldsValue({ sectionCodes: defaultCodes });
+        if (defaultCodes.length === 0) {
+          message.warning('该模板暂无可导入的章节');
+        }
+      }
+    } catch (error: any) {
+      console.error('加载模板章节失败', error);
+      message.error(error.response?.data?.message || '加载模板章节失败');
+      setSectionTreeData([]);
+      setSectionCodes([]);
+      form.setFieldsValue({ sectionCodes: [] });
+    } finally {
+      setSectionLoading(false);
+    }
+  }, [form]);
+
   // 加载项目列表
   const loadProjects = async () => {
     try {
@@ -135,6 +203,23 @@ const DocumentManagement: React.FC = () => {
     }
   };
 
+  const handleTemplateChange = (value?: string) => {
+    const templateId = value || null;
+    setSectionTreeData([]);
+    setSectionCodes([]);
+    form.setFieldsValue({ sectionCodes: [] });
+    if (templateId) {
+      loadTemplateSectionTree(templateId);
+    }
+  };
+
+  const handleSectionCheck = (keys: any) => {
+    const checked = Array.isArray(keys) ? keys : (keys.checked || []);
+    const normalized = (checked as React.Key[]).map(String);
+    setSectionCodes(normalized);
+    form.setFieldsValue({ sectionCodes: normalized });
+  };
+
   useEffect(() => {
     loadDocuments(selectedType);
     loadTemplates(selectedType);
@@ -144,15 +229,36 @@ const DocumentManagement: React.FC = () => {
   // 创建文档
   const handleCreateDocument = async (values: any) => {
     try {
-      const response = await axios.post('/api/unified-document/documents', {
-        ...values,
+      if (values.templateId && (!values.sectionCodes || values.sectionCodes.length === 0)) {
+        message.error('请选择至少一个要导入的章节');
+        return;
+      }
+
+      setCreating(true);
+
+      const payload: any = {
+        title: values.title,
+        projectId: values.projectId,
+        templateId: values.templateId,
         documentType: selectedType,
-      });
+      };
+
+      if (!payload.templateId) {
+        delete payload.templateId;
+      }
+
+      if (values.templateId && values.sectionCodes && values.sectionCodes.length > 0) {
+        payload.sectionCodes = values.sectionCodes;
+      }
+
+      const response = await axios.post('/api/unified-document/documents', payload);
 
       if (response.data.success) {
         message.success('文档创建成功');
         setCreateModalVisible(false);
         form.resetFields();
+        setSectionTreeData([]);
+        setSectionCodes([]);
         loadDocuments(selectedType);
 
         // 跳转到编辑页面
@@ -160,6 +266,8 @@ const DocumentManagement: React.FC = () => {
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '创建文档失败');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -191,6 +299,50 @@ const DocumentManagement: React.FC = () => {
   // 查看文档
   const handleViewDocument = (id: string) => {
     navigate(`/documents/${id}/view`);
+  };
+
+  const handleExportEditedSections = async (doc: Document) => {
+    try {
+      setExportingId(doc.id);
+      const response = await axios.get(`/api/unified-document/documents/${doc.id}/export-edited`, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const disposition = response.headers['content-disposition'];
+      let filename = `${doc.title}-edited-sections.zip`;
+
+      if (disposition) {
+        const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+        if (match) {
+          filename = decodeURIComponent(match[1] || match[2]);
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      message.success('已导出编辑过的章节');
+    } catch (error: any) {
+      let errMsg = error.response?.data?.message || '导出失败';
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const parsed = JSON.parse(text);
+          errMsg = parsed.message || errMsg;
+        } catch (e) {
+          // ignore parse error
+        }
+      }
+      message.error(errMsg);
+    } finally {
+      setExportingId(null);
+    }
   };
 
   // 表格列配置
@@ -256,6 +408,15 @@ const DocumentManagement: React.FC = () => {
               disabled={record.status === 'archived'}
             />
           </Tooltip>
+          <Tooltip title="导出已编辑章节">
+            <Button
+              type="link"
+              size="small"
+              icon={<CloudDownloadOutlined />}
+              loading={exportingId === record.id}
+              onClick={() => handleExportEditedSections(record)}
+            />
+          </Tooltip>
           <Tooltip title="删除">
             <Button
               type="link"
@@ -306,7 +467,12 @@ const DocumentManagement: React.FC = () => {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => setCreateModalVisible(true)}
+                onClick={() => {
+                  form.resetFields();
+                  setSectionTreeData([]);
+                  setSectionCodes([]);
+                  setCreateModalVisible(true);
+                }}
               >
                 创建文档
               </Button>
@@ -334,14 +500,18 @@ const DocumentManagement: React.FC = () => {
         onCancel={() => {
           setCreateModalVisible(false);
           form.resetFields();
+          setSectionTreeData([]);
+          setSectionCodes([]);
         }}
         onOk={() => form.submit()}
+        confirmLoading={creating}
         width={600}
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleCreateDocument}
+          initialValues={{ sectionCodes: [] }}
         >
           <Form.Item
             name="title"
@@ -369,13 +539,55 @@ const DocumentManagement: React.FC = () => {
             name="templateId"
             label="使用模板（可选）"
           >
-            <Select placeholder="选择模板或从空白开始" allowClear>
+            <Select
+              placeholder="选择模板或从空白开始"
+              allowClear
+              onChange={(value) => handleTemplateChange(value)}
+              onClear={() => handleTemplateChange(undefined)}
+            >
               {templates.map((template) => (
                 <Option key={template.id} value={template.id}>
                   {template.name}
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.templateId !== cur.templateId}>
+            {({ getFieldValue }) => {
+              if (!getFieldValue('templateId')) {
+                return null;
+              }
+              return (
+                <Form.Item
+                  name="sectionCodes"
+                  label="选择要导入的章节"
+                  rules={[{ required: true, message: '请选择至少一个章节' }]}
+                >
+                  <div style={{ border: '1px solid #f0f0f0', borderRadius: 4, padding: 12, maxHeight: 320, overflow: 'auto' }}>
+                    {sectionLoading ? (
+                      <div style={{ textAlign: 'center', padding: 24 }}>
+                        <Spin size="small" />
+                      </div>
+                    ) : sectionTreeData.length > 0 ? (
+                      <Tree
+                        checkable
+                        selectable={false}
+                        checkedKeys={sectionCodes}
+                        onCheck={handleSectionCheck}
+                        treeData={sectionTreeData}
+                        defaultExpandAll
+                      />
+                    ) : (
+                      <Empty
+                        description="当前模板无可导入章节"
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      />
+                    )}
+                  </div>
+                </Form.Item>
+              );
+            }}
           </Form.Item>
         </Form>
       </Modal>
