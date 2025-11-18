@@ -77,6 +77,9 @@ const DocumentPreview = lazy(() => import('../pages/DocumentPreview'));
 const UnifiedRuleManagement = lazy(() => import('../pages/UnifiedRuleManagement'));
 const RuleLearningConfig = lazy(() => import('../pages/RuleLearningConfig'));
 
+// V3.0 项目工作台
+const ProjectWorkspace = lazy(() => import('../pages/ProjectWorkspace'));
+
 // 加载组件
 const PageLoading = () => (
   <div style={{
@@ -240,6 +243,10 @@ const router = createBrowserRouter([
       {
         path: 'projects/assign',
         element: <LazyWrapper Component={ProjectManagement} />
+      },
+      {
+        path: 'projects/:projectId',
+        element: <LazyWrapper Component={ProjectWorkspace} />
       },
       // 知识管理 - 新整合的路由
       {
