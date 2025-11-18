@@ -48,33 +48,10 @@ class ContractReviewService {
       const jobData = {
         id: jobId,
         document_id: documentId,
-        job_type: 'contract_review',
+        project_id: document.project_id,
         status: 'pending',
-        options: JSON.stringify(options),
         created_at: new Date(),
         updated_at: new Date()
-      }
-
-      // 检查 ai_review_jobs 表是否存在
-      const hasTable = await knex.schema.hasTable('ai_review_jobs')
-      if (!hasTable) {
-        // 创建表
-        await knex.schema.createTable('ai_review_jobs', (table) => {
-          table.string('id', 50).primary()
-          table.string('document_id', 50).notNullable()
-          table.string('job_type', 50).notNullable()
-          table.string('status', 20).defaultTo('pending') // pending, processing, completed, failed
-          table.text('options')
-          table.jsonb('result')
-          table.text('error_message')
-          table.timestamp('created_at').defaultTo(knex.fn.now())
-          table.timestamp('updated_at').defaultTo(knex.fn.now())
-          table.timestamp('completed_at')
-
-          table.foreign('document_id').references('project_documents.id').onDelete('CASCADE')
-          table.index('document_id')
-          table.index('status')
-        })
       }
 
       await knex('ai_review_jobs').insert(jobData)
