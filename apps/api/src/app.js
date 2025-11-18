@@ -73,6 +73,7 @@ const pidRoutes = require('./routes/pid')  // PID识别
 const unifiedDocumentRoutes = require('./routes/unifiedDocument')  // 统一文档系统
 const drawingComparisonRoutes = require('./routes/drawingComparison')  // 图纸比对
 const onlyofficeRoutes = require('./routes/onlyoffice')  // OnlyOffice在线编辑器
+const aiReviewRoutes = require('./routes/aiReview')  // V3.0 AI审查
 const { initDigitalSiteWebSocket } = require('./services/system/DigitalSiteWebSocket')
 const digitalSiteIngestor = require('./services/system/DigitalSiteIngestor')
 
@@ -192,6 +193,7 @@ app.use(`${API_PREFIX}/pid`, pidRoutes)  // PID识别
 app.use(`${API_PREFIX}/unified-document`, unifiedDocumentRoutes)  // 统一文档系统
 app.use(`${API_PREFIX}/drawing-comparison`, drawingComparisonRoutes)  // 图纸比对
 app.use(`${API_PREFIX}/onlyoffice`, onlyofficeRoutes)  // OnlyOffice在线编辑器
+app.use(`${API_PREFIX}/ai-review`, aiReviewRoutes)  // V3.0 AI审查
 
 // 节点管理（统一的节点系统）
 const nodesRouter = require('./routes/nodes')
