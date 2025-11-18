@@ -1,4 +1,5 @@
 const ProjectService = require('../services/system/ProjectService')
+const ProjectDocumentService = require('../services/project/ProjectDocumentService')
 
 /**
  * 项目Controller - 重构版
@@ -7,6 +8,7 @@ const ProjectService = require('../services/system/ProjectService')
 class ProjectController {
   constructor() {
     this.projectService = new ProjectService()
+    this.documentService = new ProjectDocumentService()
   }
 
   /**
@@ -498,19 +500,19 @@ class ProjectController {
   async search(req, res) {
     try {
       const { keyword, ...otherParams } = req.query
-      
+
       if (!keyword) {
         return res.status(400).json({
           success: false,
           message: '搜索关键词不能为空'
         })
       }
-      
+
       const result = await this.projectService.getList({
         search: keyword,
         ...otherParams
       })
-      
+
       if (result.success) {
         res.json(result)
       } else {
@@ -521,6 +523,183 @@ class ProjectController {
       res.status(500).json({
         success: false,
         message: '搜索项目失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 上传项目文档
+   */
+  async uploadDocument(req, res) {
+    try {
+      const { id: projectId } = req.params
+      const file = req.file
+      const metadata = req.body
+
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: '请上传文件'
+        })
+      }
+
+      const result = await this.documentService.uploadDocument(
+        projectId,
+        file,
+        metadata,
+        req.user?.id
+      )
+
+      if (result.success) {
+        res.status(201).json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('上传项目文档失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '上传文档失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 获取项目文档列表
+   */
+  async getDocuments(req, res) {
+    try {
+      const { id: projectId } = req.params
+      const filters = {
+        document_type: req.query.type,
+        document_subtype: req.query.subtype,
+        status: req.query.status,
+        responsible_department: req.query.department
+      }
+
+      // 移除空值
+      Object.keys(filters).forEach(key => {
+        if (!filters[key]) delete filters[key]
+      })
+
+      const result = await this.documentService.getDocuments(projectId, filters)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('获取项目文档列表失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取文档列表失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 获取文档详情
+   */
+  async getDocumentDetail(req, res) {
+    try {
+      const { documentId } = req.params
+
+      const result = await this.documentService.getDocumentDetail(documentId)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(404).json(result)
+      }
+    } catch (error) {
+      console.error('获取文档详情失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取文档详情失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 更新文档信息
+   */
+  async updateDocument(req, res) {
+    try {
+      const { documentId } = req.params
+      const updates = req.body
+
+      const result = await this.documentService.updateDocument(
+        documentId,
+        updates,
+        req.user?.id
+      )
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('更新文档失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '更新文档失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 删除文档
+   */
+  async deleteDocument(req, res) {
+    try {
+      const { documentId } = req.params
+
+      const result = await this.documentService.deleteDocument(
+        documentId,
+        req.user?.id
+      )
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('删除文档失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '删除文档失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
+   * V3.0 - 获取项目文档统计
+   */
+  async getDocumentStatistics(req, res) {
+    try {
+      const { id: projectId } = req.params
+
+      const result = await this.documentService.getDocumentStatistics(projectId)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(400).json(result)
+      }
+    } catch (error) {
+      console.error('获取文档统计失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取文档统计失败',
         error: error.message
       })
     }
@@ -554,5 +733,12 @@ module.exports = {
   restore: (req, res) => controller.updateStatus(req, res),  // 使用updateStatus实现
   getMembers: (req, res) => controller.manageTeam(req, res),  // 使用manageTeam实现
   addMember: (req, res) => controller.manageTeam(req, res),  // 使用manageTeam实现
-  removeMember: (req, res) => controller.manageTeam(req, res)  // 使用manageTeam实现
+  removeMember: (req, res) => controller.manageTeam(req, res),  // 使用manageTeam实现
+  // V3.0 文档管理
+  uploadDocument: (req, res) => controller.uploadDocument(req, res),
+  getDocuments: (req, res) => controller.getDocuments(req, res),
+  getDocumentDetail: (req, res) => controller.getDocumentDetail(req, res),
+  updateDocument: (req, res) => controller.updateDocument(req, res),
+  deleteDocument: (req, res) => controller.deleteDocument(req, res),
+  getDocumentStatistics: (req, res) => controller.getDocumentStatistics(req, res)
 }
