@@ -27,6 +27,10 @@ class LLMService {
       return response.data.choices[0].message.content
     } catch (error) {
       console.error('LLM调用失败:', error.message)
+      if (error.response) {
+        console.error('响应状态:', error.response.status)
+        console.error('响应数据:', JSON.stringify(error.response.data))
+      }
       throw error
     }
   }

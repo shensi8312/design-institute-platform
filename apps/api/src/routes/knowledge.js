@@ -260,22 +260,107 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
         const parsedHistory = typeof history === 'string' ? JSON.parse(history) : history;
 
         if (Array.isArray(parsedHistory)) {
-          // 只保留最近10轮对话
-          conversationHistory = parsedHistory.slice(-10).map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          }));
-          console.log(`[智能问答] 加载了 ${conversationHistory.length} 条历史对话`);
+          // 只保留最近10轮对话，并过滤掉错误消息
+          const errorPatterns = ['fetch failed', 'AI服务暂时不可用', '服务不可用', '请求失败', 'ECONNREFUSED'];
+          conversationHistory = parsedHistory
+            .slice(-10)
+            .filter(msg => {
+              // 过滤掉包含错误信息的消息
+              if (msg.role === 'assistant' && msg.content) {
+                return !errorPatterns.some(pattern => msg.content.includes(pattern));
+              }
+              return true;
+            })
+            .map(msg => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+          console.log(`[智能问答] 加载了 ${conversationHistory.length} 条历史对话（已过滤错误消息）`);
         }
       } catch (e) {
         console.warn('[智能问答] 历史对话解析失败:', e.message);
       }
     }
 
-    // 构建上下文信息
+    // ========== 智能上下文管理 ==========
+    // 模型 max_model_len=4096，预算分配：
+    // - 系统提示（固定）: ~800 tokens
+    // - 向量上下文: ~1000 tokens (2000 chars)
+    // - 文件上下文: ~400 tokens (800 chars)
+    // - 历史对话: ~600 tokens (1200 chars)
+    // - 用户问题: ~200 tokens
+    // - 输出预留: ~1000 tokens
+    const BUDGET = {
+      vectorContext: 2000,  // 字符数
+      fileContext: 800,
+      history: 1200
+    };
+
+    // 1. 按段落截断向量上下文（保留完整段落，优先保留前面的高相关度内容）
+    let truncatedVectorContext = '';
+    if (vectorContext) {
+      const chunks = vectorContext.split(/\n\n+/); // 按段落分割
+      let totalChars = 0;
+      const keptChunks = [];
+
+      for (const chunk of chunks) {
+        if (totalChars + chunk.length > BUDGET.vectorContext) {
+          if (keptChunks.length === 0) {
+            // 至少保留第一段的部分内容
+            keptChunks.push(chunk.substring(0, BUDGET.vectorContext) + '...');
+          }
+          break;
+        }
+        keptChunks.push(chunk);
+        totalChars += chunk.length;
+      }
+
+      truncatedVectorContext = keptChunks.join('\n\n');
+      if (vectorContext.length > totalChars) {
+        console.log(`[智能问答] 向量上下文按段落截断: ${chunks.length}段 -> ${keptChunks.length}段`);
+      }
+    }
+
+    // 2. 按段落截断文件上下文
+    let truncatedFileContext = '';
+    if (fileContext) {
+      const chunks = fileContext.split(/\n\n+/);
+      let totalChars = 0;
+      const keptChunks = [];
+
+      for (const chunk of chunks) {
+        if (totalChars + chunk.length > BUDGET.fileContext) break;
+        keptChunks.push(chunk);
+        totalChars += chunk.length;
+      }
+
+      truncatedFileContext = keptChunks.join('\n\n');
+      if (fileContext.length > totalChars) {
+        console.log(`[智能问答] 文件上下文按段落截断: ${chunks.length}段 -> ${keptChunks.length}段`);
+      }
+    }
+
+    // 3. 智能截断历史对话（优先保留最近的完整问答对）
+    let totalHistoryChars = conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
+    if (totalHistoryChars > BUDGET.history) {
+      // 从旧的开始删除，但保留至少最近2条（一问一答）
+      while (conversationHistory.length > 2 && totalHistoryChars > BUDGET.history) {
+        const removed = conversationHistory.shift();
+        totalHistoryChars -= removed.content.length;
+      }
+
+      // 如果还是超了，截断最早的消息内容
+      if (totalHistoryChars > BUDGET.history && conversationHistory.length > 0) {
+        const excess = totalHistoryChars - BUDGET.history;
+        conversationHistory[0].content = conversationHistory[0].content.substring(excess) + '...';
+      }
+
+      console.log(`[智能问答] 历史对话已优化，保留 ${conversationHistory.length} 条，约 ${totalHistoryChars} 字符`);
+    }
+
     let systemContext = '';
-    if (vectorContext || fileContext) {
-      systemContext = `以下是相关参考资料：\n${vectorContext}${fileContext}\n`;
+    if (truncatedVectorContext || truncatedFileContext) {
+      systemContext = `以下是相关参考资料：\n${truncatedVectorContext}${truncatedFileContext}\n`;
     }
 
     // 构建系统提示词
@@ -359,13 +444,135 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
       }
     ];
 
+    // ========== 预估token数，超限则提前分片 ==========
+    // 估算方法：中文字符约0.5-0.7 token，英文单词约1 token
+    // 简化为：总字符数 / 2 ≈ token数
+    const estimateTotalChars = chatMessages.reduce((sum, msg) => sum + msg.content.length, 0);
+    const estimatedTokens = Math.ceil(estimateTotalChars / 2);
+    const MAX_INPUT_TOKENS = 2800; // 模型4096限制，留1300给输出
+
+    if (estimatedTokens > MAX_INPUT_TOKENS) {
+      console.log(`[智能问答] 预估token超限: ${estimatedTokens} > ${MAX_INPUT_TOKENS}，启动分片处理`);
+
+      // 智能分片处理
+      const CHUNK_SIZE = 1200; // 每片约600 tokens
+      const chunks = [];
+      const paragraphs = question.split(/\n+/);
+      let currentChunk = '';
+
+      for (const para of paragraphs) {
+        if (currentChunk.length + para.length > CHUNK_SIZE) {
+          if (currentChunk) chunks.push(currentChunk);
+          if (para.length > CHUNK_SIZE) {
+            for (let i = 0; i < para.length; i += CHUNK_SIZE) {
+              chunks.push(para.substring(i, i + CHUNK_SIZE));
+            }
+            currentChunk = '';
+          } else {
+            currentChunk = para;
+          }
+        } else {
+          currentChunk += (currentChunk ? '\n' : '') + para;
+        }
+      }
+      if (currentChunk) chunks.push(currentChunk);
+
+      // 确保至少有分片
+      if (chunks.length === 0) {
+        for (let i = 0; i < question.length; i += CHUNK_SIZE) {
+          chunks.push(question.substring(i, i + CHUNK_SIZE));
+        }
+      }
+
+      console.log(`[智能问答] 分片数量: ${chunks.length}`);
+
+      // 逐片处理（对用户透明）
+      let allResults = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPrompt = `请分析以下内容：\n${chunks[i]}`;
+        let chunkResult = '';
+
+        try {
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '简洁专业地分析内容。' },
+            { role: 'user', content: chunkPrompt }
+          ], {
+            temperature: 0.3,
+            max_tokens: 500
+          }, async (chunk) => {
+            if (chunk.content) {
+              chunkResult += chunk.content;
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+
+          allResults.push(chunkResult.substring(0, 250));
+
+          if (i < chunks.length - 1) {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: '\n\n'
+            })}\n\n`);
+            if (res.flush) res.flush();
+          }
+        } catch (chunkError) {
+          console.error(`[智能问答] 分片${i + 1}处理失败:`, chunkError.message);
+        }
+      }
+
+      // 生成综合总结
+      if (allResults.length > 1) {
+        try {
+          res.write(`data: ${JSON.stringify({
+            type: 'chunk',
+            content: '\n\n**综合结论：**'
+          })}\n\n`);
+          if (res.flush) res.flush();
+
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '根据各部分分析给出简洁综合结论。' },
+            { role: 'user', content: `请综合以下分析给出最终结论：\n${allResults.join('\n')}` }
+          ], {
+            temperature: 0.3,
+            max_tokens: 300
+          }, async (chunk) => {
+            if (chunk.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+        } catch (summaryError) {
+          console.error('[智能问答] 汇总失败:', summaryError.message);
+        }
+      }
+
+      // 发送完成标记
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        sources: []
+      })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // ========== 正常流程（未超限）==========
     // 流式响应 - 过滤工具调用标记
     let fullResponse = '';
     let displayBuffer = ''; // 用于发送给用户的内容
     let isInToolCall = false;
+
+    try {
     await UnifiedLLMService.generateStreamWithMessages(chatMessages, {
       temperature: 0.3,  // 降低温度提高稳定性
-      max_tokens: 4000   // 增加token限制
+      max_tokens: 1500   // 模型max_model_len=4096，留更多空间给输入
     }, async (chunk) => {
       if (chunk.content) {
         fullResponse += chunk.content;
@@ -417,6 +624,143 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
         if (res.flush) res.flush();
       }
     });
+    } catch (llmError) {
+      console.error('[智能问答] LLM调用失败:', llmError.message);
+
+      // 检测是否为 token 超限错误（400错误），如果是则自动分片处理
+      if (llmError.message.includes('400') || llmError.message.includes('too long') || llmError.message.includes('exceed')) {
+        console.log('[智能问答] 检测到token超限，自动启用分片处理');
+
+        // 智能分片处理 - 将问题分成多个小块
+        const CHUNK_SIZE = 1500;
+        const chunks = [];
+
+        // 按段落或固定长度分片
+        const paragraphs = question.split(/\n\n+/);
+        let currentChunk = '';
+
+        for (const para of paragraphs) {
+          if (currentChunk.length + para.length > CHUNK_SIZE) {
+            if (currentChunk) chunks.push(currentChunk);
+            if (para.length > CHUNK_SIZE) {
+              // 强制切分超长段落
+              for (let i = 0; i < para.length; i += CHUNK_SIZE) {
+                chunks.push(para.substring(i, i + CHUNK_SIZE));
+              }
+              currentChunk = '';
+            } else {
+              currentChunk = para;
+            }
+          } else {
+            currentChunk += (currentChunk ? '\n' : '') + para;
+          }
+        }
+        if (currentChunk) chunks.push(currentChunk);
+
+        // 如果只有一个chunk，强制按字符切分
+        if (chunks.length === 1 && question.length > CHUNK_SIZE) {
+          chunks.length = 0;
+          for (let i = 0; i < question.length; i += CHUNK_SIZE) {
+            chunks.push(question.substring(i, i + CHUNK_SIZE));
+          }
+        }
+
+        console.log(`[智能问答] 分片数量: ${chunks.length}`);
+
+        // 逐片处理（透明处理，不提示用户）
+        const UnifiedLLMService = require('../services/llm/UnifiedLLMService');
+        let allResults = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunkPrompt = `请分析以下内容（第${i + 1}/${chunks.length}部分）：\n${chunks[i]}`;
+          let chunkResult = '';
+
+          try {
+            await UnifiedLLMService.generateStreamWithMessages([
+              { role: 'system', content: '简洁分析内容，直接回答。' },
+              { role: 'user', content: chunkPrompt }
+            ], {
+              temperature: 0.3,
+              max_tokens: 400
+            }, async (chunk) => {
+              if (chunk.content) {
+                chunkResult += chunk.content;
+                res.write(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  content: chunk.content
+                })}\n\n`);
+                if (res.flush) res.flush();
+              }
+            });
+
+            allResults.push(chunkResult.substring(0, 200));
+
+            // 分片之间添加分隔
+            if (i < chunks.length - 1) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: '\n\n'
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          } catch (chunkError) {
+            console.error(`[智能问答] 分片${i + 1}处理失败:`, chunkError.message);
+          }
+        }
+
+        // 生成综合总结
+        if (allResults.length > 1) {
+          try {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: '\n\n**总结：**'
+            })}\n\n`);
+            if (res.flush) res.flush();
+
+            await UnifiedLLMService.generateStreamWithMessages([
+              { role: 'system', content: '根据以上分析给出简洁总结。' },
+              { role: 'user', content: `综合以上各部分分析，给出结论：\n${allResults.join('\n')}` }
+            ], {
+              temperature: 0.3,
+              max_tokens: 200
+            }, async (chunk) => {
+              if (chunk.content) {
+                res.write(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  content: chunk.content
+                })}\n\n`);
+                if (res.flush) res.flush();
+              }
+            });
+          } catch (summaryError) {
+            console.error('[智能问答] 汇总失败:', summaryError.message);
+          }
+        }
+
+        // 发送完成标记
+        res.write(`data: ${JSON.stringify({
+          type: 'done',
+          sources: sources
+        })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // 其他错误正常提示
+      res.write(`data: ${JSON.stringify({
+        type: 'chunk',
+        content: `抱歉，AI服务暂时不可用：${llmError.message}`
+      })}\n\n`);
+      if (res.flush) res.flush();
+
+      // 发送完成标记
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        sources: sources
+      })}\n\n`);
+      res.end();
+      return;
+    }
 
     // 发送剩余内容
     if (displayBuffer && !isInToolCall) {
@@ -446,7 +790,8 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
             content: args.content,
             template: args.template || 'general', // ✅ 默认使用general
             author: req.user.name,
-            metadata: { project_name: args.project_name }
+            metadata: { project_name: args.project_name },
+            enableHighlight: args.enableHighlight !== false // 默认启用高亮
           });
 
           // 上传到MinIO

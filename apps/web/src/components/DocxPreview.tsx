@@ -4,12 +4,14 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Spin } from 'antd';
+import { Alert, Spin, Button } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { renderAsync } from 'docx-preview';
 
 interface DocxPreviewProps {
   fileUrl: string;
   height?: string;
+  fileName?: string;
 }
 
 const DocxPreview: React.FC<DocxPreviewProps> = ({ fileUrl, height = '100%' }) => {
@@ -41,6 +43,11 @@ const DocxPreview: React.FC<DocxPreviewProps> = ({ fileUrl, height = '100%' }) =
           return;
         }
 
+        // 验证文件是否为空
+        if (buffer.byteLength === 0) {
+          throw new Error('文档文件为空');
+        }
+
         // 清空之前的渲染内容
         containerRef.current.innerHTML = '';
 
@@ -52,7 +59,20 @@ const DocxPreview: React.FC<DocxPreviewProps> = ({ fileUrl, height = '100%' }) =
         });
       } catch (err: any) {
         console.error('❌ Word 预览失败:', err);
-        setError(err.message || '无法渲染 Word 文档');
+
+        // 更详细的错误信息
+        let errorMessage = '无法渲染 Word 文档';
+        if (err.message.includes('body')) {
+          errorMessage = 'Word 文档格式不受支持或文件已损坏。建议下载后使用 Microsoft Word 或 WPS 打开。';
+        } else if (err.message.includes('404')) {
+          errorMessage = '文档文件不存在';
+        } else if (err.message.includes('403')) {
+          errorMessage = '没有权限访问该文档';
+        } else {
+          errorMessage = err.message || errorMessage;
+        }
+
+        setError(errorMessage);
       } finally {
         if (!canceled) {
           setLoading(false);

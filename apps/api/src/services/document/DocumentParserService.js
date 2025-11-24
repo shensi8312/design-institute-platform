@@ -1,5 +1,6 @@
 const pdfParse = require('pdf-parse')
 const mammoth = require('mammoth')
+const WordExtractor = require('word-extractor')
 const JSZip = require('jszip')
 const axios = require('axios')
 const FormData = require('form-data')
@@ -29,9 +30,11 @@ class DocumentParserService {
         return await this.parsePDF(buffer, fileName)
       } else if (
         fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        fileName.endsWith('.docx')
+        fileType === 'application/msword' ||
+        fileName.endsWith('.docx') ||
+        fileName.endsWith('.doc')
       ) {
-        return await this.parseWord(buffer)
+        return await this.parseWord(buffer, fileName)
       } else if (
         fileType.includes('powerpoint') ||
         fileType.includes('ms-powerpoint') ||
@@ -245,14 +248,123 @@ class DocumentParserService {
   /**
    * 解析Word文档
    */
-  async parseWord(buffer) {
+  async parseWord(buffer, fileName) {
     try {
-      const result = await mammoth.extractRawText({ buffer })
-      return result.value || ''
+      console.log(`[DocumentParser] 开始解析Word文档: ${fileName}`)
+
+      // 检查是否为旧版.doc格式
+      const isOldDoc = fileName.endsWith('.doc') && !fileName.endsWith('.docx')
+
+      if (isOldDoc) {
+        console.log(`[DocumentParser] 检测到旧版.doc格式，使用word-extractor处理`)
+
+        try {
+          const extractor = new WordExtractor()
+          const extracted = await extractor.extract(buffer)
+          const text = extracted.getBody()
+
+          if (!text || text.length < 50) {
+            throw new Error('文本提取失败或内容过短')
+          }
+
+          // 将文本分段作为简单的结构
+          const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 20)
+          const sections = paragraphs.map((para, i) => ({
+            code: `para_${i}`,
+            title: para.substring(0, 50) + (para.length > 50 ? '...' : ''),
+            content: para.trim(),
+            level: 1,
+            numbering: `${i + 1}`
+          }))
+
+          console.log(`[DocumentParser] .doc文件提取完成: ${text.length}字符, ${sections.length}个段落`)
+
+          return {
+            text: text,
+            structure: { sections },
+            metadata: {
+              parser: 'word-extractor',
+              format: 'plain',
+              warning: '旧版.doc格式，文档结构可能不完整'
+            }
+          }
+        } catch (docError) {
+          console.error(`[DocumentParser] .doc文件处理失败:`, docError.message)
+          throw new Error(`旧版.doc文件解析失败: ${docError.message}`)
+        }
+      }
+
+      // 处理.docx文件
+      const result = await mammoth.convertToHtml({ buffer })
+
+      if (result.messages && result.messages.length > 0) {
+        console.log(`[DocumentParser] Mammoth警告:`, result.messages)
+      }
+
+      const html = result.value || ''
+      console.log(`[DocumentParser] Word解析完成: ${html.length}字符 (HTML)`)
+
+      // 返回结构化数据，包含HTML和纯文本
+      return {
+        text: html.replace(/<[^>]+>/g, ''), // 纯文本版本
+        structure: {
+          sections: this.parseHTMLToSections(html) // 解析为章节结构
+        },
+        metadata: {
+          parser: 'mammoth',
+          format: 'html'
+        }
+      }
     } catch (error) {
       console.error('Word解析失败:', error)
-      return ''
+      // 返回错误信息
+      throw error
     }
+  }
+
+  /**
+   * 将HTML解析为章节结构
+   */
+  parseHTMLToSections(html) {
+    const sections = []
+
+    // 简单的HTML解析：提取标题和段落
+    const headingMatches = [...html.matchAll(/<h([1-6])>(.*?)<\/h\1>/g)]
+    const paragraphMatches = [...html.matchAll(/<p>(.*?)<\/p>/g)]
+
+    let sectionIndex = 0
+    headingMatches.forEach((match, i) => {
+      const level = parseInt(match[1])
+      const title = match[2].replace(/<[^>]+>/g, '').trim()
+
+      if (title) {
+        sections.push({
+          code: `section_${sectionIndex++}`,
+          title: title,
+          content: '', // 内容在下面的段落中
+          level: level,
+          numbering: `${i + 1}`
+        })
+      }
+    })
+
+    // 如果没有标题，就把段落当作章节
+    if (sections.length === 0 && paragraphMatches.length > 0) {
+      paragraphMatches.forEach((match, i) => {
+        const content = match[1].replace(/<[^>]+>/g, '').trim()
+        if (content.length > 20) { // 只保留有意义的段落
+          sections.push({
+            code: `para_${i}`,
+            title: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+            content: content,
+            level: 1,
+            numbering: `${i + 1}`
+          })
+        }
+      })
+    }
+
+    return sections
   }
 
   /**

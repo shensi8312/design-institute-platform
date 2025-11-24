@@ -5,10 +5,17 @@ const axios = require('axios')
  */
 class EmbeddingService {
   constructor() {
-    // Embedding API配置
-    this.apiBase = process.env.EMBEDDING_API_BASE || 'http://10.10.18.2:8000/v1'
+    // Embedding API配置 - 必须从环境变量读取
+    if (!process.env.EMBEDDING_API_BASE) {
+      throw new Error('环境变量 EMBEDDING_API_BASE 未配置')
+    }
+    if (!process.env.EMBEDDING_MODEL) {
+      throw new Error('环境变量 EMBEDDING_MODEL 未配置')
+    }
+
+    this.apiBase = process.env.EMBEDDING_API_BASE
     this.apiKey = process.env.EMBEDDING_API_KEY || 'sk-test'
-    this.embeddingModel = process.env.EMBEDDING_MODEL || 'bge-large-zh-v1.5'
+    this.embeddingModel = process.env.EMBEDDING_MODEL
 
     // 分块参数
     this.chunkSize = 500 // 每块字符数

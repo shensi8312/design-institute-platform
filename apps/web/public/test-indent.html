@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>测试缩进</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .test-container {
+      background: #f0f0f0;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>缩进测试页面</h1>
+
+  <h2>1. 直接HTML（应该有缩进）</h2>
+  <div class="test-container">
+    <p>无缩进文本</p>
+    <p style="margin-left: 120px;">120px缩进 - 1.1 项目手册</p>
+    <p style="margin-left: 160px;">160px缩进 - A. 项目名称</p>
+    <p style="margin-left: 160px;">160px缩进 - B. 业主名称</p>
+  </div>
+
+  <h2>2. 从API加载的数据</h2>
+  <div id="api-data" class="test-container" style="background: #fff; border: 1px solid #ddd;">
+    加载中...
+  </div>
+
+  <h2>3. 原始HTML代码</h2>
+  <pre id="raw-html" style="background: #eee; padding: 10px; overflow-x: auto;"></pre>
+
+  <script>
+    async function testAPI() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3000/api/unified-document/templates/ac3dfd08-6875-479b-90db-244b9f840798/sections?parentCode=00%2000%2000', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          document.getElementById('api-data').innerHTML = `<p style="color: red;">API错误: ${response.status}</p>`;
+          return;
+        }
+
+        const result = await response.json();
+        const section = result.data.find(s => s.code === '00 01 01');
+
+        if (!section) {
+          document.getElementById('api-data').innerHTML = '<p style="color: red;">未找到 00 01 01 章节</p>';
+          return;
+        }
+
+        // 显示内容
+        const content = section.template_content || section.description || '无内容';
+        document.getElementById('api-data').innerHTML = content;
+
+        // 显示原始HTML
+        document.getElementById('raw-html').textContent = content;
+
+      } catch (error) {
+        document.getElementById('api-data').innerHTML = `<p style="color: red;">错误: ${error.message}</p>`;
+      }
+    }
+
+    // 页面加载时执行
+    testAPI();
+  </script>
+</body>
+</html>

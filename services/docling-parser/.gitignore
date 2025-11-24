@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# 临时文件
+*.tmp
+*.log
+/tmp/
+
+# 输出文件
+output/

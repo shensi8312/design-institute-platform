@@ -115,6 +115,10 @@ class MenuRepository extends BaseRepository {
       .where('menus.visible', true)
       .where('menus.status', 'active')
       .where(function() {
+        // 排除按钮类型，只返回菜单和目录类型
+        this.whereIn('menus.type', ['menu', 'directory']).orWhereNull('menus.type')
+      })
+      .where(function() {
         if (hasWildcard) {
           // 拥有 '*' 权限，返回所有菜单（不需要额外条件）
           // 不添加任何where条件，相当于返回所有visible且active的菜单
@@ -168,6 +172,10 @@ class MenuRepository extends BaseRepository {
     const menus = await this.db('menus')
       .where('menus.visible', true)
       .where('menus.status', 'active')
+      .where(function() {
+        // 排除按钮类型，只返回菜单和目录类型
+        this.whereIn('menus.type', ['menu', 'directory']).orWhereNull('menus.type')
+      })
       .where(function() {
         if (perms.length > 0) {
           this.whereIn('permission_code', perms)

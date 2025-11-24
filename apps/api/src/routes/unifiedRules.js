@@ -6,6 +6,10 @@ const { authenticate } = require('../middleware/auth')
 // 特定路由必须在通用路由之前定义
 router.get('/pending', authenticate, UnifiedRuleController.getPendingRules)
 
+// 强排图生成端点
+router.post('/:ruleType/:ruleId/diagram', authenticate, UnifiedRuleController.generateRuleDiagram)
+router.post('/:ruleType/batch-diagram', authenticate, UnifiedRuleController.generateBatchDiagrams)
+
 // 规则类型相关的特定路由
 router.post('/:ruleType/learn', authenticate, UnifiedRuleController.learnRules)
 router.post('/:ruleType/match', authenticate, UnifiedRuleController.matchRules)

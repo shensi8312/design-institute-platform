@@ -112,7 +112,7 @@ class TemplateService {
     const [template] = await knex('document_templates').insert({
       code: `TEMPLATE_${Date.now()}`,  // 生成唯一code
       name,
-      type: templateType,
+      template_type: templateType,
       description,
       file_path: filePath,
       file_name: fileName,
@@ -211,7 +211,7 @@ class TemplateService {
         'id',
         'code',
         'name',
-        'type as template_type',
+        'template_type',
         'description',
         'section_code_format',
         'max_level',
@@ -222,7 +222,7 @@ class TemplateService {
       );
 
     if (filters.templateType) {
-      query = query.where({ type: filters.templateType });
+      query = query.where({ template_type: filters.templateType });
     }
 
     if (filters.status) {
@@ -513,7 +513,7 @@ class TemplateService {
    * @param {Object} params
    * @returns {Promise<Object>}
    */
-  async createDocumentFromTemplate({ templateId, title, projectId, createdBy }) {
+  async createDocumentFromTemplate({ templateId, title, projectId, createdBy, sectionCodes }) {
     // 创建document_instance
     const [instance] = await knex('document_instances').insert({
       template_id: templateId,
@@ -523,9 +523,14 @@ class TemplateService {
       status: 'draft'
     }).returning('*');
 
-    // 初始化所有章节
-    const templateSections = await knex('template_sections')
+    // 初始化章节
+    let templateSections = await knex('template_sections')
       .where({ template_id: templateId });
+
+    // 如果指定了sectionCodes，只导入选中的章节
+    if (sectionCodes && sectionCodes.length > 0) {
+      templateSections = templateSections.filter(s => sectionCodes.includes(s.code));
+    }
 
     if (templateSections.length > 0) {
       const instanceSections = templateSections.map(s => ({

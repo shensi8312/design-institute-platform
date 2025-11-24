@@ -2,10 +2,11 @@ const knex = require('../../config/database');
 const AssemblyRuleProcessor = require('./processors/AssemblyRuleProcessor');
 const PIDRuleProcessor = require('./processors/PIDRuleProcessor');
 const BuildingRuleProcessor = require('./processors/BuildingRuleProcessor');
+const StrongLayoutRuleProcessor = require('./processors/StrongLayoutRuleProcessor');
 
 /**
  * 统一规则服务
- * 支持多种规则类型：assembly/pid/building/process
+ * 支持多种规则类型：assembly/pid/building/process/strong_layout
  * 复用现有 design_rules 表作为通用 rule_base
  */
 class UnifiedRuleService {
@@ -14,7 +15,8 @@ class UnifiedRuleService {
     this.processors = {
       'assembly': new AssemblyRuleProcessor(),
       'pid': new PIDRuleProcessor(),
-      'building': new BuildingRuleProcessor()
+      'building': new BuildingRuleProcessor(),
+      'strong_layout': new StrongLayoutRuleProcessor()
     };
   }
 

@@ -82,6 +82,22 @@ const flattenCodes = (nodes: TemplateSectionNode[]): string[] => {
   return result;
 };
 
+// 扁平化树节点，广度优先遍历，限制总数
+const flattenTreeNodes = (nodes: TemplateSectionNode[], limit: number = 10): TemplateSectionNode[] => {
+  const result: TemplateSectionNode[] = [];
+  const queue = [...nodes];
+
+  while (queue.length > 0 && result.length < limit) {
+    const node = queue.shift()!;
+    result.push({ code: node.code, title: node.title }); // 移除子节点，扁平化
+    if (node.children) {
+      queue.push(...node.children);
+    }
+  }
+
+  return result;
+};
+
 const DocumentManagement: React.FC = () => {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>('spec');
@@ -169,8 +185,9 @@ const DocumentManagement: React.FC = () => {
 
       if (response.data.success) {
         const treeNodes: TemplateSectionNode[] = response.data.data || [];
-        setSectionTreeData(convertToTreeData(treeNodes));
-        const defaultCodes = flattenCodes(treeNodes);
+        const flattenedNodes = flattenTreeNodes(treeNodes, 10); // 扁平化并限制为10个节点
+        setSectionTreeData(convertToTreeData(flattenedNodes));
+        const defaultCodes = flattenedNodes.map(n => n.code);
         setSectionCodes(defaultCodes);
         form.setFieldsValue({ sectionCodes: defaultCodes });
         if (defaultCodes.length === 0) {

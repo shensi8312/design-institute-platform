@@ -42,6 +42,37 @@ class AIReviewController {
   }
 
   /**
+   * 获取最新审查任务
+   */
+  async getLatestJob(req, res) {
+    try {
+      const { documentId } = req.query
+
+      if (!documentId) {
+        return res.status(400).json({
+          success: false,
+          message: '文档ID不能为空'
+        })
+      }
+
+      const result = await this.contractReviewService.getLatestJob(documentId)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(404).json(result)
+      }
+    } catch (error) {
+      console.error('获取最新任务失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取最新任务失败',
+        error: error.message
+      })
+    }
+  }
+
+  /**
    * 获取审查任务状态
    */
   async getJobStatus(req, res) {
@@ -71,5 +102,6 @@ const controller = new AIReviewController()
 
 module.exports = {
   startContractReview: (req, res) => controller.startContractReview(req, res),
+  getLatestJob: (req, res) => controller.getLatestJob(req, res),
   getJobStatus: (req, res) => controller.getJobStatus(req, res)
 }

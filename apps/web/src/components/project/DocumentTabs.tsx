@@ -8,7 +8,7 @@ import {
   CheckCircleOutlined,
   FolderOutlined
 } from '@ant-design/icons'
-import { DocumentType } from '../../pages/ProjectWorkspace'
+import type { DocumentType } from '../../types/document'
 
 interface DocumentTabsProps {
   activeType: DocumentType

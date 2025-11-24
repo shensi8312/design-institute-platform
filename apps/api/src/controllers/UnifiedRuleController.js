@@ -463,6 +463,95 @@ class UnifiedRuleController {
       });
     }
   }
+
+  /**
+   * 生成单条规则的示意图
+   * POST /api/rules/:ruleType/:ruleId/diagram
+   */
+  static async generateRuleDiagram(req, res) {
+    try {
+      const { ruleType, ruleId } = req.params;
+      const options = req.body.options || {};
+
+      // 获取规则
+      const rule = await UnifiedRuleService.getRule(ruleId);
+      if (!rule) {
+        return res.status(404).json({
+          success: false,
+          message: '规则不存在'
+        });
+      }
+
+      // 只有强排规则支持图形生成
+      if (ruleType !== 'strong_layout' && rule.rule_type !== 'strong_layout') {
+        return res.status(400).json({
+          success: false,
+          message: '只有强排规则支持图形生成'
+        });
+      }
+
+      // 生成示意图
+      const StrongLayoutEngine = require('../services/engines/StrongLayoutEngine');
+      const diagram = await StrongLayoutEngine.generateDiagram(rule, options);
+
+      res.json({
+        success: true,
+        data: diagram
+      });
+    } catch (error) {
+      console.error('生成规则示意图失败:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * 批量生成规则示意图
+   * POST /api/rules/:ruleType/batch-diagram
+   */
+  static async generateBatchDiagrams(req, res) {
+    try {
+      const { ruleType } = req.params;
+      const { ruleIds, options } = req.body;
+
+      if (!ruleIds || !Array.isArray(ruleIds)) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供规则ID列表'
+        });
+      }
+
+      // 获取规则列表
+      const rules = [];
+      for (const ruleId of ruleIds) {
+        const rule = await UnifiedRuleService.getRule(ruleId);
+        if (rule) {
+          rules.push(rule);
+        }
+      }
+
+      // 生成示意图
+      const StrongLayoutEngine = require('../services/engines/StrongLayoutEngine');
+      const diagrams = await StrongLayoutEngine.generateBatchDiagrams(rules, options || {});
+
+      res.json({
+        success: true,
+        data: {
+          total: ruleIds.length,
+          generated: diagrams.filter(d => d.success).length,
+          diagrams
+        }
+      });
+    } catch (error) {
+      console.error('批量生成规则示意图失败:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = UnifiedRuleController;

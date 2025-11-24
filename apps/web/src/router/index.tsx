@@ -233,15 +233,11 @@ const router = createBrowserRouter([
         element: <LazyWrapper Component={ProjectManagement} />
       },
       {
+        path: 'projects/my',
+        element: <LazyWrapper Component={ProjectManagement} />
+      },
+      {
         path: 'projects/all',
-        element: <LazyWrapper Component={ProjectManagement} />
-      },
-      {
-        path: 'projects/create',
-        element: <LazyWrapper Component={ProjectManagement} />
-      },
-      {
-        path: 'projects/assign',
         element: <LazyWrapper Component={ProjectManagement} />
       },
       {
@@ -338,37 +334,67 @@ const router = createBrowserRouter([
         path: 'engines/building-layout',
         element: <LazyWrapper Component={BuildingLayoutEngine} />
       },
+      // 机械设计 - 修复路径以匹配菜单配置
       {
-        path: 'mechanical-design/pid-recognition',
+        path: 'mechanical/pid',
         element: <LazyWrapper Component={PIDRecognition} />
       },
       {
-        path: 'mechanical-design/drawing-comparison',
+        path: 'mechanical/drawing-comparison',
         element: <LazyWrapper Component={DrawingComparison} />
       },
       {
-        path: 'mechanical-design/assembly-constraint',
+        path: 'mechanical/assembly-constraint',
         element: <LazyWrapper Component={AssemblyConstraintEngine} />
       },
       {
-        path: 'mechanical-design/assembly-rules',
+        path: 'mechanical/assembly-rules',
         element: <LazyWrapper Component={AssemblyRuleManagement} />
       },
       {
-        path: 'mechanical-design/assembly-tasks',
+        path: 'mechanical/assembly-tasks',
         element: <LazyWrapper Component={AssemblyTaskList} />
       },
       {
-        path: 'mechanical-design/assembly-visualization/:taskId',
+        path: 'mechanical/assembly-visualization/:taskId',
         element: <LazyWrapper Component={AssemblyVisualization3D} />
       },
       {
-        path: 'mechanical-design/assembly-designs',
+        path: 'mechanical/assembly-design',
         element: <LazyWrapper Component={AssemblyDesignManagement} />
       },
       {
-        path: 'mechanical-design/validation-export',
+        path: 'mechanical/sample-learning',
+        element: <LazyWrapper Component={ModelTraining} />
+      },
+      {
+        path: 'mechanical/validation-export',
         element: <LazyWrapper Component={AssemblyValidationExport} />
+      },
+      // 保留旧路径用于向后兼容
+      {
+        path: 'mechanical-design/pid-recognition',
+        element: <Navigate to="/mechanical/pid" replace />
+      },
+      {
+        path: 'mechanical-design/drawing-comparison',
+        element: <Navigate to="/mechanical/drawing-comparison" replace />
+      },
+      {
+        path: 'mechanical-design/assembly-constraint',
+        element: <Navigate to="/mechanical/assembly-constraint" replace />
+      },
+      {
+        path: 'mechanical-design/assembly-rules',
+        element: <Navigate to="/mechanical/assembly-rules" replace />
+      },
+      {
+        path: 'mechanical-design/assembly-tasks',
+        element: <Navigate to="/mechanical/assembly-tasks" replace />
+      },
+      {
+        path: 'mechanical-design/assembly-designs',
+        element: <Navigate to="/mechanical/assembly-design" replace />
       },
       // 学习与标注
       {

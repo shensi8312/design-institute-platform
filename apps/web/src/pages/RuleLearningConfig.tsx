@@ -116,7 +116,8 @@ const RuleLearningConfig: React.FC = () => {
                 { label: '装配规则', value: 'assembly' },
                 { label: 'PID规则', value: 'pid' },
                 { label: '建筑规则', value: 'building' },
-                { label: '工艺规则', value: 'process' }
+                { label: '工艺规则', value: 'process' },
+                { label: '强排规则', value: 'strong_layout' }
               ]}
             />
           </Space>

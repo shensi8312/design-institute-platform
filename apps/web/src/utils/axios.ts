@@ -4,7 +4,7 @@ import { message } from 'antd';
 // 创建axios实例
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 30000,
+  timeout: 120000, // 增加到120秒（2分钟）用于PID识别等耗时操作
   headers: {
     'Content-Type': 'application/json'
   }
@@ -49,7 +49,12 @@ instance.interceptors.response.use(
       }
       // 400等其他错误不在这里统一处理，让业务代码自己处理
     } else if (error.request) {
-      message.error('网络错误，请检查网络连接');
+      // 请求已发出但没有收到响应（网络错误或超时）
+      if (error.code === 'ECONNABORTED') {
+        message.error('请求超时，请稍后重试或上传更小的文件');
+      } else {
+        message.error('网络错误，请检查网络连接');
+      }
     } else {
       message.error('请求失败');
     }
