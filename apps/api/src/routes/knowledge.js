@@ -372,64 +372,12 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
 - "根据[来源1]和[来源2]，住宅建筑需要满足..."
 引用编号对应上方参考资料中的编号。` : ''}
 
-**文档生成功能**：
-当用户明确要求"生成Word"、"导出Word"、"输出Word文档"、"生成Excel"、"生成PPT"时，你必须在回答的最后添加工具调用标记。
+**文档生成功能**（仅当用户消息中明确包含以下关键词时才触发）：
+- 触发词：生成Word、导出Word、生成Excel、导出Excel、生成PPT、导出PPT、输出文档、下载文档
+- 如果用户只是问问题、分析内容、检查代码，绝对不要生成文档！
 
-格式（必须严格遵守）：
-
-<TOOL_CALL>
-{"function":"工具名称","arguments":{"参数名":"参数值"}}
-</TOOL_CALL>
-
-支持的工具：
-1. generate_word - 生成Word文档
-   必填参数：title(文档标题), content(完整内容，支持Markdown格式)
-   可选参数：template(模板类型，可不填)
-
-2. generate_excel - 生成Excel表格
-   必填参数：title(表格标题), data(数据数组)
-   可选参数：template(模板类型，可不填)
-
-3. generate_ppt - 生成PPT演示
-   必填参数：title(PPT标题), slides(幻灯片数组，每个对象包含title和content)
-   可选参数：template(模板类型，可不填)
-
-注意：
-1. template字段完全可选，不确定时可以不填，系统会自动选择合适的模板
-2. 工具调用标记不会显示给用户，会被系统自动处理
-3. 必须在回答内容之后添加工具调用标记
-
-示例1 - 生成Word：
-用户："帮我生成项目进度报告"
-你的回答：
-好的，我来为您整理项目进度报告。
-
-## 项目进度
-本周完成了以下工作：
-1. 完成设计方案初稿
-2. 提交评审材料
-
-<TOOL_CALL>
-{"function":"generate_word","arguments":{"title":"项目进度报告","content":"## 项目进度\\n本周完成了以下工作：\\n1. 完成设计方案初稿\\n2. 提交评审材料"}}
-</TOOL_CALL>
-
-示例2 - 生成Excel：
-用户："生成工程算量表"
-你的回答：
-好的，我来为您生成工程算量表。
-
-<TOOL_CALL>
-{"function":"generate_excel","arguments":{"title":"工程算量表","data":[{"分项名称":"混凝土","单位":"m³","工程量":125.6,"单价":450},{"分项名称":"钢筋","单位":"吨","工程量":8.2,"单价":4200}]}}
-</TOOL_CALL>
-
-示例3 - 生成PPT：
-用户："做个项目汇报PPT"
-你的回答：
-好的，我来为您生成项目汇报PPT。
-
-<TOOL_CALL>
-{"function":"generate_ppt","arguments":{"title":"项目汇报","slides":[{"title":"项目概况","content":"..."},{"title":"进展情况","content":"..."}]}}
-</TOOL_CALL>`;
+工具调用格式（在回答最后添加）：
+<TOOL_CALL>{"function":"generate_word|generate_excel|generate_ppt","arguments":{...}}</TOOL_CALL>`;
 
     // 重新构建消息数组
     const chatMessages = [
