@@ -148,9 +148,10 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
 
   try {
     // 0. 检查用户输入长度，超长时自动分片处理
-    // 模型 4096 tokens ≈ 8000 中文字符，留 1000 tokens 给输出 = 6000 字符可用
-    const MAX_QUESTION_CHARS = 5000; // 单次处理上限
-    const CHUNK_SIZE = 4000; // 每片大小
+    // 模型 4096 tokens，系统提示词约800token，历史对话约600token，输出预留1000token
+    // 实际可用约 1700 tokens ≈ 3400 中文字符
+    const MAX_QUESTION_CHARS = 2500; // 单次处理上限（保守值）
+    const CHUNK_SIZE = 2000; // 每片大小
 
     if (question && question.length > MAX_QUESTION_CHARS) {
       console.log(`[智能问答] 用户输入过长: ${question.length} 字符，启用分片处理`);
