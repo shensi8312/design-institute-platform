@@ -16,6 +16,7 @@ interface Document {
   document_subtype?: string
   status: string
   file_name: string
+  file_path: string
   file_size: number
   created_at: string
   updated_at: string
@@ -27,6 +28,8 @@ interface DocumentListProps {
   onAIReview: (document: Document) => void
   onDelete: (documentId: string) => void
   onRefresh: () => void
+  onView?: (document: Document) => void
+  onDownload?: (document: Document) => void
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
@@ -34,7 +37,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
   loading,
   onAIReview,
   onDelete,
-  onRefresh
+  onRefresh,
+  onView,
+  onDownload
 }) => {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B'
@@ -126,12 +131,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
           <Button
             icon={<EyeOutlined />}
             size="small"
+            onClick={() => onView?.(record)}
           >
             查看
           </Button>
           <Button
             icon={<DownloadOutlined />}
             size="small"
+            onClick={() => onDownload?.(record)}
           >
             下载
           </Button>

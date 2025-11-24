@@ -71,6 +71,7 @@ const IntelligentQA: React.FC = () => {
   const [sourceDrawerVisible, setSourceDrawerVisible] = useState(false);
   const [currentSources, setCurrentSources] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isSendingRef = useRef(false); // 标记是否正在发送消息，防止会话切换时覆盖
 
   const {
     currentConversationId,
@@ -100,8 +101,12 @@ const IntelligentQA: React.FC = () => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // 当切换会话时，加载历史消息
+  // 当切换会话时，加载历史消息（但发送消息过程中不要覆盖）
   useEffect(() => {
+    if (isSendingRef.current) {
+      // 发送消息过程中创建了新会话，不要覆盖当前消息
+      return;
+    }
     if (currentConversationId) {
       loadConversationMessages(currentConversationId);
     } else {
@@ -167,6 +172,9 @@ const IntelligentQA: React.FC = () => {
       return;
     }
 
+    // 标记开始发送，防止会话切换时覆盖消息
+    isSendingRef.current = true;
+
     // 如果没有当前会话，创建新会话
     let conversationId = currentConversationId;
     if (!conversationId) {
@@ -176,6 +184,7 @@ const IntelligentQA: React.FC = () => {
         await fetchConversations(); // 刷新会话列表
       } catch (error) {
         message.error('创建会话失败');
+        isSendingRef.current = false;
         return;
       }
     }
@@ -347,6 +356,7 @@ const IntelligentQA: React.FC = () => {
       );
     } finally {
       setLoading(false);
+      isSendingRef.current = false; // 发送完成，允许会话切换
     }
   };
 

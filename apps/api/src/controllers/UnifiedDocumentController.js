@@ -456,7 +456,7 @@ class UnifiedDocumentController {
    */
   async createDocumentFromTemplate(req, res) {
     try {
-      const { templateId, title, projectId } = req.body;
+      const { templateId, title, projectId, sectionCodes } = req.body;
       const userId = req.user.id;
 
       const instance = await TemplateService.createDocumentFromTemplate({
@@ -464,6 +464,7 @@ class UnifiedDocumentController {
         title,
         projectId,
         createdBy: userId,
+        sectionCodes,
       });
 
       res.json({

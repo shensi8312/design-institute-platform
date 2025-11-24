@@ -300,6 +300,69 @@ class ProjectDocumentService {
       }
     }
   }
+
+  /**
+   * 获取文档解析的条款数据
+   */
+  async getDocumentClauses(documentId) {
+    try {
+      const DocumentAnalysisAgent = require('../document/DocumentAnalysisAgent')
+
+      // 获取文档
+      const document = await knex('project_documents')
+        .where({ id: documentId })
+        .first()
+
+      if (!document) {
+        return {
+          success: false,
+          message: '文档不存在'
+        }
+      }
+
+      // 使用DocumentAnalysisAgent解析文档
+      const agent = new DocumentAnalysisAgent()
+      const fs = require('fs').promises
+      const fileBuffer = await fs.readFile(document.file_path)
+
+      const parseResult = await agent.analyzeDocument(fileBuffer, document.file_name, {
+        generateSummary: false,
+        extractKeyInfo: false
+      })
+
+      if (!parseResult.success || !parseResult.document.structure) {
+        return {
+          success: false,
+          message: '文档解析失败或不包含结构化数据'
+        }
+      }
+
+      // 将解析结果转换为条款格式
+      const sections = parseResult.document.structure.sections || []
+      const clauses = sections.map((section, index) => ({
+        id: `clause_${index}`,
+        clause_code: section.code || String(index + 1),
+        title: section.title || `第${index + 1}条`,
+        text_original: section.content || '',
+        text_current: section.content || '',
+        level: section.level || 1,
+        numbering: section.numbering || `第${index + 1}条`,
+        has_modification: false
+      }))
+
+      return {
+        success: true,
+        data: clauses
+      }
+    } catch (error) {
+      console.error('获取文档条款失败:', error)
+      return {
+        success: false,
+        message: '获取文档条款失败',
+        error: error.message
+      }
+    }
+  }
 }
 
 module.exports = ProjectDocumentService

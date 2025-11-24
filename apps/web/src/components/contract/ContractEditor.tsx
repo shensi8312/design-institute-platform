@@ -77,44 +77,24 @@ const ContractEditor: React.FC<ContractEditorProps> = ({
   const loadDocumentClauses = async () => {
     try {
       setLoading(true)
-      // TODO: 调用Docling解析API获取结构化条款
-      // 目前使用模拟数据
-      const mockClauses: Clause[] = [
-        {
-          id: 'clause_1',
-          clause_code: '1',
-          title: '合同双方',
-          text_original: '甲方：XXX公司\n乙方：YYY公司',
-          text_current: '甲方：XXX公司\n乙方：YYY公司',
-          level: 1,
-          numbering: '第一条',
-          has_modification: false
-        },
-        {
-          id: 'clause_2',
-          clause_code: '2',
-          title: '合同标的',
-          text_original: '本合同标的为XXX项目的设计服务。',
-          text_current: '本合同标的为XXX项目的设计服务。',
-          level: 1,
-          numbering: '第二条',
-          has_modification: false
-        },
-        {
-          id: 'clause_3',
-          clause_code: '3',
-          title: '合同金额及支付方式',
-          text_original: '合同总金额为人民币100万元整。',
-          text_current: '合同总金额为人民币100万元整。',
-          level: 1,
-          numbering: '第三条',
-          has_modification: false
+      // 🔧 调用真实API获取文档条款（后端使用 DocumentAnalysisAgent + Docling 解析）
+      const response = await axios.get(
+        `/api/projects/${projectId}/documents/${document.id}/clauses`
+      )
+
+      if (response.data.success) {
+        const clauses = response.data.data || []
+        setClauses(clauses)
+
+        if (clauses.length === 0) {
+          message.warning('文档解析成功，但未提取到条款内容')
         }
-      ]
-      setClauses(mockClauses)
-    } catch (error) {
+      } else {
+        message.error(response.data.message || '加载条款失败')
+      }
+    } catch (error: any) {
       console.error('加载文档条款失败:', error)
-      message.error('加载文档失败')
+      message.error(error.response?.data?.message || '加载文档失败')
     } finally {
       setLoading(false)
     }

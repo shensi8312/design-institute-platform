@@ -147,6 +147,139 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
   res.flushHeaders(); // 立即发送响应头
 
   try {
+    // 0. 检查用户输入长度，超长时自动分片处理
+    // 模型 4096 tokens ≈ 8000 中文字符，留 1000 tokens 给输出 = 6000 字符可用
+    const MAX_QUESTION_CHARS = 5000; // 单次处理上限
+    const CHUNK_SIZE = 4000; // 每片大小
+
+    if (question && question.length > MAX_QUESTION_CHARS) {
+      console.log(`[智能问答] 用户输入过长: ${question.length} 字符，启用分片处理`);
+
+      // 提取用户的实际问题（通常在开头或结尾）
+      const lines = question.split('\n');
+      let userQuestion = '';
+      let contentToProcess = question;
+
+      // 尝试识别问题部分（通常以?结尾或在开头/结尾的短句）
+      for (let i = 0; i < Math.min(3, lines.length); i++) {
+        if (lines[i].includes('?') || lines[i].includes('？') || lines[i].includes('吗') || lines[i].includes('能')) {
+          userQuestion = lines[i];
+          break;
+        }
+      }
+      if (!userQuestion) {
+        for (let i = lines.length - 1; i >= Math.max(0, lines.length - 3); i--) {
+          if (lines[i].includes('?') || lines[i].includes('？') || lines[i].includes('吗') || lines[i].includes('能')) {
+            userQuestion = lines[i];
+            break;
+          }
+        }
+      }
+      if (!userQuestion) {
+        userQuestion = '请分析以下内容';
+      }
+
+      // 按段落分片（支持单换行和双换行）
+      let paragraphs = question.split(/\n\n+/);
+
+      // 如果只分出1段，尝试按单换行分
+      if (paragraphs.length === 1 && question.length > CHUNK_SIZE) {
+        paragraphs = question.split(/\n/);
+      }
+
+      // 如果还是只有1段，强制按字符数切分
+      if (paragraphs.length === 1 && question.length > CHUNK_SIZE) {
+        paragraphs = [];
+        for (let i = 0; i < question.length; i += CHUNK_SIZE) {
+          paragraphs.push(question.substring(i, i + CHUNK_SIZE));
+        }
+      }
+
+      const chunks = [];
+      let currentChunk = '';
+
+      for (const para of paragraphs) {
+        if (currentChunk.length + para.length > CHUNK_SIZE) {
+          if (currentChunk) chunks.push(currentChunk);
+          // 如果单个段落就超长，强制切分
+          if (para.length > CHUNK_SIZE) {
+            for (let i = 0; i < para.length; i += CHUNK_SIZE) {
+              chunks.push(para.substring(i, i + CHUNK_SIZE));
+            }
+            currentChunk = '';
+          } else {
+            currentChunk = para;
+          }
+        } else {
+          currentChunk += (currentChunk ? '\n' : '') + para;
+        }
+      }
+      if (currentChunk) chunks.push(currentChunk);
+
+      console.log(`[智能问答] 分片数量: ${chunks.length}，问题: "${userQuestion}"`);
+
+      // 发送处理提示
+      res.write(`data: ${JSON.stringify({
+        type: 'chunk',
+        content: `📝 检测到长文本（${question.length}字符），已自动分成 ${chunks.length} 个部分处理...\n\n`
+      })}\n\n`);
+      if (res.flush) res.flush();
+
+      // 逐片处理
+      const UnifiedLLMService = require('../services/llm/UnifiedLLMService');
+      let allResults = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        res.write(`data: ${JSON.stringify({
+          type: 'chunk',
+          content: `**【第 ${i + 1}/${chunks.length} 部分】**\n`
+        })}\n\n`);
+        if (res.flush) res.flush();
+
+        const chunkPrompt = `${userQuestion}\n\n以下是第${i + 1}部分内容：\n${chunks[i]}`;
+
+        try {
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '简洁分析内容，直接回答。' },
+            { role: 'user', content: chunkPrompt }
+          ], {
+            temperature: 0.3,
+            max_tokens: 500
+          }, async (chunk) => {
+            if (chunk.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+
+          res.write(`data: ${JSON.stringify({
+            type: 'chunk',
+            content: '\n\n---\n\n'
+          })}\n\n`);
+          if (res.flush) res.flush();
+
+        } catch (chunkError) {
+          console.error(`[智能问答] 第${i + 1}片处理失败:`, chunkError.message);
+          res.write(`data: ${JSON.stringify({
+            type: 'chunk',
+            content: `⚠️ 第${i + 1}部分处理失败: ${chunkError.message}\n\n`
+          })}\n\n`);
+          if (res.flush) res.flush();
+        }
+      }
+
+      // 发送完成标记
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        sources: []
+      })}\n\n`);
+      res.end();
+      return;
+    }
+
     // 1. 使用深度搜索服务（向量检索 + 知识图谱增强）
     let vectorContext = '';
     let sources = [];
@@ -260,22 +393,107 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
         const parsedHistory = typeof history === 'string' ? JSON.parse(history) : history;
 
         if (Array.isArray(parsedHistory)) {
-          // 只保留最近10轮对话
-          conversationHistory = parsedHistory.slice(-10).map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          }));
-          console.log(`[智能问答] 加载了 ${conversationHistory.length} 条历史对话`);
+          // 只保留最近10轮对话，并过滤掉错误消息
+          const errorPatterns = ['fetch failed', 'AI服务暂时不可用', '服务不可用', '请求失败', 'ECONNREFUSED'];
+          conversationHistory = parsedHistory
+            .slice(-10)
+            .filter(msg => {
+              // 过滤掉包含错误信息的消息
+              if (msg.role === 'assistant' && msg.content) {
+                return !errorPatterns.some(pattern => msg.content.includes(pattern));
+              }
+              return true;
+            })
+            .map(msg => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+          console.log(`[智能问答] 加载了 ${conversationHistory.length} 条历史对话（已过滤错误消息）`);
         }
       } catch (e) {
         console.warn('[智能问答] 历史对话解析失败:', e.message);
       }
     }
 
-    // 构建上下文信息
+    // ========== 智能上下文管理 ==========
+    // 模型 max_model_len=4096，预算分配：
+    // - 系统提示（固定）: ~800 tokens
+    // - 向量上下文: ~1000 tokens (2000 chars)
+    // - 文件上下文: ~400 tokens (800 chars)
+    // - 历史对话: ~600 tokens (1200 chars)
+    // - 用户问题: ~200 tokens
+    // - 输出预留: ~1000 tokens
+    const BUDGET = {
+      vectorContext: 2000,  // 字符数
+      fileContext: 800,
+      history: 1200
+    };
+
+    // 1. 按段落截断向量上下文（保留完整段落，优先保留前面的高相关度内容）
+    let truncatedVectorContext = '';
+    if (vectorContext) {
+      const chunks = vectorContext.split(/\n\n+/); // 按段落分割
+      let totalChars = 0;
+      const keptChunks = [];
+
+      for (const chunk of chunks) {
+        if (totalChars + chunk.length > BUDGET.vectorContext) {
+          if (keptChunks.length === 0) {
+            // 至少保留第一段的部分内容
+            keptChunks.push(chunk.substring(0, BUDGET.vectorContext) + '...');
+          }
+          break;
+        }
+        keptChunks.push(chunk);
+        totalChars += chunk.length;
+      }
+
+      truncatedVectorContext = keptChunks.join('\n\n');
+      if (vectorContext.length > totalChars) {
+        console.log(`[智能问答] 向量上下文按段落截断: ${chunks.length}段 -> ${keptChunks.length}段`);
+      }
+    }
+
+    // 2. 按段落截断文件上下文
+    let truncatedFileContext = '';
+    if (fileContext) {
+      const chunks = fileContext.split(/\n\n+/);
+      let totalChars = 0;
+      const keptChunks = [];
+
+      for (const chunk of chunks) {
+        if (totalChars + chunk.length > BUDGET.fileContext) break;
+        keptChunks.push(chunk);
+        totalChars += chunk.length;
+      }
+
+      truncatedFileContext = keptChunks.join('\n\n');
+      if (fileContext.length > totalChars) {
+        console.log(`[智能问答] 文件上下文按段落截断: ${chunks.length}段 -> ${keptChunks.length}段`);
+      }
+    }
+
+    // 3. 智能截断历史对话（优先保留最近的完整问答对）
+    let totalHistoryChars = conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
+    if (totalHistoryChars > BUDGET.history) {
+      // 从旧的开始删除，但保留至少最近2条（一问一答）
+      while (conversationHistory.length > 2 && totalHistoryChars > BUDGET.history) {
+        const removed = conversationHistory.shift();
+        totalHistoryChars -= removed.content.length;
+      }
+
+      // 如果还是超了，截断最早的消息内容
+      if (totalHistoryChars > BUDGET.history && conversationHistory.length > 0) {
+        const excess = totalHistoryChars - BUDGET.history;
+        conversationHistory[0].content = conversationHistory[0].content.substring(excess) + '...';
+      }
+
+      console.log(`[智能问答] 历史对话已优化，保留 ${conversationHistory.length} 条，约 ${totalHistoryChars} 字符`);
+    }
+
     let systemContext = '';
-    if (vectorContext || fileContext) {
-      systemContext = `以下是相关参考资料：\n${vectorContext}${fileContext}\n`;
+    if (truncatedVectorContext || truncatedFileContext) {
+      systemContext = `以下是相关参考资料：\n${truncatedVectorContext}${truncatedFileContext}\n`;
     }
 
     // 构建系统提示词
@@ -363,9 +581,11 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
     let fullResponse = '';
     let displayBuffer = ''; // 用于发送给用户的内容
     let isInToolCall = false;
+
+    try {
     await UnifiedLLMService.generateStreamWithMessages(chatMessages, {
       temperature: 0.3,  // 降低温度提高稳定性
-      max_tokens: 4000   // 增加token限制
+      max_tokens: 1500   // 模型max_model_len=4096，留更多空间给输入
     }, async (chunk) => {
       if (chunk.content) {
         fullResponse += chunk.content;
@@ -417,6 +637,28 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
         if (res.flush) res.flush();
       }
     });
+    } catch (llmError) {
+      console.error('[智能问答] LLM调用失败:', llmError.message);
+
+      // 发送用户友好的错误提示
+      const errorMessage = llmError.message.includes('400')
+        ? '抱歉，您的问题内容过长，已超出模型处理能力。请尝试缩短问题或清除对话历史后重试。'
+        : `抱歉，AI服务暂时不可用：${llmError.message}`;
+
+      res.write(`data: ${JSON.stringify({
+        type: 'chunk',
+        content: errorMessage
+      })}\n\n`);
+      if (res.flush) res.flush();
+
+      // 发送完成标记
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        sources: sources
+      })}\n\n`);
+      res.end();
+      return;
+    }
 
     // 发送剩余内容
     if (displayBuffer && !isInToolCall) {
@@ -446,7 +688,8 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
             content: args.content,
             template: args.template || 'general', // ✅ 默认使用general
             author: req.user.name,
-            metadata: { project_name: args.project_name }
+            metadata: { project_name: args.project_name },
+            enableHighlight: args.enableHighlight !== false // 默认启用高亮
           });
 
           // 上传到MinIO

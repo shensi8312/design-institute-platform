@@ -1,8 +1,8 @@
 const knex = require('../../config/database')
 const { v4: uuidv4 } = require('uuid')
 const LLMService = require('./LLMService')
+const DocumentParserService = require('../document/DocumentParserService')
 const fs = require('fs').promises
-const pdf = require('pdf-parse')
 
 /**
  * V3.0 合同AI审查服务 (基础版)
@@ -16,6 +16,7 @@ const pdf = require('pdf-parse')
 class ContractReviewService {
   constructor() {
     this.llmService = new LLMService()
+    this.parser = new DocumentParserService()
   }
 
   /**
@@ -35,11 +36,11 @@ class ContractReviewService {
         }
       }
 
-      // 验证文档类型
-      if (document.document_type !== 'contract') {
+      // 验证文档类型 - 支持所有文档类型
+      if (!document.document_type) {
         return {
           success: false,
-          message: '只能审查合同类型文档'
+          message: '文档类型未知'
         }
       }
 
@@ -120,7 +121,7 @@ class ContractReviewService {
   }
 
   /**
-   * 提取文档内容
+   * 提取文档内容 (使用DocumentParserService - 支持Docling解析)
    */
   async extractContent(document) {
     try {
@@ -130,16 +131,26 @@ class ContractReviewService {
 
       const dataBuffer = await fs.readFile(document.file_path)
 
-      // 根据文件类型提取内容
-      if (document.mime_type === 'application/pdf') {
-        const data = await pdf(dataBuffer)
-        return data.text
-      } else if (document.mime_type?.includes('word')) {
-        // TODO: 支持Word文档解析
-        throw new Error('暂不支持Word文档解析,请上传PDF')
-      } else {
-        throw new Error('不支持的文件格式')
+      // 使用DocumentParserService解析文档（支持PDF/Word/PPT等，优先使用Docling）
+      const parsed = await this.parser.parseDocument(
+        dataBuffer,
+        document.mime_type,
+        document.file_name || 'contract.pdf'
+      )
+
+      // DocumentParserService可能返回字符串或对象
+      let text = ''
+      if (typeof parsed === 'string') {
+        text = parsed
+      } else if (parsed && parsed.text) {
+        text = parsed.text
       }
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('文档内容为空或解析失败')
+      }
+
+      return text
     } catch (error) {
       console.error('提取文档内容失败:', error)
       throw error
@@ -203,9 +214,7 @@ ${content.substring(0, 8000)}
   "low_risks": [...]
 }`
 
-    const response = await this.llmService.chat([
-      { role: 'user', content: prompt }
-    ])
+    const response = await this.llmService.callLLM(prompt)
 
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -251,9 +260,7 @@ ${content.substring(0, 8000)}
   "liability": ""
 }`
 
-    const response = await this.llmService.chat([
-      { role: 'user', content: prompt }
-    ])
+    const response = await this.llmService.callLLM(prompt)
 
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -299,9 +306,7 @@ ${requiredElements.map((e, i) => `${i + 1}. ${e}`).join('\n')}
   "completeness_score": 85
 }`
 
-    const response = await this.llmService.chat([
-      { role: 'user', content: prompt }
-    ])
+    const response = await this.llmService.callLLM(prompt)
 
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/)
@@ -343,6 +348,44 @@ ${requiredElements.map((e, i) => `${i + 1}. ${e}`).join('\n')}
         mediumRiskCount > 0 ? `发现${mediumRiskCount}个中等风险条款` : '未发现中等风险条款',
         clauses.amount ? `合同金额: ${clauses.amount}` : '合同金额未明确'
       ].filter(Boolean)
+    }
+  }
+
+  /**
+   * 获取文档最新审查任务
+   */
+  async getLatestJob(documentId) {
+    try {
+      const job = await knex('ai_review_jobs')
+        .where({ document_id: documentId })
+        .orderBy('created_at', 'desc')
+        .first()
+
+      if (!job) {
+        return {
+          success: false,
+          message: '未找到审查任务'
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          jobId: job.id,
+          status: job.status,
+          result: job.result ? JSON.parse(job.result) : null,
+          error: job.error_message,
+          createdAt: job.created_at,
+          completedAt: job.completed_at
+        }
+      }
+    } catch (error) {
+      console.error('获取最新任务失败:', error)
+      return {
+        success: false,
+        message: '获取最新任务失败',
+        error: error.message
+      }
     }
   }
 

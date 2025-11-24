@@ -9,6 +9,132 @@ const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = re
  * 基于docxtemplater，使用单位标准模板生成Word文档
  */
 class WordGeneratorService {
+  constructor() {
+    // 实体识别关键词配置
+    this.entityPatterns = {
+      product: {
+        keywords: [
+          '产品', '设备', '仪器', '仪表', '系统', '装置', '机组', '机械', '泵', '阀', '管',
+          '电机', '变压器', '开关', '控制器', '传感器', '执行器', '探测器', '报警器',
+          '风机', '压缩机', '换热器', '冷却器', '过滤器', '分离器', '储罐', '容器'
+        ],
+        color: 'yellow' // 黄色高亮
+      },
+      material: {
+        keywords: [
+          '材料', '材质', '钢材', '不锈钢', '碳钢', '合金', '铝', '铜', '塑料', 'PVC', 'PE', 'PP',
+          '橡胶', '陶瓷', '玻璃', '混凝土', '水泥', '砖', '石材', '木材', '保温材料',
+          '防腐材料', '密封材料', '填料', '涂料', '油漆', '焊条', '螺栓', '螺母', '垫片'
+        ],
+        color: 'cyan' // 青色高亮
+      },
+      process: {
+        keywords: [
+          '工艺', '方法', '安装', '施工', '焊接', '切割', '打磨', '抛光', '喷涂', '镀锌',
+          '热处理', '冷却', '加热', '干燥', '过滤', '分离', '混合', '搅拌', '压缩', '膨胀',
+          '检测', '测试', '校验', '调试', '维护', '保养', '清洗', '消毒', '灭菌',
+          '组装', '拆卸', '吊装', '运输', '存储', '包装'
+        ],
+        color: 'green' // 绿色高亮
+      }
+    }
+  }
+
+  /**
+   * 识别文本中的实体并标记
+   * @param {string} text - 要处理的文本
+   * @returns {Array} - 带有实体标记的文本片段数组
+   */
+  _identifyEntities(text) {
+    if (!text) return [{ text: '', type: null }]
+
+    const segments = []
+    let currentPos = 0
+    const matches = []
+
+    // 收集所有匹配
+    for (const [entityType, config] of Object.entries(this.entityPatterns)) {
+      for (const keyword of config.keywords) {
+        let searchPos = 0
+        while (true) {
+          const index = text.indexOf(keyword, searchPos)
+          if (index === -1) break
+          matches.push({
+            start: index,
+            end: index + keyword.length,
+            type: entityType,
+            text: keyword,
+            color: config.color
+          })
+          searchPos = index + 1
+        }
+      }
+    }
+
+    // 按位置排序
+    matches.sort((a, b) => a.start - b.start)
+
+    // 移除重叠的匹配（保留最长的）
+    const filteredMatches = []
+    for (const match of matches) {
+      const overlapping = filteredMatches.find(m =>
+        (match.start >= m.start && match.start < m.end) ||
+        (match.end > m.start && match.end <= m.end)
+      )
+      if (!overlapping) {
+        filteredMatches.push(match)
+      } else if (match.text.length > overlapping.text.length) {
+        // 替换为更长的匹配
+        const index = filteredMatches.indexOf(overlapping)
+        filteredMatches[index] = match
+      }
+    }
+
+    // 重新排序
+    filteredMatches.sort((a, b) => a.start - b.start)
+
+    // 构建片段
+    for (const match of filteredMatches) {
+      if (match.start > currentPos) {
+        segments.push({
+          text: text.substring(currentPos, match.start),
+          type: null
+        })
+      }
+      segments.push({
+        text: match.text,
+        type: match.type,
+        color: match.color
+      })
+      currentPos = match.end
+    }
+
+    // 添加剩余文本
+    if (currentPos < text.length) {
+      segments.push({
+        text: text.substring(currentPos),
+        type: null
+      })
+    }
+
+    return segments.length > 0 ? segments : [{ text: text, type: null }]
+  }
+
+  /**
+   * 将颜色名称转换为docx高亮颜色
+   */
+  _getHighlightColor(colorName) {
+    const colorMap = {
+      'yellow': 'yellow',
+      'cyan': 'cyan',
+      'green': 'green',
+      'magenta': 'magenta',
+      'red': 'red',
+      'blue': 'blue'
+    }
+    return colorMap[colorName] || 'yellow'
+  }
+
   /**
    * 生成Word文档（自动使用对应模板）
    * @param {Object} options
@@ -17,8 +143,9 @@ class WordGeneratorService {
    * @param {string} options.template - 模板ID（如: design_plan, technical_report）
    * @param {string} options.author - 作者
    * @param {Object} options.metadata - 额外元数据
+   * @param {boolean} options.enableHighlight - 是否启用实体高亮
    */
-  async generate({ title, content, template, author, metadata = {} }) {
+  async generate({ title, content, template, author, metadata = {}, enableHighlight = false }) {
     try {
       // 1. 从模板管理器获取模板路径
       const templatePath = TemplateManager.getTemplatePath('word', template || 'general')
@@ -29,7 +156,7 @@ class WordGeneratorService {
       // 检查模板文件是否存在，不存在则使用直接生成方式
       if (!await fs.pathExists(templatePath)) {
         console.warn(`⚠️ 模板文件不存在，使用docx库直接生成: ${templatePath}`)
-        return this._generateWithoutTemplate({ title, content, template, author, metadata })
+        return this._generateWithoutTemplate({ title, content, template, author, metadata, enableHighlight })
       }
 
       // 2. 读取模板
@@ -202,9 +329,29 @@ class WordGeneratorService {
   }
 
   /**
+   * 创建带高亮的TextRun数组
+   */
+  _createHighlightedTextRuns(text, size = 24) {
+    const segments = this._identifyEntities(text)
+
+    return segments.map(segment => {
+      const options = {
+        text: segment.text,
+        size: size
+      }
+
+      if (segment.type && segment.color) {
+        options.highlight = this._getHighlightColor(segment.color)
+      }
+
+      return new TextRun(options)
+    })
+  }
+
+  /**
    * 不使用模板直接生成Word文档（回退方案）
    */
-  async _generateWithoutTemplate({ title, content, template, author, metadata = {} }) {
+  async _generateWithoutTemplate({ title, content, template, author, metadata = {}, enableHighlight = false }) {
     try {
       const now = new Date()
       const children = []
@@ -244,7 +391,24 @@ class WordGeneratorService {
         })
       )
 
-      // 3. 处理内容（支持简单Markdown）
+      // 如果启用高亮，添加图例说明
+      if (enableHighlight) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: '【图例说明】', bold: true, size: 22 }),
+              new TextRun({ text: ' 产品/设备', highlight: 'yellow', size: 22 }),
+              new TextRun({ text: ' | ', size: 22 }),
+              new TextRun({ text: '材料/材质', highlight: 'cyan', size: 22 }),
+              new TextRun({ text: ' | ', size: 22 }),
+              new TextRun({ text: '工艺/方法', highlight: 'green', size: 22 })
+            ],
+            spacing: { after: 400 }
+          })
+        )
+      }
+
+      // 3. 处理内容（支持简单Markdown和实体高亮）
       if (content) {
         const lines = content.split('\n')
 
@@ -283,12 +447,25 @@ class WordGeneratorService {
             )
           } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
             // 列表项
-            children.push(
-              new Paragraph({
-                text: trimmedLine.replace(/^[-*]\s+/, '• '),
-                spacing: { after: 100 }
-              })
-            )
+            const listText = trimmedLine.replace(/^[-*]\s+/, '')
+            if (enableHighlight) {
+              children.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: '• ', size: 24 }),
+                    ...this._createHighlightedTextRuns(listText, 24)
+                  ],
+                  spacing: { after: 100 }
+                })
+              )
+            } else {
+              children.push(
+                new Paragraph({
+                  text: '• ' + listText,
+                  spacing: { after: 100 }
+                })
+              )
+            }
           } else if (trimmedLine.startsWith('| ')) {
             // 表格行（简单处理）
             children.push(
@@ -298,13 +475,22 @@ class WordGeneratorService {
               })
             )
           } else {
-            // 普通段落
-            children.push(
-              new Paragraph({
-                text: trimmedLine,
-                spacing: { after: 200 }
-              })
-            )
+            // 普通段落 - 支持实体高亮
+            if (enableHighlight) {
+              children.push(
+                new Paragraph({
+                  children: this._createHighlightedTextRuns(trimmedLine, 24),
+                  spacing: { after: 200 }
+                })
+              )
+            } else {
+              children.push(
+                new Paragraph({
+                  text: trimmedLine,
+                  spacing: { after: 200 }
+                })
+              )
+            }
           }
         }
       }
@@ -320,7 +506,7 @@ class WordGeneratorService {
       // 5. 生成Buffer
       const buffer = await Packer.toBuffer(doc)
 
-      console.log(`✅ Word文档生成成功（无模板）: ${title}.docx (${(buffer.length / 1024).toFixed(2)} KB)`)
+      console.log(`✅ Word文档生成成功（无模板${enableHighlight ? '，带高亮' : ''}）: ${title}.docx (${(buffer.length / 1024).toFixed(2)} KB)`)
 
       return {
         buffer,

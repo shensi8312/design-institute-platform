@@ -11,6 +11,9 @@ const router = express.Router()
 // 启动合同审查
 router.post('/start', authenticate, AIReviewController.startContractReview)
 
+// 获取最新审查任务
+router.get('/jobs/latest', authenticate, AIReviewController.getLatestJob)
+
 // 获取审查任务状态
 router.get('/jobs/:jobId', authenticate, AIReviewController.getJobStatus)
 

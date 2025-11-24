@@ -421,17 +421,24 @@ class ProjectController {
   async getMyProjects(req, res) {
     try {
       const userId = req.user?.id
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: '用户未登录'
         })
       }
-      
-      // 获取用户作为项目经理的项目
-      const result = await this.projectService.getProjectsByManager(userId)
-      
+
+      // 🔧 Week 2修复：管理员可见所有项目，普通用户看自己创建的项目
+      if (req.user?.is_admin) {
+        // 管理员：返回所有项目
+        const result = await this.projectService.getList({})
+        return res.json(result)
+      }
+
+      // 普通用户：返回自己创建的项目或担任经理的项目
+      const result = await this.projectService.getProjectsByCreatorOrManager(userId)
+
       if (result.success) {
         res.json(result)
       } else {
@@ -537,7 +544,17 @@ class ProjectController {
       const file = req.file
       const metadata = req.body
 
+      // 🔍 调试日志
+      console.log('[uploadDocument] 请求参数:', {
+        projectId,
+        hasFile: !!file,
+        fileName: file?.originalname,
+        metadata,
+        userId: req.user?.id
+      })
+
       if (!file) {
+        console.error('[uploadDocument] 错误: 未找到文件')
         return res.status(400).json({
           success: false,
           message: '请上传文件'
@@ -704,6 +721,30 @@ class ProjectController {
       })
     }
   }
+
+  /**
+   * 获取文档解析的条款数据
+   */
+  async getDocumentClauses(req, res) {
+    try {
+      const { id, documentId } = req.params
+
+      const result = await this.documentService.getDocumentClauses(documentId)
+
+      if (result.success) {
+        res.json(result)
+      } else {
+        res.status(404).json(result)
+      }
+    } catch (error) {
+      console.error('获取文档条款失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取文档条款失败',
+        error: error.message
+      })
+    }
+  }
 }
 
 // 创建实例并导出
@@ -740,5 +781,6 @@ module.exports = {
   getDocumentDetail: (req, res) => controller.getDocumentDetail(req, res),
   updateDocument: (req, res) => controller.updateDocument(req, res),
   deleteDocument: (req, res) => controller.deleteDocument(req, res),
-  getDocumentStatistics: (req, res) => controller.getDocumentStatistics(req, res)
+  getDocumentStatistics: (req, res) => controller.getDocumentStatistics(req, res),
+  getDocumentClauses: (req, res) => controller.getDocumentClauses(req, res)
 }

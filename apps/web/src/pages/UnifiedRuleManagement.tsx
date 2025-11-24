@@ -204,7 +204,8 @@ const UnifiedRuleManagement: React.FC = () => {
       assembly: '装配',
       pid: 'PID',
       building: '建筑',
-      process: '工艺'
+      process: '工艺',
+      strong_layout: '强排'
     }
     return names[type] || type
   }
@@ -350,7 +351,8 @@ const UnifiedRuleManagement: React.FC = () => {
                 { label: '装配规则', value: 'assembly' },
                 { label: 'PID规则', value: 'pid' },
                 { label: '建筑规则', value: 'building' },
-                { label: '工艺规则', value: 'process' }
+                { label: '工艺规则', value: 'process' },
+                { label: '强排规则', value: 'strong_layout' }
               ]}
             />
           </Space>

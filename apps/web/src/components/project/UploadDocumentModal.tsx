@@ -3,7 +3,7 @@ import { Modal, Form, Input, Select, Upload, message } from 'antd'
 import { InboxOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd'
 import axios from '../../utils/axios'
-import { DocumentType } from '../../pages/ProjectWorkspace'
+import type { DocumentType } from '../../types/document'
 
 interface UploadDocumentModalProps {
   visible: boolean
@@ -90,8 +90,14 @@ const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
         message.error('文件大小不能超过 50MB')
         return Upload.LIST_IGNORE
       }
-      setFileList([file])
-      return false
+      // 🔧 修复：正确保存文件对象，包含 originFileObj
+      setFileList([{
+        uid: file.uid,
+        name: file.name,
+        status: 'done',
+        originFileObj: file
+      }])
+      return false  // 阻止自动上传，由手动上传
     },
     onRemove: () => {
       setFileList([])

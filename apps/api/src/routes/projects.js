@@ -19,8 +19,13 @@ const storage = multer.diskStorage({
     cb(null, uploadDir)
   },
   filename: (req, file, cb) => {
+    // 🔧 修复中文文件名编码问题
+    const originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+    const ext = path.extname(originalname)
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext)
+    // 同时更新 file.originalname 为正确编码
+    file.originalname = originalname
   }
 })
 
@@ -41,6 +46,9 @@ const upload = multer({
     }
   }
 })
+
+// 获取我的项目列表（必须在 / 之前，避免路由冲突）
+router.get('/my', authenticate, ProjectController.getMyProjects)
 
 // 获取项目列表
 router.get('/', authenticate, ProjectController.getList)
@@ -94,5 +102,8 @@ router.put('/:id/documents/:documentId', authenticate, ProjectController.updateD
 
 // 删除文档
 router.delete('/:id/documents/:documentId', authenticate, ProjectController.deleteDocument)
+
+// 获取文档条款数据
+router.get('/:id/documents/:documentId/clauses', authenticate, ProjectController.getDocumentClauses)
 
 module.exports = router

@@ -59,7 +59,8 @@ const PIDRecognition: React.FC = () => {
 
     try {
       const response = await axios.post('/api/pid/recognize?method=qwenvl', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000 // 3分钟超时，足够处理大文件
       })
 
       if (response.data.success) {
@@ -80,8 +81,9 @@ const PIDRecognition: React.FC = () => {
         message.success(`识别完成! 检测到 ${response.data.data.components.length} 个组件`)
       }
     } catch (error: any) {
-      message.error(error.response?.data?.message || '识别失败')
       console.error('识别失败:', error)
+      const errorMessage = error.response?.data?.message || error.message || '识别失败'
+      message.error(`识别失败: ${errorMessage}`)
     } finally {
       setUploading(false)
     }

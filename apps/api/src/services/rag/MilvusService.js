@@ -10,7 +10,7 @@ class MilvusService {
 
     // Milvus连接配置
     this.client = new MilvusClient({
-      address: process.env.MILVUS_HOST || 'localhost:19530',
+      address: process.env.MILVUS_ADDRESS || process.env.MILVUS_HOST || 'localhost:19530',
       username: process.env.MILVUS_USERNAME || '',
       password: process.env.MILVUS_PASSWORD || ''
     })

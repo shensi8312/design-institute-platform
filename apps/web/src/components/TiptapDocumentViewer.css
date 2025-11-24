@@ -1,0 +1,131 @@
+.tiptap-document-viewer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  background: white;
+  min-height: 500px;
+}
+
+.tiptap-viewer {
+  outline: none;
+  padding: 20px;
+  line-height: 1.8;
+}
+
+.tiptap-viewer h1 {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 24px 0 16px;
+  color: #262626;
+}
+
+.tiptap-viewer h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 20px 0 12px;
+  color: #262626;
+}
+
+.tiptap-viewer h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 16px 0 10px;
+  color: #595959;
+}
+
+.tiptap-viewer p {
+  margin: 12px 0;
+  color: #262626;
+}
+
+.tiptap-viewer ul,
+.tiptap-viewer ol {
+  padding-left: 24px;
+  margin: 12px 0;
+}
+
+.tiptap-viewer li {
+  margin: 6px 0;
+}
+
+.tiptap-viewer blockquote {
+  border-left: 4px solid #1890ff;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #595959;
+  font-style: italic;
+}
+
+.tiptap-viewer code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.tiptap-viewer pre {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.tiptap-viewer pre code {
+  background: none;
+  padding: 0;
+}
+
+.tiptap-viewer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  table-layout: auto;
+}
+
+.tiptap-viewer th,
+.tiptap-viewer td {
+  border: 1px solid #d9d9d9;
+  padding: 12px;
+  text-align: left;
+}
+
+.tiptap-viewer th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.tiptap-viewer a {
+  color: #1890ff;
+  text-decoration: underline;
+}
+
+.tiptap-viewer a:hover {
+  color: #40a9ff;
+}
+
+.tiptap-viewer img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+  border-radius: 4px;
+}
+
+.tiptap-viewer mark {
+  background-color: #fff566;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.tiptap-viewer hr {
+  border: none;
+  border-top: 2px solid #f0f0f0;
+  margin: 24px 0;
+}
+
+/* 只读模式下禁用选择效果 */
+.tiptap-viewer.ProseMirror-focused {
+  outline: none;
+}
