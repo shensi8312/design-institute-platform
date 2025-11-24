@@ -147,175 +147,6 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
   res.flushHeaders(); // 立即发送响应头
 
   try {
-    // 0. 检查用户输入长度，超长时自动分片处理
-    // 模型 4096 tokens，系统提示词约800token，历史对话约600token，输出预留1000token
-    // 实际可用约 1700 tokens ≈ 3400 中文字符
-    const MAX_QUESTION_CHARS = 2500; // 单次处理上限（保守值）
-    const CHUNK_SIZE = 2000; // 每片大小
-
-    if (question && question.length > MAX_QUESTION_CHARS) {
-      console.log(`[智能问答] 用户输入过长: ${question.length} 字符，启用分片处理`);
-
-      // 提取用户的实际问题（通常在开头或结尾）
-      const lines = question.split('\n');
-      let userQuestion = '';
-      let contentToProcess = question;
-
-      // 尝试识别问题部分（通常以?结尾或在开头/结尾的短句）
-      for (let i = 0; i < Math.min(3, lines.length); i++) {
-        if (lines[i].includes('?') || lines[i].includes('？') || lines[i].includes('吗') || lines[i].includes('能')) {
-          userQuestion = lines[i];
-          break;
-        }
-      }
-      if (!userQuestion) {
-        for (let i = lines.length - 1; i >= Math.max(0, lines.length - 3); i--) {
-          if (lines[i].includes('?') || lines[i].includes('？') || lines[i].includes('吗') || lines[i].includes('能')) {
-            userQuestion = lines[i];
-            break;
-          }
-        }
-      }
-      if (!userQuestion) {
-        userQuestion = '请分析以下内容';
-      }
-
-      // 按段落分片（支持单换行和双换行）
-      let paragraphs = question.split(/\n\n+/);
-
-      // 如果只分出1段，尝试按单换行分
-      if (paragraphs.length === 1 && question.length > CHUNK_SIZE) {
-        paragraphs = question.split(/\n/);
-      }
-
-      // 如果还是只有1段，强制按字符数切分
-      if (paragraphs.length === 1 && question.length > CHUNK_SIZE) {
-        paragraphs = [];
-        for (let i = 0; i < question.length; i += CHUNK_SIZE) {
-          paragraphs.push(question.substring(i, i + CHUNK_SIZE));
-        }
-      }
-
-      const chunks = [];
-      let currentChunk = '';
-
-      for (const para of paragraphs) {
-        if (currentChunk.length + para.length > CHUNK_SIZE) {
-          if (currentChunk) chunks.push(currentChunk);
-          // 如果单个段落就超长，强制切分
-          if (para.length > CHUNK_SIZE) {
-            for (let i = 0; i < para.length; i += CHUNK_SIZE) {
-              chunks.push(para.substring(i, i + CHUNK_SIZE));
-            }
-            currentChunk = '';
-          } else {
-            currentChunk = para;
-          }
-        } else {
-          currentChunk += (currentChunk ? '\n' : '') + para;
-        }
-      }
-      if (currentChunk) chunks.push(currentChunk);
-
-      console.log(`[智能问答] 分片数量: ${chunks.length}，问题: "${userQuestion}"`);
-
-      // 发送处理提示
-      res.write(`data: ${JSON.stringify({
-        type: 'chunk',
-        content: `📝 检测到长文本（${question.length}字符），已自动分成 ${chunks.length} 个部分处理...\n\n`
-      })}\n\n`);
-      if (res.flush) res.flush();
-
-      // 逐片处理
-      const UnifiedLLMService = require('../services/llm/UnifiedLLMService');
-      let allResults = [];
-
-      for (let i = 0; i < chunks.length; i++) {
-        res.write(`data: ${JSON.stringify({
-          type: 'chunk',
-          content: `**【第 ${i + 1}/${chunks.length} 部分】**\n`
-        })}\n\n`);
-        if (res.flush) res.flush();
-
-        const chunkPrompt = `${userQuestion}\n\n以下是第${i + 1}部分内容：\n${chunks[i]}`;
-        let chunkResult = '';
-
-        try {
-          await UnifiedLLMService.generateStreamWithMessages([
-            { role: 'system', content: '简洁分析内容，直接回答。' },
-            { role: 'user', content: chunkPrompt }
-          ], {
-            temperature: 0.3,
-            max_tokens: 500
-          }, async (chunk) => {
-            if (chunk.content) {
-              chunkResult += chunk.content;
-              res.write(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: chunk.content
-              })}\n\n`);
-              if (res.flush) res.flush();
-            }
-          });
-
-          allResults.push(`第${i + 1}部分：${chunkResult.substring(0, 300)}`);
-
-          res.write(`data: ${JSON.stringify({
-            type: 'chunk',
-            content: '\n\n---\n\n'
-          })}\n\n`);
-          if (res.flush) res.flush();
-
-        } catch (chunkError) {
-          console.error(`[智能问答] 第${i + 1}片处理失败:`, chunkError.message);
-          res.write(`data: ${JSON.stringify({
-            type: 'chunk',
-            content: `⚠️ 第${i + 1}部分处理失败: ${chunkError.message}\n\n`
-          })}\n\n`);
-          if (res.flush) res.flush();
-        }
-      }
-
-      // 添加汇总步骤
-      if (allResults.length > 1) {
-        res.write(`data: ${JSON.stringify({
-          type: 'chunk',
-          content: `\n\n**📋 综合总结**\n`
-        })}\n\n`);
-        if (res.flush) res.flush();
-
-        try {
-          const summaryPrompt = `根据以下各部分的分析，给出一个简洁的综合结论（不超过200字）：\n\n${allResults.join('\n\n')}\n\n用户原始问题：${userQuestion}`;
-
-          await UnifiedLLMService.generateStreamWithMessages([
-            { role: 'system', content: '你是专业助手，根据各部分分析给出简洁的综合结论。直接给出结论，不要重复各部分内容。' },
-            { role: 'user', content: summaryPrompt }
-          ], {
-            temperature: 0.3,
-            max_tokens: 300
-          }, async (chunk) => {
-            if (chunk.content) {
-              res.write(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: chunk.content
-              })}\n\n`);
-              if (res.flush) res.flush();
-            }
-          });
-        } catch (summaryError) {
-          console.error(`[智能问答] 汇总失败:`, summaryError.message);
-        }
-      }
-
-      // 发送完成标记
-      res.write(`data: ${JSON.stringify({
-        type: 'done',
-        sources: []
-      })}\n\n`);
-      res.end();
-      return;
-    }
-
     // 1. 使用深度搜索服务（向量检索 + 知识图谱增强）
     let vectorContext = '';
     let sources = [];
@@ -613,6 +444,126 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
       }
     ];
 
+    // ========== 预估token数，超限则提前分片 ==========
+    // 估算方法：中文字符约0.5-0.7 token，英文单词约1 token
+    // 简化为：总字符数 / 2 ≈ token数
+    const estimateTotalChars = chatMessages.reduce((sum, msg) => sum + msg.content.length, 0);
+    const estimatedTokens = Math.ceil(estimateTotalChars / 2);
+    const MAX_INPUT_TOKENS = 2800; // 模型4096限制，留1300给输出
+
+    if (estimatedTokens > MAX_INPUT_TOKENS) {
+      console.log(`[智能问答] 预估token超限: ${estimatedTokens} > ${MAX_INPUT_TOKENS}，启动分片处理`);
+
+      // 智能分片处理
+      const CHUNK_SIZE = 1200; // 每片约600 tokens
+      const chunks = [];
+      const paragraphs = question.split(/\n+/);
+      let currentChunk = '';
+
+      for (const para of paragraphs) {
+        if (currentChunk.length + para.length > CHUNK_SIZE) {
+          if (currentChunk) chunks.push(currentChunk);
+          if (para.length > CHUNK_SIZE) {
+            for (let i = 0; i < para.length; i += CHUNK_SIZE) {
+              chunks.push(para.substring(i, i + CHUNK_SIZE));
+            }
+            currentChunk = '';
+          } else {
+            currentChunk = para;
+          }
+        } else {
+          currentChunk += (currentChunk ? '\n' : '') + para;
+        }
+      }
+      if (currentChunk) chunks.push(currentChunk);
+
+      // 确保至少有分片
+      if (chunks.length === 0) {
+        for (let i = 0; i < question.length; i += CHUNK_SIZE) {
+          chunks.push(question.substring(i, i + CHUNK_SIZE));
+        }
+      }
+
+      console.log(`[智能问答] 分片数量: ${chunks.length}`);
+
+      // 逐片处理（对用户透明）
+      let allResults = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPrompt = `请分析以下内容：\n${chunks[i]}`;
+        let chunkResult = '';
+
+        try {
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '简洁专业地分析内容。' },
+            { role: 'user', content: chunkPrompt }
+          ], {
+            temperature: 0.3,
+            max_tokens: 500
+          }, async (chunk) => {
+            if (chunk.content) {
+              chunkResult += chunk.content;
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+
+          allResults.push(chunkResult.substring(0, 250));
+
+          if (i < chunks.length - 1) {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: '\n\n'
+            })}\n\n`);
+            if (res.flush) res.flush();
+          }
+        } catch (chunkError) {
+          console.error(`[智能问答] 分片${i + 1}处理失败:`, chunkError.message);
+        }
+      }
+
+      // 生成综合总结
+      if (allResults.length > 1) {
+        try {
+          res.write(`data: ${JSON.stringify({
+            type: 'chunk',
+            content: '\n\n**综合结论：**'
+          })}\n\n`);
+          if (res.flush) res.flush();
+
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '根据各部分分析给出简洁综合结论。' },
+            { role: 'user', content: `请综合以下分析给出最终结论：\n${allResults.join('\n')}` }
+          ], {
+            temperature: 0.3,
+            max_tokens: 300
+          }, async (chunk) => {
+            if (chunk.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+        } catch (summaryError) {
+          console.error('[智能问答] 汇总失败:', summaryError.message);
+        }
+      }
+
+      // 发送完成标记
+      res.write(`data: ${JSON.stringify({
+        type: 'done',
+        sources: []
+      })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // ========== 正常流程（未超限）==========
     // 流式响应 - 过滤工具调用标记
     let fullResponse = '';
     let displayBuffer = ''; // 用于发送给用户的内容
@@ -676,14 +627,129 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
     } catch (llmError) {
       console.error('[智能问答] LLM调用失败:', llmError.message);
 
-      // 发送用户友好的错误提示
-      const errorMessage = llmError.message.includes('400')
-        ? '抱歉，您的问题内容过长，已超出模型处理能力。请尝试缩短问题或清除对话历史后重试。'
-        : `抱歉，AI服务暂时不可用：${llmError.message}`;
+      // 检测是否为 token 超限错误（400错误），如果是则自动分片处理
+      if (llmError.message.includes('400') || llmError.message.includes('too long') || llmError.message.includes('exceed')) {
+        console.log('[智能问答] 检测到token超限，自动启用分片处理');
 
+        // 智能分片处理 - 将问题分成多个小块
+        const CHUNK_SIZE = 1500;
+        const chunks = [];
+
+        // 按段落或固定长度分片
+        const paragraphs = question.split(/\n\n+/);
+        let currentChunk = '';
+
+        for (const para of paragraphs) {
+          if (currentChunk.length + para.length > CHUNK_SIZE) {
+            if (currentChunk) chunks.push(currentChunk);
+            if (para.length > CHUNK_SIZE) {
+              // 强制切分超长段落
+              for (let i = 0; i < para.length; i += CHUNK_SIZE) {
+                chunks.push(para.substring(i, i + CHUNK_SIZE));
+              }
+              currentChunk = '';
+            } else {
+              currentChunk = para;
+            }
+          } else {
+            currentChunk += (currentChunk ? '\n' : '') + para;
+          }
+        }
+        if (currentChunk) chunks.push(currentChunk);
+
+        // 如果只有一个chunk，强制按字符切分
+        if (chunks.length === 1 && question.length > CHUNK_SIZE) {
+          chunks.length = 0;
+          for (let i = 0; i < question.length; i += CHUNK_SIZE) {
+            chunks.push(question.substring(i, i + CHUNK_SIZE));
+          }
+        }
+
+        console.log(`[智能问答] 分片数量: ${chunks.length}`);
+
+        // 逐片处理（透明处理，不提示用户）
+        const UnifiedLLMService = require('../services/llm/UnifiedLLMService');
+        let allResults = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunkPrompt = `请分析以下内容（第${i + 1}/${chunks.length}部分）：\n${chunks[i]}`;
+          let chunkResult = '';
+
+          try {
+            await UnifiedLLMService.generateStreamWithMessages([
+              { role: 'system', content: '简洁分析内容，直接回答。' },
+              { role: 'user', content: chunkPrompt }
+            ], {
+              temperature: 0.3,
+              max_tokens: 400
+            }, async (chunk) => {
+              if (chunk.content) {
+                chunkResult += chunk.content;
+                res.write(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  content: chunk.content
+                })}\n\n`);
+                if (res.flush) res.flush();
+              }
+            });
+
+            allResults.push(chunkResult.substring(0, 200));
+
+            // 分片之间添加分隔
+            if (i < chunks.length - 1) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: '\n\n'
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          } catch (chunkError) {
+            console.error(`[智能问答] 分片${i + 1}处理失败:`, chunkError.message);
+          }
+        }
+
+        // 生成综合总结
+        if (allResults.length > 1) {
+          try {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: '\n\n**总结：**'
+            })}\n\n`);
+            if (res.flush) res.flush();
+
+            await UnifiedLLMService.generateStreamWithMessages([
+              { role: 'system', content: '根据以上分析给出简洁总结。' },
+              { role: 'user', content: `综合以上各部分分析，给出结论：\n${allResults.join('\n')}` }
+            ], {
+              temperature: 0.3,
+              max_tokens: 200
+            }, async (chunk) => {
+              if (chunk.content) {
+                res.write(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  content: chunk.content
+                })}\n\n`);
+                if (res.flush) res.flush();
+              }
+            });
+          } catch (summaryError) {
+            console.error('[智能问答] 汇总失败:', summaryError.message);
+          }
+        }
+
+        // 发送完成标记
+        res.write(`data: ${JSON.stringify({
+          type: 'done',
+          sources: sources
+        })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // 其他错误正常提示
       res.write(`data: ${JSON.stringify({
         type: 'chunk',
-        content: errorMessage
+        content: `抱歉，AI服务暂时不可用：${llmError.message}`
       })}\n\n`);
       if (res.flush) res.flush();
 
