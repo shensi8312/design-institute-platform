@@ -35,7 +35,13 @@ import {
   PlusOutlined,
   MessageOutlined,
   FileSearchOutlined,
-  EyeOutlined
+  EyeOutlined,
+  BulbOutlined,
+  RocketOutlined,
+  TranslationOutlined,
+  BarChartOutlined,
+  CaretRightOutlined,
+  CaretDownOutlined
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import type { UploadFile } from 'antd';
@@ -70,8 +76,9 @@ const IntelligentQA: React.FC = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [sourceDrawerVisible, setSourceDrawerVisible] = useState(false);
   const [currentSources, setCurrentSources] = useState<any[]>([]);
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isSendingRef = useRef(false); // 标记是否正在发送消息，防止会话切换时覆盖
+  const isSendingRef = useRef(false);
 
   const {
     currentConversationId,
@@ -87,26 +94,20 @@ const IntelligentQA: React.FC = () => {
 
   const token = localStorage.getItem('token');
 
-  // 自动滚动到底部
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, loading]);
 
-  // 初始化：加载会话列表
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // 当切换会话时，加载历史消息（但发送消息过程中不要覆盖）
   useEffect(() => {
-    if (isSendingRef.current) {
-      // 发送消息过程中创建了新会话，不要覆盖当前消息
-      return;
-    }
+    if (isSendingRef.current) return;
     if (currentConversationId) {
       loadConversationMessages(currentConversationId);
     } else {
@@ -114,7 +115,6 @@ const IntelligentQA: React.FC = () => {
     }
   }, [currentConversationId]);
 
-  // 加载会话消息
   const loadConversationMessages = async (conversationId: string) => {
     try {
       setLoading(true);
@@ -127,7 +127,6 @@ const IntelligentQA: React.FC = () => {
     }
   };
 
-  // 上传文件配置
   const uploadProps = {
     beforeUpload: (file: File) => {
       const isLt10M = file.size / 1024 / 1024 < 10;
@@ -145,43 +144,38 @@ const IntelligentQA: React.FC = () => {
     multiple: true
   };
 
-  // 查看引用来源
   const handleViewSources = (sources: any[]) => {
     setCurrentSources(sources);
     setSourceDrawerVisible(true);
   };
 
-  // 查看文档原文
   const handleViewDocument = async (source: any) => {
     try {
       if (!source.document_id) {
         message.error('文档ID不存在');
         return;
       }
-      // 打开文档预览页面
       window.open(`/preview/${source.document_id}?page=${source.page || 1}`, '_blank');
     } catch (error) {
       message.error('打开文档失败');
     }
   };
 
-  // 发送问题
   const handleSend = async () => {
     if (!inputValue.trim() && attachments.length === 0) {
       message.warning('请输入问题或上传文件');
       return;
     }
 
-    // 标记开始发送，防止会话切换时覆盖消息
     isSendingRef.current = true;
+    setIsThinkingExpanded(true); // 新消息默认展开思考
 
-    // 如果没有当前会话，创建新会话
     let conversationId = currentConversationId;
     if (!conversationId) {
       try {
         const newConv = await createConversation(knowledgeScope, inputValue.substring(0, 30));
         conversationId = newConv.id;
-        await fetchConversations(); // 刷新会话列表
+        await fetchConversations();
       } catch (error) {
         message.error('创建会话失败');
         isSendingRef.current = false;
@@ -204,7 +198,6 @@ const IntelligentQA: React.FC = () => {
     setAttachments([]);
     setLoading(true);
 
-    // 创建助手消息占位符
     const assistantId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: assistantId,
@@ -215,7 +208,6 @@ const IntelligentQA: React.FC = () => {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      // 保存用户消息到数据库
       await addMessage(conversationId!, 'user', userMessage.content, {
         attachments: userMessage.attachments?.map(f => ({
           name: f.name,
@@ -224,7 +216,6 @@ const IntelligentQA: React.FC = () => {
         }))
       });
 
-      // 创建 FormData 上传文件
       const formData = new FormData();
       formData.append('question', questionText);
       formData.append('scope', knowledgeScope);
@@ -235,7 +226,6 @@ const IntelligentQA: React.FC = () => {
         formData.append('files', file as any);
       });
 
-      // 使用fetch接收SSE流式响应
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/knowledge/chat`, {
         method: 'POST',
         headers: {
@@ -335,14 +325,12 @@ const IntelligentQA: React.FC = () => {
         }
       }
 
-      // 保存助手回复到数据库
       await addMessage(conversationId!, 'assistant', fullContent, {
         thinking: fullThinking,
         sources,
         outputFiles
       });
 
-      // 刷新会话列表（更新最后活动时间）
       await fetchConversations();
 
     } catch (error: any) {
@@ -356,11 +344,10 @@ const IntelligentQA: React.FC = () => {
       );
     } finally {
       setLoading(false);
-      isSendingRef.current = false; // 发送完成，允许会话切换
+      isSendingRef.current = false;
     }
   };
 
-  // 下载生成的文件
   const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
       const link = document.createElement('a');
@@ -377,7 +364,6 @@ const IntelligentQA: React.FC = () => {
     }
   };
 
-  // 清空对话（创建新会话）
   const handleClear = () => {
     switchConversation(null);
     setMessages([]);
@@ -385,7 +371,6 @@ const IntelligentQA: React.FC = () => {
     message.success('已开始新对话');
   };
 
-  // 删除会话
   const handleDeleteConversation = async (convId: string) => {
     try {
       await deleteConversation(convId);
@@ -395,13 +380,11 @@ const IntelligentQA: React.FC = () => {
     }
   };
 
-  // 切换会话
   const handleSwitchConversation = (convId: string) => {
     switchConversation(convId);
     setDrawerVisible(false);
   };
 
-  // 获取文件图标
   const getFileIcon = (type: string) => {
     if (type.includes('word')) return <FileWordOutlined style={{ color: '#1890ff', fontSize: 24 }} />;
     if (type.includes('pdf')) return <FilePdfOutlined style={{ color: '#f5222d', fontSize: 24 }} />;
@@ -410,361 +393,339 @@ const IntelligentQA: React.FC = () => {
   };
 
   const scopeOptions = [
-    { value: 'all', label: '全部知识库（企业+个人）' },
-    { value: 'enterprise', label: '仅企业知识库' },
-    { value: 'personal', label: '仅个人知识库' }
+    { value: 'all', label: '全部知识库' },
+    { value: 'enterprise', label: '企业知识库' },
+    { value: 'personal', label: '个人知识库' }
+  ];
+
+  const suggestions = [
+    { title: '合同审查', desc: '帮我审查这份施工合同的风险点', icon: <FileSearchOutlined /> },
+    { title: '规范查询', desc: '最新的建筑防火规范有哪些要求？', icon: <BulbOutlined /> },
+    { title: '数据分析', desc: '分析上个月的项目进度数据', icon: <BarChartOutlined /> },
+    { title: '文档翻译', desc: '将这份技术说明书翻译成英文', icon: <TranslationOutlined /> },
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card
-        title={
-          <Space>
-            <RobotOutlined />
-            <span>智能问答</span>
-            {currentConversationId && (
-              <Tag color="blue">
-                <MessageOutlined /> 会话进行中
-              </Tag>
-            )}
-          </Space>
-        }
-        extra={
-          <Space>
-            <Select
-              value={knowledgeScope}
-              onChange={setKnowledgeScope}
-              style={{ width: 220 }}
-              options={scopeOptions}
-              prefix={<DatabaseOutlined />}
-            />
-            <Button
-              icon={<HistoryOutlined />}
-              onClick={() => setDrawerVisible(true)}
-            >
-              历史会话 ({conversations.length})
-            </Button>
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleClear}
-            >
-              新对话
-            </Button>
-          </Space>
-        }
-      >
-        {/* 对话区域 */}
-        <div
-          style={{
-            height: 'calc(100vh - 400px)',
-            overflowY: 'auto',
-            padding: '16px',
-            backgroundColor: '#f5f5f5',
-            borderRadius: '8px',
-            marginBottom: '16px'
-          }}
-        >
-          {messages.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>
-              <RobotOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-              <div>欢迎使用智能问答助手</div>
-              <div style={{ fontSize: 14, marginTop: 8 }}>
-                支持文字提问、上传附件、生成文档等功能
-              </div>
-              <div style={{ fontSize: 12, marginTop: 8, color: '#bbb' }}>
-                例如："翻译这个PDF文档" "根据这个Excel生成Word报告"
-              </div>
+    <div className="qa-page-container">
+      {/* 顶部导航 */}
+      <div style={{
+        padding: '16px 24px',
+        background: 'rgba(255,255,255,0.9)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        zIndex: 10
+      }}>
+        <Space size="large">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 600, color: '#333' }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
+            }}>
+              <RobotOutlined />
             </div>
-          ) : (
-            <List
-              dataSource={messages}
-              renderItem={(msg) => (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    marginBottom: 16
-                  }}
-                >
-                  <div
-                    style={{
-                      maxWidth: '70%',
-                      display: 'flex',
-                      flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-                      alignItems: 'flex-start',
-                      gap: 8
-                    }}
-                  >
-                    <Avatar
-                      icon={msg.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                      style={{
-                        backgroundColor: msg.role === 'user' ? '#1890ff' : '#52c41a'
-                      }}
-                    />
-                    <div>
-                      <div
-                        style={{
-                          padding: '12px 16px',
-                          borderRadius: '8px',
-                          backgroundColor: msg.role === 'user' ? '#1890ff' : '#fff',
-                          color: msg.role === 'user' ? '#fff' : '#000',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word'
-                        }}
-                      >
-                        {msg.thinking && msg.role === 'assistant' && (
-                          <Collapse
-                            size="small"
-                            style={{ marginBottom: 12 }}
-                            activeKey={msg.content ? undefined : ['1']}
-                            defaultActiveKey={msg.content ? [] : ['1']}
-                            items={[{
-                              key: '1',
-                              label: msg.content ? '💭 思考过程' : '💭 思考中...',
-                              children: (
-                                <div style={{
-                                  whiteSpace: 'pre-wrap',
-                                  color: '#666',
-                                  fontSize: '13px',
-                                  lineHeight: '1.6'
-                                }}>
-                                  {msg.thinking}
-                                </div>
-                              )
-                            }]}
-                          />
-                        )}
+            智能问答助手
+          </div>
+          <Select
+            value={knowledgeScope}
+            onChange={setKnowledgeScope}
+            style={{ width: 160 }}
+            options={scopeOptions}
+            bordered={false}
+            suffixIcon={<DatabaseOutlined style={{ color: '#667eea' }} />}
+          />
+        </Space>
+        <Space>
+          <Button type="text" icon={<HistoryOutlined />} onClick={() => setDrawerVisible(true)}>
+            历史会话
+          </Button>
+          <Button type="primary" shape="round" icon={<PlusOutlined />} onClick={handleClear} 
+            style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}>
+            新对话
+          </Button>
+        </Space>
+      </div>
 
-                        {msg.role === 'assistant' ? (
-                          <div className="assistant-message">
-                            <ReactMarkdown
-                              components={{
-                                p: ({children}) => <>{children}</>,
-                                li: ({children}) => <li>{children}</li>
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
-                        ) : (
-                          msg.content
-                        )}
-
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.3)' }}>
-                            <Text style={{ color: msg.role === 'user' ? '#fff' : '#000', fontSize: 12 }}>
-                              附件：
-                            </Text>
-                            {msg.attachments.map((file, idx) => (
-                              <Tag key={idx} style={{ marginTop: 4 }}>
-                                <PaperClipOutlined /> {file.name}
-                              </Tag>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {msg.outputFiles && msg.outputFiles.length > 0 && (
-                        <div style={{ marginTop: 12 }}>
-                          {msg.outputFiles.map((file, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                padding: '12px',
-                                backgroundColor: '#fff',
-                                borderRadius: '8px',
-                                border: '1px solid #d9d9d9',
-                                marginBottom: 8,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between'
-                              }}
-                            >
-                              <Space>
-                                {getFileIcon(file.type)}
-                                <div>
-                                  <div style={{ fontWeight: 500 }}>{file.name}</div>
-                                  <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {file.type}
-                                  </Text>
-                                </div>
-                              </Space>
-                              <Button
-                                type="primary"
-                                icon={<DownloadOutlined />}
-                                onClick={() => handleDownload(file.url, file.name)}
-                              >
-                                下载
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div style={{ marginTop: 12 }}>
-                          <Button
-                            size="small"
-                            icon={<FileSearchOutlined />}
-                            onClick={() => handleViewSources(msg.sources)}
-                          >
-                            查看引用来源 ({msg.sources.length})
-                          </Button>
-                        </div>
-                      )}
-                      <div style={{ marginTop: 4, fontSize: 12, color: '#999' }}>
-                        {msg.timestamp.toLocaleTimeString('zh-CN')}
-                      </div>
-                    </div>
+      {/* 消息列表 */}
+      <div className="chat-message-list">
+        {messages.length === 0 ? (
+          <div className="welcome-container">
+            <div className="welcome-icon">
+              <RocketOutlined />
+            </div>
+            <div className="welcome-title">有什么我可以帮你的吗？</div>
+            <div className="welcome-subtitle">
+              我可以协助你查询规范、审查图纸、分析数据，或者处理文档工作。
+            </div>
+            
+            <div className="suggestion-grid">
+              {suggestions.map((item, index) => (
+                <div key={index} className="suggestion-card" onClick={() => setInputValue(item.desc)}>
+                  <div className="suggestion-icon">{item.icon}</div>
+                  <div className="suggestion-text">
+                    <div className="suggestion-title">{item.title}</div>
+                    <div className="suggestion-desc">{item.desc}</div>
                   </div>
                 </div>
-              )}
-            />
-          )}
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <Spin tip="正在思考..." />
+              ))}
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 20 }}>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`message-row ${msg.role}`}>
+                <div className={`message-avatar ${msg.role}`}>
+                  {msg.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+                  <div className="message-bubble">
+                    {/* 思考过程 */}
+                    {msg.thinking && msg.role === 'assistant' && (
+                      <div className="thinking-process">
+                        <div 
+                          className="thinking-header"
+                          onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                        >
+                          {isThinkingExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                          <span>{msg.content ? '深度思考过程' : '正在思考...'}</span>
+                        </div>
+                        {isThinkingExpanded && (
+                          <div className="thinking-content">
+                            {msg.thinking}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-        {/* 输入区域 */}
-        <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                    {/* 消息内容 */}
+                    <div className="markdown-content">
+                      {msg.role === 'assistant' ? (
+                         <ReactMarkdown
+                           components={{
+                             a: ({node, ...props}) => <a style={{color: '#1890ff'}} {...props} target="_blank" rel="noopener noreferrer" />
+                           }}
+                         >
+                           {msg.content || (msg.thinking ? '' : '...')}
+                         </ReactMarkdown>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
+
+                    {/* 附件显示 */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {msg.attachments.map((file, idx) => (
+                          <Tag key={idx} className="attachment-tag">
+                            <PaperClipOutlined /> {file.name}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 生成的文件 */}
+                    {msg.outputFiles && msg.outputFiles.length > 0 && (
+                      <div style={{ marginTop: 16 }}>
+                        {msg.outputFiles.map((file, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: '#f8faff',
+                              borderRadius: '12px',
+                              border: '1px solid #e6ebf1',
+                              marginBottom: 8,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            <Space>
+                              {getFileIcon(file.type)}
+                              <div>
+                                <div style={{ fontWeight: 500, color: '#333' }}>{file.name}</div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {file.type}
+                                </Text>
+                              </div>
+                            </Space>
+                            <Button
+                              type="link"
+                              icon={<DownloadOutlined />}
+                              onClick={() => handleDownload(file.url, file.name)}
+                            >
+                              下载
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 引用来源按钮 */}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                        <Button
+                          size="small"
+                          type="dashed"
+                          icon={<FileSearchOutlined />}
+                          onClick={() => handleViewSources(msg.sources!)}
+                          style={{ borderRadius: 12, fontSize: 12 }}
+                        >
+                          查看引用来源 ({msg.sources.length})
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 4, 
+                    textAlign: msg.role === 'user' ? 'right' : 'left',
+                    padding: '0 4px'
+                  }}>
+                    {msg.timestamp.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {loading && !messages.some(m => m.role === 'assistant' && !m.content && !m.thinking) && (
+              <div style={{ display: 'flex', gap: 12, paddingLeft: 12 }}>
+                 <div className="message-avatar assistant">
+                   <RobotOutlined />
+                 </div>
+                 <div className="message-bubble" style={{ background: '#fff', color: '#999' }}>
+                   <Spin size="small" /> 正在分析...
+                 </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* 底部输入框 */}
+      <div className="input-container">
+        <div className="input-box-wrapper">
           {attachments.length > 0 && (
-            <div style={{ padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-              <Space wrap>
-                {attachments.map(file => (
-                  <Tag
-                    key={file.uid}
-                    closable
-                    onClose={() => uploadProps.onRemove(file)}
-                  >
-                    <PaperClipOutlined /> {file.name}
-                  </Tag>
-                ))}
-              </Space>
+            <div className="input-files-preview">
+              {attachments.map(file => (
+                <Tag
+                  key={file.uid}
+                  closable
+                  onClose={() => uploadProps.onRemove(file)}
+                  style={{ borderRadius: 4, background: '#f5f5f5', border: '1px solid #e0e0e0' }}
+                >
+                  <PaperClipOutlined /> {file.name}
+                </Tag>
+              ))}
             </div>
           )}
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          
+          <div className="main-input-area">
             <Upload {...uploadProps} showUploadList={false}>
-              <Button
-                icon={<PaperClipOutlined />}
-                type="text"
-                size="large"
-                disabled={loading}
-                style={{ fontSize: 20, color: '#999' }}
-              />
+              <Tooltip title="上传文件">
+                <Button 
+                  type="text" 
+                  shape="circle" 
+                  icon={<PaperClipOutlined style={{ fontSize: 18, color: '#666' }} />} 
+                />
+              </Tooltip>
             </Upload>
-
+            
             <TextArea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="输入消息... (Enter发送，Shift+Enter换行)"
+              placeholder="问点什么... (Enter 发送)"
               autoSize={{ minRows: 1, maxRows: 6 }}
+              className="custom-textarea"
               onPressEnter={(e) => {
-                if (e.shiftKey) {
-                  return;
-                }
+                if (e.shiftKey) return;
                 e.preventDefault();
                 handleSend();
               }}
-              disabled={loading}
-              style={{ flex: 1, borderRadius: '12px', padding: '8px 16px' }}
+              style={{ flex: 1 }}
             />
+            
             <Button
+              className="send-btn"
               type="primary"
-              icon={<SendOutlined />}
               onClick={handleSend}
               loading={loading}
-              size="large"
-              style={{ height: 'auto', borderRadius: '12px', padding: '8px 24px', fontWeight: 500 }}
+              disabled={!inputValue.trim() && attachments.length === 0}
             >
-              发送
+              {!loading && <SendOutlined style={{ fontSize: 18 }} />}
             </Button>
           </div>
         </div>
-
-        <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-          <Space split={<Divider type="vertical" />}>
-            <span>当前搜索范围：{scopeOptions.find(o => o.value === knowledgeScope)?.label}</span>
-            <span>按 Enter 发送，Shift + Enter 换行</span>
-            <span>支持上传文件并要求AI生成Word/Excel等格式输出</span>
-          </Space>
+        <div style={{ textAlign: 'center', marginTop: 8, fontSize: 12, color: '#aaa' }}>
+          AI生成内容可能包含错误，请仔细核查重要的事实和数据
         </div>
-      </Card>
+      </div>
 
-      {/* 历史会话侧边栏 */}
+      {/* 历史会话侧边栏 - 保持不变 */}
       <Drawer
         title="历史会话"
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        width={400}
+        width={360}
       >
         {conversationLoading ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <Spin />
           </div>
         ) : conversations.length === 0 ? (
-          <Empty description="暂无历史会话" />
+          <Empty description="暂无历史会话" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           <List
             dataSource={conversations}
             renderItem={(conv) => (
-              <List.Item
+              <div
+                key={conv.id}
                 style={{
                   cursor: 'pointer',
-                  backgroundColor: conv.id === currentConversationId ? '#f0f0f0' : 'transparent',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  marginBottom: '8px'
+                  backgroundColor: conv.id === currentConversationId ? '#f0f4ff' : 'transparent',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  marginBottom: '8px',
+                  border: conv.id === currentConversationId ? '1px solid #dbe4ff' : '1px solid transparent',
+                  transition: 'all 0.2s'
                 }}
-                actions={[
+                className="history-item"
+                onClick={() => handleSwitchConversation(conv.id)}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                  <Text strong ellipsis style={{ width: 240, color: '#333' }}>{conv.title}</Text>
                   <Popconfirm
-                    title="确定删除这个会话吗？"
+                    title="确定删除？"
                     onConfirm={(e) => {
                       e?.stopPropagation();
                       handleDeleteConversation(conv.id);
                     }}
-                    okText="删除"
-                    cancelText="取消"
+                    okText="是"
+                    cancelText="否"
                   >
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => e.stopPropagation()}
+                    <DeleteOutlined 
+                      style={{ color: '#ccc', cursor: 'pointer' }} 
+                      onClick={e => e.stopPropagation()}
+                      className="delete-icon"
                     />
                   </Popconfirm>
-                ]}
-                onClick={() => handleSwitchConversation(conv.id)}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar icon={<MessageOutlined />} />}
-                  title={conv.title}
-                  description={
-                    <Space direction="vertical" size={0}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {conv.messageCount} 条消息
-                      </Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {new Date(conv.lastActivityAt).toLocaleString('zh-CN')}
-                      </Text>
-                    </Space>
-                  }
-                />
-              </List.Item>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#999' }}>
+                   <span><MessageOutlined /> {conv.messageCount}</span>
+                   <span>{new Date(conv.lastActivityAt).toLocaleDateString()}</span>
+                </div>
+              </div>
             )}
           />
         )}
       </Drawer>
 
-      {/* 引用来源Drawer */}
+      {/* 引用来源Drawer - 保持不变 */}
       <Drawer
         title={
           <Space>
@@ -785,7 +746,7 @@ const IntelligentQA: React.FC = () => {
           renderItem={(source: any, index: number) => (
             <Card
               key={index}
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #f0f0f0' }}
               size="small"
               title={
                 <Space>
@@ -831,12 +792,13 @@ const IntelligentQA: React.FC = () => {
               <div
                 style={{
                   padding: 12,
-                  background: '#f5f5f5',
-                  borderRadius: 4,
+                  background: '#f8f9fa',
+                  borderRadius: 8,
                   fontSize: 12,
                   lineHeight: '1.6',
                   maxHeight: 200,
-                  overflow: 'auto'
+                  overflow: 'auto',
+                  border: '1px solid #eee'
                 }}
               >
                 {source.preview || source.full_content}
@@ -845,13 +807,12 @@ const IntelligentQA: React.FC = () => {
               {/* 相似度 */}
               <div style={{ marginTop: 12, textAlign: 'right' }}>
                 <Tag color={source.score > 10 ? 'green' : source.score > 5 ? 'blue' : 'orange'}>
-                  相似度分数: {source.score.toFixed(2)}
+                  相似度: {source.score.toFixed(2)}
                 </Tag>
               </div>
             </Card>
           )}
         />
-
         {currentSources.length === 0 && (
           <Empty description="暂无引用来源" />
         )}
