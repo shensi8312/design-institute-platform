@@ -238,6 +238,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
         if (res.flush) res.flush();
 
         const chunkPrompt = `${userQuestion}\n\n以下是第${i + 1}部分内容：\n${chunks[i]}`;
+        let chunkResult = '';
 
         try {
           await UnifiedLLMService.generateStreamWithMessages([
@@ -248,6 +249,7 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
             max_tokens: 500
           }, async (chunk) => {
             if (chunk.content) {
+              chunkResult += chunk.content;
               res.write(`data: ${JSON.stringify({
                 type: 'chunk',
                 content: chunk.content
@@ -255,6 +257,8 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
               if (res.flush) res.flush();
             }
           });
+
+          allResults.push(`第${i + 1}部分：${chunkResult.substring(0, 300)}`);
 
           res.write(`data: ${JSON.stringify({
             type: 'chunk',
@@ -269,6 +273,37 @@ router.post('/chat', authenticate, upload.array('files', 10), async (req, res) =
             content: `⚠️ 第${i + 1}部分处理失败: ${chunkError.message}\n\n`
           })}\n\n`);
           if (res.flush) res.flush();
+        }
+      }
+
+      // 添加汇总步骤
+      if (allResults.length > 1) {
+        res.write(`data: ${JSON.stringify({
+          type: 'chunk',
+          content: `\n\n**📋 综合总结**\n`
+        })}\n\n`);
+        if (res.flush) res.flush();
+
+        try {
+          const summaryPrompt = `根据以下各部分的分析，给出一个简洁的综合结论（不超过200字）：\n\n${allResults.join('\n\n')}\n\n用户原始问题：${userQuestion}`;
+
+          await UnifiedLLMService.generateStreamWithMessages([
+            { role: 'system', content: '你是专业助手，根据各部分分析给出简洁的综合结论。直接给出结论，不要重复各部分内容。' },
+            { role: 'user', content: summaryPrompt }
+          ], {
+            temperature: 0.3,
+            max_tokens: 300
+          }, async (chunk) => {
+            if (chunk.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+        } catch (summaryError) {
+          console.error(`[智能问答] 汇总失败:`, summaryError.message);
         }
       }
 
