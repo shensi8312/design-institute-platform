@@ -8,12 +8,16 @@ const DocumentDomainConfig = require('../../config/DocumentDomainConfig');
 const UnifiedLLMService = require('../llm/UnifiedLLMService');
 const MasterFormatMatcher = require('./MasterFormatMatcher');
 const WordOutlineExtractor = require('./WordOutlineExtractor');
+const CSIFrameworkService = require('./CSIFrameworkService');
+const CSIContentMatcher = require('./CSIContentMatcher');
 
 class TemplateService {
   constructor() {
     this.domainConfig = DocumentDomainConfig;
     this.llmService = UnifiedLLMService;
     this.masterFormatMatcher = MasterFormatMatcher;
+    this.csiFrameworkService = CSIFrameworkService;
+    this.csiContentMatcher = CSIContentMatcher;
     this._hasEditableUsersColumnPromise = null;
   }
 
@@ -93,6 +97,8 @@ class TemplateService {
    * @param {string} params.fileType - 文件类型
    * @param {number} params.fileSize - 文件大小
    * @param {string} params.createdBy - 创建人
+   * @param {string} params.sourceType - CSI来源类型: CSI_EN/CSI_ZH/COMPANY
+   * @param {string} params.sourceProject - 来源项目名（公司SPEC时）
    * @returns {Promise<Object>}
    */
   async uploadTemplate({
@@ -103,30 +109,265 @@ class TemplateService {
     fileType,
     fileSize,
     createdBy,
-    description
+    description,
+    sourceType,
+    sourceProject,
+    projectType
   }) {
-    // AI解析模板结构
-    const parseResult = await this._parseTemplateFile(filePath, templateType);
+    // 长度校验，超出直接报错，避免悄悄截断丢信息
+    const validateLength = (label, value, max) => {
+      if (!value) return value;
+      if (value.length > max) {
+        throw new Error(`${label} 长度超出限制（最大 ${max} 字符），请调整后再上传`);
+      }
+      return value;
+    };
+
+    const safeName = validateLength('模板名称', name || fileName || 'template', 255);
+    const safeFileName = validateLength('文件名', fileName, 512);
+    const safeMinioObject = validateLength('存储对象名', fileName, 512);
+    const safeFileType = validateLength('文件类型', fileType, 255);
+    const safeProjectType = validateLength('项目类型', projectType, 100);
+
+    // 根据来源类型选择解析方式
+    let parseResult;
+    let csiParseResult = null;
+
+    if (sourceType === 'CSI_EN' || sourceType === 'CSI_ZH') {
+      // CSI 标准模板：使用 CSI 解析器
+      parseResult = await this._parseCSITemplate(filePath, sourceType);
+      csiParseResult = parseResult.csiResult;
+    } else if (sourceType === 'COMPANY') {
+      // 公司 SPEC：先普通解析，再 AI 匹配 CSI
+      parseResult = await this._parseTemplateFile(filePath, templateType);
+      // AI 匹配将在后续处理
+    } else {
+      // 默认：普通解析
+      parseResult = await this._parseTemplateFile(filePath, templateType);
+    }
 
     // 创建模板记录
     const [template] = await knex('document_templates').insert({
       code: `TEMPLATE_${Date.now()}`,  // 生成唯一code
-      name,
-      template_type: templateType,
+      name: safeName,
+      type: templateType,  // 数据库列名是 type
       description,
       file_path: filePath,
-      file_name: fileName,
-      file_type: fileType,
+      file_name: safeFileName,
+      file_type: safeFileType,
       file_size: fileSize,
       minio_bucket: 'templates',
-      minio_object: fileName,
+      minio_object: safeMinioObject,
       config: JSON.stringify(parseResult.config || {}),
       version: '1.0',
       status: 'draft',
       created_by: createdBy,
+      // CSI 扩展字段
+      source_type: sourceType || null,
+      source_project: sourceProject || null,
+      project_type: safeProjectType || null,
+      csi_parsed: !!csiParseResult,
+      csi_parse_result: csiParseResult ? JSON.stringify(csiParseResult) : null
     }).returning('*');
 
+    // 如果是 CSI 模板，导入框架
+    if (csiParseResult && (sourceType === 'CSI_EN' || sourceType === 'CSI_ZH')) {
+      await this._importCSIFramework(csiParseResult, template.id, sourceType);
+    }
+
     return template;
+  }
+
+  /**
+   * 解析 CSI 标准模板
+   * @private
+   */
+  async _parseCSITemplate(filePath, sourceType) {
+    try {
+      console.log('[CSI解析] 开始解析:', filePath, sourceType);
+
+      // 调用 Python CSI 解析器
+      const csiResult = await this.csiFrameworkService.parseCSIDocx(filePath);
+
+      console.log('[CSI解析] 解析成功:', csiResult.stats);
+
+      return {
+        sectionStructure: csiResult.tree,
+        flatSections: csiResult.flat_list,
+        stats: csiResult.stats,
+        variables: [],
+        config: {
+          csiSectionCode: csiResult.section_code,
+          csiDivision: csiResult.division
+        },
+        csiResult
+      };
+    } catch (error) {
+      console.error('[CSI解析] 失败，降级到普通解析:', error);
+      // 降级到普通解析
+      const normalResult = await this._parseTemplateFile(filePath, 'spec');
+      return {
+        ...normalResult,
+        csiResult: null
+      };
+    }
+  }
+
+  /**
+   * 导入 CSI 框架到数据库
+   * @private
+   */
+  async _importCSIFramework(csiResult, templateId, sourceType) {
+    try {
+      // 导入到 spec_csi_framework 表
+      const importResult = await this.csiFrameworkService.importFramework(
+        csiResult,
+        sourceType === 'CSI_EN' ? 'CSI_EN_2020' : 'CSI_ZH_2020'
+      );
+
+      console.log('[CSI导入] 框架导入完成:', importResult);
+
+      // 同时创建 template_sections 记录（关联 CSI 框架）
+      await this._createCSITemplateSections(csiResult.flat_list, templateId, sourceType);
+
+      return importResult;
+    } catch (error) {
+      console.error('[CSI导入] 失败:', error);
+      // 不影响模板创建
+    }
+  }
+
+  /**
+   * 创建关联 CSI 框架的模板章节
+   * @private
+   */
+  async _createCSITemplateSections(flatList, templateId, sourceType) {
+    console.log(`[CSI章节] 开始创建: templateId=${templateId}, flatList.length=${flatList?.length || 0}`);
+
+    // 先删除该模板的现有章节（如果有的话）
+    await knex('template_sections').where({ template_id: templateId }).del();
+
+    const sections = flatList.map((node, index) => {
+      // PART 节点有时解析不到 parent_code，兜底挂在 Section 下，避免出现在根层级
+      const parentCode =
+        node.parent_code ||
+        (node.level_type === 'PRT'
+          ? node.section_code || node.full_code.split('.').slice(0, 1).join('.')
+          : null);
+
+      return {
+        template_id: templateId,
+        code: node.full_code,
+        title: sourceType === 'CSI_ZH' ? (node.title_zh || node.title_en || node.content || node.full_code) : (node.title_en || node.content || node.full_code),
+        level: node.level,
+        parent_code: parentCode,
+        description: '',
+        template_content: node.content || '',
+        metadata: JSON.stringify({
+          csiLevelType: node.level_type,
+          csiLevelLabel: node.level_label,
+          titleEn: node.title_en,
+          titleZh: node.title_zh
+        }),
+        sort_order: index,
+        is_required: false,
+        is_editable: true,
+        csi_full_code: node.full_code,
+        csi_level_type: node.level_type,
+        is_csi_custom: false
+      };
+    });
+
+    if (sections.length > 0) {
+      try {
+        await knex.batchInsert('template_sections', sections, 100);
+        console.log(`[CSI章节] 创建成功: ${sections.length} 个章节`);
+      } catch (batchError) {
+        console.error(`[CSI章节] 批量插入失败:`, batchError.message);
+        // 尝试逐条插入以找出问题
+        for (let i = 0; i < Math.min(5, sections.length); i++) {
+          try {
+            await knex('template_sections').insert(sections[i]);
+            console.log(`[CSI章节] 单条插入成功: ${sections[i].code}`);
+          } catch (singleError) {
+            console.error(`[CSI章节] 单条插入失败 ${sections[i].code}:`, singleError.message);
+          }
+        }
+        throw batchError;
+      }
+    } else {
+      console.log('[CSI章节] 没有章节需要创建');
+    }
+  }
+
+  /**
+   * 处理公司 SPEC 的 CSI 匹配
+   * @param {string} templateId - 模板ID
+   * @param {string} targetSectionCode - 目标 CSI Section 编号
+   * @returns {Promise<Object>}
+   */
+  async matchCompanySpecToCSI(templateId, targetSectionCode) {
+    const template = await this.getTemplate(templateId);
+
+    if (!template) {
+      throw new Error('模板不存在');
+    }
+
+    // 获取模板的章节内容
+    const sections = await knex('template_sections')
+      .where({ template_id: templateId });
+
+    const contentBlocks = sections.map(s => ({
+      code: s.code,
+      title: s.title,
+      content: s.template_content || s.title
+    }));
+
+    // 批量匹配
+    const matchResult = await this.csiContentMatcher.batchMatch(
+      contentBlocks,
+      targetSectionCode,
+      {
+        name: template.source_project || template.name,
+        templateId
+      }
+    );
+
+    // 保存匹配结果
+    for (const match of matchResult.matched) {
+      await this.csiContentMatcher.saveContent({
+        frameworkId: match.frameworkId,
+        frameworkCode: match.frameworkCode,
+        sourceType: 'COMPANY',
+        sourceName: template.source_project || template.name,
+        sourceTemplateId: templateId,
+        contentZh: match.content,
+        confidence: match.confidence
+      });
+    }
+
+    // 自动创建新章节
+    for (const newSection of matchResult.newSections) {
+      await this.csiContentMatcher.createCustomSection({
+        ...newSection.suggestion,
+        originalContent: newSection.content
+      });
+    }
+
+    // 更新模板的 CSI 解析状态
+    await knex('document_templates')
+      .where({ id: templateId })
+      .update({
+        csi_parsed: true,
+        csi_parse_result: JSON.stringify({
+          targetSectionCode,
+          matched: matchResult.matched.length,
+          newSections: matchResult.newSections.length,
+          unmatched: matchResult.unmatched.length
+        })
+      });
+
+    return matchResult;
   }
 
   /**
@@ -211,7 +452,7 @@ class TemplateService {
         'id',
         'code',
         'name',
-        'template_type',
+        'type as template_type',  // 数据库列是 type，别名为 template_type 以兼容前端
         'description',
         'section_code_format',
         'max_level',
@@ -222,7 +463,7 @@ class TemplateService {
       );
 
     if (filters.templateType) {
-      query = query.where({ template_type: filters.templateType });
+      query = query.where({ type: filters.templateType });  // 数据库列名是 type
     }
 
     if (filters.status) {
@@ -251,7 +492,7 @@ class TemplateService {
     let oldQuery = knex('document_templates');
 
     if (filters.templateType) {
-      oldQuery = oldQuery.where({ template_type: filters.templateType });
+      oldQuery = oldQuery.where({ type: filters.templateType });  // 数据库列名是 type
     }
 
     if (filters.status) {
@@ -408,30 +649,39 @@ class TemplateService {
       return codeA - codeB;
     });
 
-    // 检查每个节点是否有子节点，并确保返回所有字段
-    const result = [];
-    for (const section of sections) {
-      const hasChildren = await knex('template_sections')
-        .where({ template_id: templateId, parent_code: section.code })
-        .count('* as count')
-        .first();
+    // 批量查询子节点数量，避免 N+1 查询
+    // 只需查询 parent_code 在当前结果集中的记录
+    const sectionCodes = sections.map(s => s.code);
+    let childCountsMap = new Map();
 
-      result.push({
-        id: section.id,
-        code: section.code,
-        title: section.title,
-        level: section.level,
-        sort_order: section.sort_order,
-        parent_code: section.parent_code,
-        description: section.description,
-        template_content: section.template_content,
-        is_required: section.is_required,
-        is_editable: section.is_editable,
-        editable_user_ids: section.editable_user_ids,
-        metadata: section.metadata,
-        isLeaf: parseInt(hasChildren.count) === 0
+    if (sectionCodes.length > 0) {
+      const childCounts = await knex('template_sections')
+        .where({ template_id: templateId })
+        .whereIn('parent_code', sectionCodes)
+        .groupBy('parent_code')
+        .count('* as count')
+        .select('parent_code');
+      
+      childCounts.forEach(row => {
+        childCountsMap.set(row.parent_code, parseInt(row.count));
       });
     }
+
+    const result = sections.map(section => ({
+      id: section.id,
+      code: section.code,
+      title: section.title,
+      level: section.level,
+      sort_order: section.sort_order,
+      parent_code: section.parent_code,
+      description: section.description,
+      template_content: section.template_content,
+      is_required: section.is_required,
+      is_editable: section.is_editable,
+      editable_user_ids: section.editable_user_ids,
+      metadata: section.metadata,
+      isLeaf: !childCountsMap.has(section.code)
+    }));
 
     return result;
   }
@@ -489,6 +739,19 @@ class TemplateService {
     };
 
     sortChildren(roots);
+
+    // 清理叶子节点的空 children，防止前端误以为可展开
+    const pruneEmptyChildren = (nodes = []) => {
+      nodes.forEach(node => {
+        if (!node.children || node.children.length === 0) {
+          delete node.children;
+          return;
+        }
+        pruneEmptyChildren(node.children);
+      });
+    };
+    pruneEmptyChildren(roots);
+
     return roots;
   }
 
@@ -622,80 +885,43 @@ class TemplateService {
    * @private
    */
   buildSectionTree(sections, parentCode = null) {
-    // 性能优化：如果所有记录的 parent_code 都是 null，使用优化的构建方式
-    if (parentCode === null && sections.length > 1000) {
-      const hasParentCode = sections.some(s => s.parent_code !== null && s.parent_code !== '');
-      if (!hasParentCode) {
-        // 使用 Map 来优化父子关系查找
-        const childrenMap = new Map();
+    if (!sections || sections.length === 0) return [];
 
-        // 预先计算每个节点的子节点
-        sections.forEach(section => {
-          const parent = this.inferParentCode(section.code);
-          if (!childrenMap.has(parent)) {
-            childrenMap.set(parent, []);
-          }
-          childrenMap.get(parent).push(section);
-        });
-
-        // 递归构建树
-        const buildTree = (code) => {
-          const children = childrenMap.get(code) || [];
-          return children.map(s => ({
-            key: s.code,
-            title: `${s.code} ${s.title}`,
-            ...s,
-            children: buildTree(s.code)
-          }));
-        };
-
-        return buildTree(null);
+    // 1. 根据 parent_code 将章节分组
+    const childrenMap = new Map();
+    
+    sections.forEach(s => {
+      // 确保 parent_code 为 null 或 undefined 时统一处理为 null
+      const pCode = s.parent_code || null;
+      if (!childrenMap.has(pCode)) {
+        childrenMap.set(pCode, []);
       }
-    }
+      childrenMap.get(pCode).push(s);
+    });
 
-    // 原有逻辑（使用 parent_code 字段）
-    return sections
-      .filter(s => s.parent_code === parentCode)
-      .map(s => ({
-        key: s.code,
-        title: `${s.code} ${s.title}`,
-        ...s,
-        children: this.buildSectionTree(sections, s.code)
-      }));
-  }
+    // 2. 递归构建树函数
+    const buildNode = (section) => {
+      const children = childrenMap.get(section.code) || [];
+      // 按 sort_order 排序
+      children.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-  /**
-   * 根据 code 推断 parent_code
-   * 例如：'00 24 13.13' -> '00 24 13'
-   * @private
-   */
-  inferParentCode(code) {
-    if (!code) return null;
+      return {
+        key: section.code,
+        title: `${section.code} ${section.title}`,
+        ...section,
+        children: children.map(buildNode)
+      };
+    };
 
-    const trimmed = code.trim();
+    // 3. 获取根节点列表（即 parent_code 等于传入的 parentCode 的节点）
+    // 注意：传入的 parentCode 可能是 null
+    const targetParentCode = parentCode || null;
+    const roots = childrenMap.get(targetParentCode) || [];
 
-    // 如果包含小数点，父节点是去掉最后一个小数点部分
-    if (trimmed.includes('.')) {
-      const parts = trimmed.split('.');
-      parts.pop();
-      return parts.join('.');
-    }
+    // 排序根节点
+    roots.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-    // 如果是空格分隔的编号，父节点是去掉最后一个部分
-    const parts = trimmed.split(/\s+/);
-    if (parts.length > 1) {
-      // 检查最后一个部分是否为 '00'
-      if (parts[parts.length - 1] === '00') {
-        parts.pop();
-        return parts.length > 0 ? parts.join(' ') : null;
-      }
-      // 否则去掉最后一个非零部分
-      parts.pop();
-      return parts.length > 0 ? parts.join(' ') : null;
-    }
-
-    // 顶级节点
-    return null;
+    return roots.map(buildNode);
   }
 }
 

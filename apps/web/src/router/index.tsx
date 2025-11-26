@@ -77,6 +77,12 @@ const DocumentPreview = lazy(() => import('../pages/DocumentPreview'));
 const UnifiedRuleManagement = lazy(() => import('../pages/UnifiedRuleManagement'));
 const RuleLearningConfig = lazy(() => import('../pages/RuleLearningConfig'));
 
+// 工艺管理
+const UMTableManagement = lazy(() => import('../pages/UMTableManagement'));
+const FabZoneManagement = lazy(() => import('../pages/FabZoneManagement'));
+const FabLayoutGenerator = lazy(() => import('../pages/FabLayoutGenerator'));
+const FabLayoutConstraints = lazy(() => import('../pages/FabLayoutConstraints'));
+
 // V3.0 项目工作台
 const ProjectWorkspace = lazy(() => import('../pages/ProjectWorkspace'));
 
@@ -414,7 +420,11 @@ const router = createBrowserRouter([
         path: 'debug-menu',
         element: <LazyWrapper Component={DebugMenu} />
       },
-      // 规则审核
+      // 规则管理
+      {
+        path: 'rules',
+        element: <LazyWrapper Component={UnifiedRuleManagement} />
+      },
       {
         path: 'rules/review',
         element: <LazyWrapper Component={RuleReview} />
@@ -426,6 +436,23 @@ const router = createBrowserRouter([
       {
         path: 'rules/learning-config',
         element: <LazyWrapper Component={RuleLearningConfig} />
+      },
+      // 工艺管理
+      {
+        path: 'process/um-table',
+        element: <LazyWrapper Component={UMTableManagement} />
+      },
+      {
+        path: 'process/fab-zone',
+        element: <LazyWrapper Component={FabZoneManagement} />
+      },
+      {
+        path: 'process/fab-layout',
+        element: <LazyWrapper Component={FabLayoutGenerator} />
+      },
+      {
+        path: 'process/fab-constraints',
+        element: <LazyWrapper Component={FabLayoutConstraints} />
       }
     ]
   },

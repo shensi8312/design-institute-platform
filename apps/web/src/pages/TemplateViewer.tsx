@@ -139,10 +139,10 @@ const TemplateViewer: React.FC = () => {
   const [sections, setSections] = useState<TemplateSection[]>([]);
   const [selectedSection, setSelectedSection] = useState<TemplateSection | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
 
   // 加载模板信息
   useEffect(() => {
@@ -158,15 +158,11 @@ const TemplateViewer: React.FC = () => {
         setTemplate(templateRes.data.data);
       }
 
-      // 加载模板章节结构
-      const sectionsRes = await axios.get(`/api/unified-document/templates/${id}/sections`);
+      // 加载模板章节结构（使用sections-tree接口获取完整层级和children）
+      const sectionsRes = await axios.get(`/api/unified-document/templates/${id}/sections-tree`);
       if (sectionsRes.data.success) {
         const sectionsData = sectionsRes.data.data;
         setSections(sectionsData);
-
-        // 默认展开前3个一级章节
-        const topLevelKeys = sectionsData.slice(0, 3).map((s: TemplateSection) => s.code);
-        setExpandedKeys(topLevelKeys);
 
         // 默认选中第一个章节
         if (sectionsData.length > 0) {
@@ -180,40 +176,36 @@ const TemplateViewer: React.FC = () => {
     }
   };
 
-  // 转换章节数据为Tree组件格式
+  // 转换章节数据为Tree组件格式 - 只显示 Section 级别 (level 1)，不可展开
   const convertToTreeData = (sections: TemplateSection[]): DataNode[] => {
-    return sections.map(section => ({
-      key: section.code,
-      title: (
-        <div style={{
-          padding: '4px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8
-        }}>
-          {section.children && section.children.length > 0 ? (
-            <FolderOutlined style={{ color: '#faad14', fontSize: 14 }} />
-          ) : (
-            <FileTextOutlined style={{ color: '#1890ff', fontSize: 14 }} />
-          )}
-          <span style={{
-            fontWeight: section.level === 1 ? 600 : section.level === 2 ? 500 : 400,
-            fontSize: section.level === 1 ? 14 : 13,
-            color: section.level === 1 ? '#262626' : '#595959'
+    // 只显示 level 1 的 Section 节点，设置 isLeaf=true 禁止展开
+    return sections
+      .filter(section => section.level === 1)
+      .map(section => ({
+        key: section.code,
+        isLeaf: true,  // 不可展开
+        children: undefined, // 明确无子节点
+        title: (
+          <div style={{
+            padding: '4px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
           }}>
+            <FileTextOutlined style={{ color: '#1890ff', fontSize: 14 }} />
             <span style={{
-              color: '#1890ff',
-              fontFamily: 'monospace',
-              marginRight: 8
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#262626'
             }}>
-              {section.code}
+              <span style={{ color: '#1890ff', fontFamily: 'monospace', marginRight: 8 }}>
+                {section.code}
+              </span>
+              {section.title}
             </span>
-            {section.title}
-          </span>
-        </div>
-      ),
-      children: section.children ? convertToTreeData(section.children) : undefined,
-    }));
+          </div>
+        ),
+      }));
   };
 
   // 从扁平列表中查找章节
@@ -318,6 +310,87 @@ const TemplateViewer: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // 渲染CSI规范内容 - 递归显示层级结构
+  const renderCSIContent = (items: TemplateSection[]): React.ReactNode => {
+    return items.map(item => {
+      // 根据 level_type 或 level 确定样式
+      const isPart = item.code.includes('.P') || item.level === 2;
+      const isArticle = /\.\d+\.\d+$/.test(item.code) || item.level === 3;
+      const isPR1 = item.code.includes('.PR1') || item.level === 4;
+      const isPR2 = item.code.includes('.PR2') || item.level === 5;
+      const isPR3 = item.code.includes('.PR3') || item.level === 6;
+      const isPR4 = item.code.includes('.PR4') || item.level === 7;
+      const isPR5 = item.code.includes('.PR5') || item.level === 8;
+
+      // 计算缩进级别
+      const indentLevel = Math.max(0, item.level - 2);
+      const marginLeft = indentLevel * 24;
+
+      // PART 样式 - 大标题
+      if (isPart) {
+        return (
+          <div key={item.code} style={{ marginBottom: 24 }}>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: '#1890ff',
+              borderBottom: '2px solid #1890ff',
+              paddingBottom: 8,
+              marginBottom: 16
+            }}>
+              PART {item.code.split('.P')[1]} - {item.title}
+            </div>
+            {item.children && renderCSIContent(item.children)}
+          </div>
+        );
+      }
+
+      // Article 样式 - 中标题
+      if (isArticle) {
+        const articleNum = item.code.match(/\.(\d+\.\d+)$/)?.[1] || '';
+        return (
+          <div key={item.code} style={{ marginBottom: 16, marginLeft }}>
+            <div style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: '#262626',
+              marginBottom: 8
+            }}>
+              {articleNum} {item.title}
+            </div>
+            {item.children && renderCSIContent(item.children)}
+          </div>
+        );
+      }
+
+      // Paragraph 样式
+      const getLabel = () => {
+        if (isPR1) return item.title.match(/^([A-Z])\.?\s/)?.[1] ? `${item.title.match(/^([A-Z])\.?\s/)?.[1]}.` : '';
+        if (isPR2) return item.title.match(/^(\d+)\.?\s/)?.[1] ? `${item.title.match(/^(\d+)\.?\s/)?.[1]}.` : '';
+        if (isPR3) return item.title.match(/^([a-z])\.?\s/)?.[1] ? `${item.title.match(/^([a-z])\.?\s/)?.[1]}.` : '';
+        if (isPR4) return item.title.match(/^(\d+)\)\s/)?.[1] ? `${item.title.match(/^(\d+)\)\s/)?.[1]})` : '';
+        if (isPR5) return item.title.match(/^([a-z])\)\s/)?.[1] ? `${item.title.match(/^([a-z])\)\s/)?.[1]})` : '';
+        return '';
+      };
+
+      const content = item.content || item.template_content || item.description || item.title;
+
+      return (
+        <div key={item.code} style={{ marginLeft, marginBottom: 6 }}>
+          <div style={{
+            fontSize: isPR1 ? 14 : 13,
+            fontWeight: isPR1 ? 500 : 400,
+            color: '#595959',
+            lineHeight: 1.8
+          }}>
+            {content}
+          </div>
+          {item.children && renderCSIContent(item.children)}
+        </div>
+      );
+    });
   };
 
   // 基于此模板创建文档
@@ -550,51 +623,32 @@ const TemplateViewer: React.FC = () => {
                       />
                     </div>
                   ) : (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description={
-                        <Space direction="vertical" size="small">
-                          <span style={{ color: '#8c8c8c' }}>该章节暂无内容</span>
-                          <span style={{ fontSize: 12, color: '#bfbfbf' }}>
-                            点击右上角"编辑模板内容"按钮开始编写
-                          </span>
-                        </Space>
-                      }
-                      style={{ padding: '60px 0' }}
-                    >
-                      <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
-                        开始编辑
-                      </Button>
-                    </Empty>
+                    // 如果没有content但有children，不显示"暂无内容"
+                    !(selectedSection.children && selectedSection.children.length > 0) && (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={
+                          <Space direction="vertical" size="small">
+                            <span style={{ color: '#8c8c8c' }}>该章节暂无内容</span>
+                            <span style={{ fontSize: 12, color: '#bfbfbf' }}>
+                              点击右上角"编辑模板内容"按钮开始编写
+                            </span>
+                          </Space>
+                        }
+                        style={{ padding: '60px 0' }}
+                      >
+                        <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
+                          开始编辑
+                        </Button>
+                      </Empty>
+                    )
                   )
                 )}
 
-                {/* 子章节列表 */}
+                {/* CSI规范内容展示 - 递归渲染完整层级 */}
                 {!isEditing && selectedSection.children && selectedSection.children.length > 0 && (
-                  <div style={{ marginTop: 32 }}>
-                    <Title level={5}>子章节 ({selectedSection.children.length})</Title>
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      {selectedSection.children.map(child => (
-                        <Card
-                          key={child.code}
-                          size="small"
-                          hoverable
-                          onClick={() => setSelectedSection(child)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <Space>
-                            <FileTextOutlined />
-                            <span style={{ fontWeight: 500 }}>
-                              {child.code} - {child.title}
-                            </span>
-                            <Tag color="blue">Level {child.level}</Tag>
-                            {child.description && (
-                              <Tag color="green">已有内容</Tag>
-                            )}
-                          </Space>
-                        </Card>
-                      ))}
-                    </Space>
+                  <div style={{ marginTop: 24 }}>
+                    {renderCSIContent(selectedSection.children)}
                   </div>
                 )}
               </Space>
