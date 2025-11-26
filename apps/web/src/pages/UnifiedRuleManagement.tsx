@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Tag, Switch, Modal, Form, Input, Select, InputNumber, message, Popconfirm, Row, Col, Statistic, Progress, Typography } from 'antd'
+import { Card, Table, Button, Space, Tag, Switch, Modal, Form, Input, Select, InputNumber, message, Popconfirm, Row, Col, Statistic, Progress, Typography, Tooltip } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, ExperimentOutlined, SettingOutlined, BarChartOutlined, SyncOutlined } from '@ant-design/icons'
 import axios from '../utils/axios'
 
@@ -31,8 +31,16 @@ interface Statistics {
   successRate: number
 }
 
+interface RuleTypeOption {
+  value: string
+  label: string
+  labelEn?: string
+  description?: string
+}
+
 const UnifiedRuleManagement: React.FC = () => {
   const [ruleType, setRuleType] = useState<string>('assembly')
+  const [ruleTypes, setRuleTypes] = useState<RuleTypeOption[]>([])
   const [rules, setRules] = useState<UnifiedRule[]>([])
   const [statistics, setStatistics] = useState<Statistics>({ total: 0, active: 0, pending: 0, successRate: 0 })
   const [loading, setLoading] = useState(false)
@@ -43,9 +51,37 @@ const UnifiedRuleManagement: React.FC = () => {
   const [form] = Form.useForm()
 
   useEffect(() => {
+    loadRuleTypes()
+  }, [])
+
+  useEffect(() => {
     loadRules()
     loadStatistics()
   }, [ruleType])
+
+  const loadRuleTypes = async () => {
+    try {
+      const response = await axios.get('/api/rules/types')
+      if (response.data.success) {
+        setRuleTypes(response.data.data)
+        // 如果当前选中的类型不在列表中，选择第一个
+        if (response.data.data.length > 0 && !response.data.data.find((t: RuleTypeOption) => t.value === ruleType)) {
+          setRuleType(response.data.data[0].value)
+        }
+      }
+    } catch (error) {
+      console.error('加载规则类型失败:', error)
+      // 使用默认值
+      setRuleTypes([
+        { value: 'assembly', label: '装配规则' },
+        { value: 'pid', label: 'PID规则' },
+        { value: 'building', label: '建筑规则' },
+        { value: 'process', label: '工艺规则' },
+        { value: 'strong_layout', label: '强排规则' },
+        { value: 'fab_standard', label: 'FAB规范' }
+      ])
+    }
+  }
 
   const loadRules = async () => {
     setLoading(true)
@@ -200,23 +236,18 @@ const UnifiedRuleManagement: React.FC = () => {
   }
 
   const getRuleTypeName = (type: string) => {
-    const names: Record<string, string> = {
-      assembly: '装配',
-      pid: 'PID',
-      building: '建筑',
-      process: '工艺',
-      strong_layout: '强排'
-    }
-    return names[type] || type
+    const found = ruleTypes.find(t => t.value === type)
+    return found?.label || type
   }
 
   const columns = [
     {
-      title: '状态',
+      title: '启用',
       dataIndex: 'is_active',
-      width: 80,
+      width: 60,
       render: (isActive: boolean, record: UnifiedRule) => (
         <Switch
+          size="small"
           checked={isActive}
           onChange={() => handleToggle(record.id, isActive)}
         />
@@ -225,94 +256,68 @@ const UnifiedRuleManagement: React.FC = () => {
     {
       title: '规则编码',
       dataIndex: 'rule_code',
-      width: 120,
+      width: 140,
       render: (code: string) => <Tag color="blue">{code}</Tag>
     },
     {
       title: '规则名称',
       dataIndex: 'rule_name',
-      width: 200
+      width: 180
     },
     {
-      title: '优先级',
-      dataIndex: 'priority',
+      title: '约束类型',
       width: 100,
-      render: (priority: string) => {
-        const colors: Record<string, string> = {
-          critical: 'red',
-          high: 'orange',
-          normal: 'blue',
-          low: 'gray'
+      render: (record: any) => {
+        const structure = record.rule_structure
+        if (!structure) return '-'
+        const subType = structure.subType
+        const typeNames: Record<string, string> = {
+          setback: '退距',
+          floor_area_ratio: '容积率',
+          building_height: '限高',
+          green_ratio: '绿地率',
+          building_density: '密度',
+          building_spacing: '间距',
+          fire_distance: '消防',
+          parking: '停车',
+          sunlight_analysis: '日照'
         }
-        return <Tag color={colors[priority] || 'blue'}>{priority}</Tag>
+        return <Tag>{typeNames[subType] || subType}</Tag>
       }
     },
     {
-      title: '置信度',
-      dataIndex: 'confidence_score',
+      title: '约束值',
       width: 120,
-      render: (score: number) => (
-        <Progress
-          percent={Number((score * 100).toFixed(0))}
-          size="small"
-          status={score >= 0.8 ? 'success' : 'normal'}
-        />
-      )
-    },
-    {
-      title: '审核状态',
-      dataIndex: 'review_status',
-      width: 100,
-      render: (status: string) => {
-        const colors: Record<string, string> = {
-          pending: 'orange',
-          approved: 'green',
-          rejected: 'red'
-        }
-        return <Tag color={colors[status] || 'blue'}>{status}</Tag>
+      render: (record: any) => {
+        const structure = record.rule_structure
+        if (!structure) return '-'
+        const { value, unit, constraintType } = structure
+        const typeLabel = constraintType === 'MIN' ? '≥' : constraintType === 'MAX' ? '≤' : '='
+        return <Tag color="green" style={{ fontSize: 14, fontWeight: 600 }}>{typeLabel} {value}{unit || ''}</Tag>
       }
     },
     {
-      title: '使用统计',
-      width: 150,
-      render: (record: UnifiedRule) => {
-        const successRate = record.usage_count ? ((record.success_count || 0) / record.usage_count * 100) : 0
-        return (
-          <Space direction="vertical" size={0}>
-            <Tag color="blue">使用: {record.usage_count || 0}次</Tag>
-            <Tag color="green">成功: {record.success_count || 0}次</Tag>
-            <Tag color="purple">成功率: {successRate.toFixed(0)}%</Tag>
-          </Space>
-        )
+      title: '适用范围',
+      width: 120,
+      render: (record: any) => {
+        const structure = record.rule_structure
+        if (!structure) return '-'
+        const scopeNames: Record<string, string> = {
+          main_road: '主干道',
+          secondary_road: '次干道',
+          industrial: '工业用地',
+          residential: '住宅',
+          high_rise: '高层',
+          fire_resistance_1_2: '一二级耐火'
+        }
+        return <Text type="secondary">{scopeNames[structure.scope] || structure.scope}</Text>
       }
     },
     {
       title: '操作',
-      width: 300,
-      fixed: 'right' as const,
+      width: 150,
       render: (record: UnifiedRule) => (
         <Space size="small">
-          {record.review_status === 'pending' && (
-            <>
-              <Button
-                type="link"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                onClick={() => handleApprove(record.id)}
-              >
-                批准
-              </Button>
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<CloseCircleOutlined />}
-                onClick={() => handleReject(record.id)}
-              >
-                拒绝
-              </Button>
-            </>
-          )}
           <Button
             type="link"
             size="small"
@@ -347,13 +352,7 @@ const UnifiedRuleManagement: React.FC = () => {
               value={ruleType}
               onChange={setRuleType}
               style={{ width: 150 }}
-              options={[
-                { label: '装配规则', value: 'assembly' },
-                { label: 'PID规则', value: 'pid' },
-                { label: '建筑规则', value: 'building' },
-                { label: '工艺规则', value: 'process' },
-                { label: '强排规则', value: 'strong_layout' }
-              ]}
+              options={ruleTypes}
             />
           </Space>
         }

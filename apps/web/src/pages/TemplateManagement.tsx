@@ -17,7 +17,9 @@ import {
   Card,
   Menu,
   Row,
-  Col
+  Col,
+  Select,
+  Alert
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadProps } from 'antd';
@@ -47,7 +49,13 @@ interface Template {
   file_name: string;
   created_at: string;
   created_by: string;
+  source_type?: string;
+  source_project?: string;
+  csi_parsed?: boolean;
 }
+
+// CSI 来源类型
+type CSISourceType = 'CSI_EN' | 'CSI_ZH' | 'COMPANY' | '';
 
 const TemplateManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -60,6 +68,32 @@ const TemplateManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [createForm] = Form.useForm();
   const [fileList, setFileList] = useState<any[]>([]);
+  const [csiSourceType, setCsiSourceType] = useState<CSISourceType>('');
+  const [batchUploadVisible, setBatchUploadVisible] = useState(false);
+  const [batchFileList, setBatchFileList] = useState<any[]>([]);
+  const [batchUploading, setBatchUploading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+
+  // CSI 来源类型选项
+  const csiSourceOptions = [
+    { value: 'CSI_EN', label: 'CSI 英文原版', description: 'CSI MasterFormat 英文标准模板' },
+    { value: 'CSI_ZH', label: 'CSI 中文翻译', description: 'CSI MasterFormat 中文翻译版' },
+    { value: 'COMPANY', label: '公司项目 SPEC', description: '公司历史项目的技术规范文档' },
+  ];
+
+  // 项目类型选项
+  const projectTypeOptions = [
+    { value: 'semiconductor', label: '半导体厂房' },
+    { value: 'datacenter', label: '数据中心' },
+    { value: 'pharmaceutical', label: '制药厂房' },
+    { value: 'cleanroom', label: '洁净厂房' },
+    { value: 'hospital', label: '医院' },
+    { value: 'laboratory', label: '实验室' },
+    { value: 'office', label: '办公楼' },
+    { value: 'commercial', label: '商业建筑' },
+    { value: 'industrial', label: '工业厂房' },
+    { value: 'other', label: '其他' },
+  ];
 
   // 模板类型配置
   const templateTypes = {
@@ -148,6 +182,19 @@ const TemplateManagement: React.FC = () => {
     formData.append('templateType', selectedType);
     formData.append('description', values.description || '');
 
+    // 添加 CSI 相关参数（技术规范模板）
+    if (selectedType === 'spec') {
+      if (values.sourceType) {
+        formData.append('sourceType', values.sourceType);
+      }
+      if (values.projectType) {
+        formData.append('projectType', values.projectType);
+      }
+      if (values.sourceType === 'COMPANY' && values.sourceProject) {
+        formData.append('sourceProject', values.sourceProject);
+      }
+    }
+
     try {
       const response = await axios.post('/api/unified-document/templates', formData, {
         headers: {
@@ -156,14 +203,61 @@ const TemplateManagement: React.FC = () => {
       });
 
       if (response.data.success) {
-        message.success('模板上传成功，AI正在解析中...');
+        const successMsg = values.sourceType
+          ? '模板上传成功，AI正在解析 CSI 结构...'
+          : '模板上传成功，AI正在解析中...';
+        message.success(successMsg);
         setUploadModalVisible(false);
         form.resetFields();
         setFileList([]);
+        setCsiSourceType('');
         loadTemplates(selectedType);
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '上传模板失败');
+    }
+  };
+
+  // 批量上传处理
+  const handleBatchUpload = async (values: any) => {
+    if (batchFileList.length === 0) {
+      message.error('请选择要上传的文件');
+      return;
+    }
+
+    setBatchUploading(true);
+    setBatchProgress({ current: 0, total: batchFileList.length, success: 0, failed: 0 });
+
+    try {
+      const formData = new FormData();
+      // 模板名取文件夹名（从第一个文件的相对路径推断）
+      const first = batchFileList[0] as any;
+      const relPath = first?.webkitRelativePath || first?.path || first?.name;
+      const rootName = relPath.includes('/') ? relPath.split('/')[0] : relPath.replace(/\.[^/.]+$/, '');
+      formData.append('templateName', rootName);
+      formData.append('sourceType', values.sourceType);
+      if (values.projectType) {
+        formData.append('projectType', values.projectType);
+      }
+      batchFileList.forEach((file: any) => {
+        formData.append('files', file as File);
+        formData.append('relativePaths', file.webkitRelativePath || file.path || file.name);
+      });
+
+      await axios.post('/api/unified-document/templates/batch-folder', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setBatchProgress({ current: batchFileList.length, total: batchFileList.length, success: batchFileList.length, failed: 0 });
+      message.success(`批量上传完成！生成模板：${rootName}`);
+    } catch (error) {
+      console.error('批量上传失败', error);
+      message.error('批量上传失败，请检查日志');
+    } finally {
+      setBatchUploading(false);
+      setBatchUploadVisible(false);
+      setBatchFileList([]);
+      loadTemplates(selectedType);
     }
   };
 
@@ -366,13 +460,23 @@ const TemplateManagement: React.FC = () => {
               <h3 style={{ margin: 0 }}>
                 {templateTypes[selectedType as keyof typeof templateTypes].label}
               </h3>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => setUploadModalVisible(true)}
-              >
-                上传模板
-              </Button>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={() => setUploadModalVisible(true)}
+                >
+                  上传模板
+                </Button>
+                {selectedType === 'spec' && (
+                  <Button
+                    icon={<PlusOutlined />}
+                    onClick={() => setBatchUploadVisible(true)}
+                  >
+                    批量导入
+                  </Button>
+                )}
+              </Space>
             </div>
 
             <Table
@@ -398,6 +502,7 @@ const TemplateManagement: React.FC = () => {
           setUploadModalVisible(false);
           form.resetFields();
           setFileList([]);
+          setCsiSourceType('');
         }}
         onOk={() => form.submit()}
         width={600}
@@ -414,6 +519,76 @@ const TemplateManagement: React.FC = () => {
           >
             <Input placeholder="请输入模板名称" />
           </Form.Item>
+
+          {/* CSI 来源类型选择 - 仅技术规范模板显示 */}
+          {selectedType === 'spec' && (
+            <>
+              <Form.Item
+                name="sourceType"
+                label="SPEC 来源类型"
+                rules={[{ required: true, message: '请选择来源类型' }]}
+                tooltip="选择模板的来源类型，系统将根据类型进行不同的解析处理"
+              >
+                <Select
+                  placeholder="请选择来源类型"
+                  value={csiSourceType || undefined}
+                  onChange={(value) => setCsiSourceType(value)}
+                >
+                  {csiSourceOptions.map(opt => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{opt.label}</span>
+                        <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>{opt.description}</span>
+                      </div>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              {/* 项目类型选择 */}
+              <Form.Item
+                name="projectType"
+                label="项目类型"
+                tooltip="选择项目类型，同类型项目的 SPEC 内容会比较相似，便于后续智能推荐"
+              >
+                <Select
+                  placeholder="请选择项目类型"
+                  allowClear
+                >
+                  {projectTypeOptions.map(opt => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              {/* 公司项目名称 - 仅公司SPEC显示 */}
+              {csiSourceType === 'COMPANY' && (
+                <Form.Item
+                  name="sourceProject"
+                  label="来源项目名称"
+                  rules={[{ required: true, message: '请输入来源项目名称' }]}
+                >
+                  <Input placeholder="例如：康桥二期项目、华虹项目" />
+                </Form.Item>
+              )}
+
+              {/* 提示信息 */}
+              {csiSourceType && (
+                <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                  message={
+                    csiSourceType === 'CSI_EN' || csiSourceType === 'CSI_ZH'
+                      ? 'CSI 标准模板将自动解析层级结构（PART/Article/Paragraph），并导入到标准框架库'
+                      : '公司 SPEC 将通过 AI 自动匹配到 CSI 标准框架，无法匹配的内容将自动创建新章节'
+                  }
+                />
+              )}
+            </>
+          )}
 
           <Form.Item
             name="description"
@@ -436,7 +611,10 @@ const TemplateManagement: React.FC = () => {
               支持.docx和.pdf格式，文件大小不超过50MB
             </div>
             <div style={{ marginTop: 4, color: '#999' }}>
-              上传后系统将自动使用AI解析模板结构
+              {selectedType === 'spec' && csiSourceType
+                ? 'CSI 模板建议使用 .docx 格式以保留样式信息'
+                : '上传后系统将自动使用AI解析模板结构'
+              }
             </div>
           </Form.Item>
         </Form>
@@ -468,6 +646,160 @@ const TemplateManagement: React.FC = () => {
                 创建
               </Button>
               <Button onClick={() => setCreateModalVisible(false)}>
+                取消
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 批量导入模态框 */}
+      <Modal
+        title="批量导入 CSI SPEC"
+        open={batchUploadVisible}
+        onCancel={() => {
+          if (!batchUploading) {
+            setBatchUploadVisible(false);
+            setBatchFileList([]);
+          }
+        }}
+        footer={null}
+        width={700}
+        closable={!batchUploading}
+        maskClosable={!batchUploading}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleBatchUpload}
+          initialValues={{ sourceType: 'CSI_EN' }}
+        >
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="支持选择文件夹或多个文件批量导入，系统将自动解析 CSI 层级结构"
+          />
+
+          <Form.Item
+            name="sourceType"
+            label="SPEC 来源类型"
+            rules={[{ required: true, message: '请选择来源类型' }]}
+          >
+            <Select>
+              {csiSourceOptions.map(opt => (
+                <Select.Option key={opt.value} value={opt.value}>
+                  {opt.label} - {opt.description}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="projectType"
+            label="项目类型"
+          >
+            <Select placeholder="请选择项目类型" allowClear>
+              {projectTypeOptions.map(opt => (
+                <Select.Option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="选择文件" required>
+            <Upload.Dragger
+              multiple
+              directory
+              accept=".docx"
+              beforeUpload={(file, fileList) => {
+                // 过滤掉非 .docx 文件和隐藏文件
+                const validFiles = fileList.filter(f =>
+                  f.name.endsWith('.docx') && !f.name.startsWith('.')
+                );
+                setBatchFileList(prev => {
+                  const existingNames = new Set(prev.map(f => f.name));
+                  const newFiles = validFiles.filter(f => !existingNames.has(f.name));
+                  return [...prev, ...newFiles];
+                });
+                return false;
+              }}
+              showUploadList={false}
+              disabled={batchUploading}
+            >
+              <p className="ant-upload-drag-icon">
+                <UploadOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+              </p>
+              <p className="ant-upload-text">点击或拖拽文件夹/文件到此区域</p>
+              <p className="ant-upload-hint">支持选择整个文件夹，自动过滤 .docx 文件</p>
+            </Upload.Dragger>
+
+            {batchFileList.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span>已选择 <strong>{batchFileList.length}</strong> 个文件</span>
+                  {!batchUploading && (
+                    <Button size="small" danger onClick={() => setBatchFileList([])}>
+                      清空
+                    </Button>
+                  )}
+                </div>
+                <div style={{ maxHeight: 150, overflow: 'auto', background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+                  {batchFileList.slice(0, 10).map((f, i) => (
+                    <div key={i} style={{ fontSize: 12, color: '#666' }}>
+                      {f.name}
+                    </div>
+                  ))}
+                  {batchFileList.length > 10 && (
+                    <div style={{ fontSize: 12, color: '#999' }}>
+                      ... 还有 {batchFileList.length - 10} 个文件
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </Form.Item>
+
+          {batchUploading && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8 }}>
+                正在上传: {batchProgress.current} / {batchProgress.total}
+                <span style={{ marginLeft: 16, color: '#52c41a' }}>成功: {batchProgress.success}</span>
+                <span style={{ marginLeft: 8, color: '#ff4d4f' }}>失败: {batchProgress.failed}</span>
+              </div>
+              <div style={{
+                height: 8,
+                background: '#f0f0f0',
+                borderRadius: 4,
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${(batchProgress.current / batchProgress.total) * 100}%`,
+                  height: '100%',
+                  background: '#1890ff',
+                  transition: 'width 0.3s'
+                }} />
+              </div>
+            </div>
+          )}
+
+          <Form.Item>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={batchUploading}
+                disabled={batchFileList.length === 0}
+              >
+                {batchUploading ? `上传中 (${batchProgress.current}/${batchProgress.total})` : '开始导入'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setBatchUploadVisible(false);
+                  setBatchFileList([]);
+                }}
+                disabled={batchUploading}
+              >
                 取消
               </Button>
             </Space>
