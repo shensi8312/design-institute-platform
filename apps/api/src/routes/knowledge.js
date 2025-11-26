@@ -372,64 +372,12 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
 - "根据[来源1]和[来源2]，住宅建筑需要满足..."
 引用编号对应上方参考资料中的编号。` : ''}
 
-**文档生成功能**：
-当用户明确要求"生成Word"、"导出Word"、"输出Word文档"、"生成Excel"、"生成PPT"时，你必须在回答的最后添加工具调用标记。
+**文档生成功能**（仅当用户消息中明确包含以下关键词时才触发）：
+- 触发词：生成Word、导出Word、生成Excel、导出Excel、生成PPT、导出PPT、输出文档、下载文档
+- 如果用户只是问问题、分析内容、检查代码，绝对不要生成文档！
 
-格式（必须严格遵守）：
-
-<TOOL_CALL>
-{"function":"工具名称","arguments":{"参数名":"参数值"}}
-</TOOL_CALL>
-
-支持的工具：
-1. generate_word - 生成Word文档
-   必填参数：title(文档标题), content(完整内容，支持Markdown格式)
-   可选参数：template(模板类型，可不填)
-
-2. generate_excel - 生成Excel表格
-   必填参数：title(表格标题), data(数据数组)
-   可选参数：template(模板类型，可不填)
-
-3. generate_ppt - 生成PPT演示
-   必填参数：title(PPT标题), slides(幻灯片数组，每个对象包含title和content)
-   可选参数：template(模板类型，可不填)
-
-注意：
-1. template字段完全可选，不确定时可以不填，系统会自动选择合适的模板
-2. 工具调用标记不会显示给用户，会被系统自动处理
-3. 必须在回答内容之后添加工具调用标记
-
-示例1 - 生成Word：
-用户："帮我生成项目进度报告"
-你的回答：
-好的，我来为您整理项目进度报告。
-
-## 项目进度
-本周完成了以下工作：
-1. 完成设计方案初稿
-2. 提交评审材料
-
-<TOOL_CALL>
-{"function":"generate_word","arguments":{"title":"项目进度报告","content":"## 项目进度\\n本周完成了以下工作：\\n1. 完成设计方案初稿\\n2. 提交评审材料"}}
-</TOOL_CALL>
-
-示例2 - 生成Excel：
-用户："生成工程算量表"
-你的回答：
-好的，我来为您生成工程算量表。
-
-<TOOL_CALL>
-{"function":"generate_excel","arguments":{"title":"工程算量表","data":[{"分项名称":"混凝土","单位":"m³","工程量":125.6,"单价":450},{"分项名称":"钢筋","单位":"吨","工程量":8.2,"单价":4200}]}}
-</TOOL_CALL>
-
-示例3 - 生成PPT：
-用户："做个项目汇报PPT"
-你的回答：
-好的，我来为您生成项目汇报PPT。
-
-<TOOL_CALL>
-{"function":"generate_ppt","arguments":{"title":"项目汇报","slides":[{"title":"项目概况","content":"..."},{"title":"进展情况","content":"..."}]}}
-</TOOL_CALL>`;
+工具调用格式（在回答最后添加）：
+<TOOL_CALL>{"function":"generate_word|generate_excel|generate_ppt","arguments":{...}}</TOOL_CALL>`;
 
     // 重新构建消息数组
     const chatMessages = [
@@ -444,121 +392,173 @@ ${sources.length > 0 ? `**重要：在回答时请引用来源！**
       }
     ];
 
-    // ========== 预估token数，超限则提前分片 ==========
-    // 估算方法：中文字符约0.5-0.7 token，英文单词约1 token
-    // 简化为：总字符数 / 2 ≈ token数
+    // ========== 智能长文本处理 ==========
+    // 估算总token数
     const estimateTotalChars = chatMessages.reduce((sum, msg) => sum + msg.content.length, 0);
     const estimatedTokens = Math.ceil(estimateTotalChars / 2);
-    const MAX_INPUT_TOKENS = 2800; // 模型4096限制，留1300给输出
+    const MAX_INPUT_TOKENS = 2800;
 
     if (estimatedTokens > MAX_INPUT_TOKENS) {
-      console.log(`[智能问答] 预估token超限: ${estimatedTokens} > ${MAX_INPUT_TOKENS}，启动分片处理`);
+      console.log(`[智能问答] 预估token超限: ${estimatedTokens} > ${MAX_INPUT_TOKENS}`);
 
-      // 智能分片处理
-      const CHUNK_SIZE = 1200; // 每片约600 tokens
+      // ===== 策略1: 使用精简模式尝试完整发送 =====
+      // 提取用户问题（通常在开头或结尾的短句）
+      const lines = question.split('\n').filter(l => l.trim());
+      let userIntent = '';
+      let mainContent = question;
+
+      // 检测用户意图（通常包含问号或特定关键词）
+      for (const line of [...lines.slice(0, 3), ...lines.slice(-3)]) {
+        if (line.length < 100 && (
+          line.includes('?') || line.includes('？') ||
+          line.includes('吗') || line.includes('对不对') ||
+          line.includes('检查') || line.includes('分析') ||
+          line.includes('帮我') || line.includes('看看')
+        )) {
+          userIntent = line.trim();
+          break;
+        }
+      }
+
+      // 检测内容类型
+      let contentType = '内容';
+      if (question.match(/SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|GROUP BY/i)) {
+        contentType = 'SQL语句';
+      } else if (question.match(/function|const|let|var|class|def |import |from /)) {
+        contentType = '代码';
+      } else if (question.match(/<\w+>|<\/\w+>/)) {
+        contentType = 'XML/HTML';
+      }
+
+      // 精简系统提示词
+      const simpleSystemPrompt = `你是专业的技术助手。用户提供了一段${contentType}，请仔细分析并回答用户的问题。`;
+
+      // 尝试用精简模式发送完整内容
+      const simpleMessages = [
+        { role: 'system', content: simpleSystemPrompt },
+        { role: 'user', content: userIntent ? `${userIntent}\n\n${question}` : question }
+      ];
+
+      const simpleTokens = Math.ceil(simpleMessages.reduce((sum, m) => sum + m.content.length, 0) / 2);
+
+      if (simpleTokens <= 3200) {
+        // 精简模式可以容纳完整内容
+        console.log(`[智能问答] 使用精简模式，预估token: ${simpleTokens}`);
+
+        try {
+          await UnifiedLLMService.generateStreamWithMessages(simpleMessages, {
+            temperature: 0.3,
+            max_tokens: 800
+          }, async (chunk) => {
+            if (chunk.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'chunk',
+                content: chunk.content
+              })}\n\n`);
+              if (res.flush) res.flush();
+            }
+          });
+
+          res.write(`data: ${JSON.stringify({ type: 'done', sources: [] })}\n\n`);
+          res.end();
+          return;
+        } catch (simpleError) {
+          console.log(`[智能问答] 精简模式失败，切换到分片模式:`, simpleError.message);
+        }
+      }
+
+      // ===== 策略2: 智能分片（保持上下文） =====
+      console.log(`[智能问答] 启动智能分片模式`);
+
+      const CHUNK_SIZE = 2000;
       const chunks = [];
+
+      // 按段落分片
       const paragraphs = question.split(/\n+/);
       let currentChunk = '';
 
       for (const para of paragraphs) {
         if (currentChunk.length + para.length > CHUNK_SIZE) {
           if (currentChunk) chunks.push(currentChunk);
-          if (para.length > CHUNK_SIZE) {
-            for (let i = 0; i < para.length; i += CHUNK_SIZE) {
-              chunks.push(para.substring(i, i + CHUNK_SIZE));
-            }
-            currentChunk = '';
-          } else {
-            currentChunk = para;
-          }
+          currentChunk = para.length > CHUNK_SIZE ? para.substring(0, CHUNK_SIZE) : para;
         } else {
           currentChunk += (currentChunk ? '\n' : '') + para;
         }
       }
       if (currentChunk) chunks.push(currentChunk);
 
-      // 确保至少有分片
+      // 确保有分片
       if (chunks.length === 0) {
         for (let i = 0; i < question.length; i += CHUNK_SIZE) {
           chunks.push(question.substring(i, i + CHUNK_SIZE));
         }
       }
 
-      console.log(`[智能问答] 分片数量: ${chunks.length}`);
+      console.log(`[智能问答] 分片数量: ${chunks.length}, 内容类型: ${contentType}`);
 
-      // 逐片处理（对用户透明）
-      let allResults = [];
+      // 第一步：收集所有分片的关键信息（不直接回复用户）
+      let allKeyPoints = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunkPrompt = `请分析以下内容：\n${chunks[i]}`;
-        let chunkResult = '';
+        const contextPrompt = `这是一段完整${contentType}的第${i + 1}/${chunks.length}部分。
+请提取这部分的关键信息和潜在问题（如有），用简洁的要点列出：
+
+${chunks[i]}`;
 
         try {
+          let keyPoints = '';
           await UnifiedLLMService.generateStreamWithMessages([
-            { role: 'system', content: '简洁专业地分析内容。' },
-            { role: 'user', content: chunkPrompt }
+            { role: 'system', content: '你是代码/SQL分析专家。提取关键信息和潜在问题，用简洁要点列出。' },
+            { role: 'user', content: contextPrompt }
           ], {
-            temperature: 0.3,
-            max_tokens: 500
-          }, async (chunk) => {
-            if (chunk.content) {
-              chunkResult += chunk.content;
-              res.write(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: chunk.content
-              })}\n\n`);
-              if (res.flush) res.flush();
-            }
-          });
-
-          allResults.push(chunkResult.substring(0, 250));
-
-          if (i < chunks.length - 1) {
-            res.write(`data: ${JSON.stringify({
-              type: 'chunk',
-              content: '\n\n'
-            })}\n\n`);
-            if (res.flush) res.flush();
-          }
-        } catch (chunkError) {
-          console.error(`[智能问答] 分片${i + 1}处理失败:`, chunkError.message);
-        }
-      }
-
-      // 生成综合总结
-      if (allResults.length > 1) {
-        try {
-          res.write(`data: ${JSON.stringify({
-            type: 'chunk',
-            content: '\n\n**综合结论：**'
-          })}\n\n`);
-          if (res.flush) res.flush();
-
-          await UnifiedLLMService.generateStreamWithMessages([
-            { role: 'system', content: '根据各部分分析给出简洁综合结论。' },
-            { role: 'user', content: `请综合以下分析给出最终结论：\n${allResults.join('\n')}` }
-          ], {
-            temperature: 0.3,
+            temperature: 0.2,
             max_tokens: 300
           }, async (chunk) => {
             if (chunk.content) {
-              res.write(`data: ${JSON.stringify({
-                type: 'chunk',
-                content: chunk.content
-              })}\n\n`);
-              if (res.flush) res.flush();
+              keyPoints += chunk.content;
             }
           });
-        } catch (summaryError) {
-          console.error('[智能问答] 汇总失败:', summaryError.message);
+
+          allKeyPoints.push(`【第${i + 1}部分】${keyPoints.substring(0, 400)}`);
+        } catch (err) {
+          console.error(`[智能问答] 分片${i + 1}分析失败:`, err.message);
+          allKeyPoints.push(`【第${i + 1}部分】分析失败`);
         }
       }
 
-      // 发送完成标记
-      res.write(`data: ${JSON.stringify({
-        type: 'done',
-        sources: []
-      })}\n\n`);
+      // 第二步：综合所有信息，给出完整回答
+      const finalPrompt = `用户问题：${userIntent || '请分析这段' + contentType}
+
+以下是对完整${contentType}各部分的分析：
+${allKeyPoints.join('\n\n')}
+
+请根据以上分析，给用户一个完整、专业的回答。如果发现问题，请指出并给出修复建议。`;
+
+      try {
+        await UnifiedLLMService.generateStreamWithMessages([
+          { role: 'system', content: `你是专业的${contentType}分析专家。根据各部分分析给出完整回答。` },
+          { role: 'user', content: finalPrompt }
+        ], {
+          temperature: 0.3,
+          max_tokens: 1000
+        }, async (chunk) => {
+          if (chunk.content) {
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              content: chunk.content
+            })}\n\n`);
+            if (res.flush) res.flush();
+          }
+        });
+      } catch (finalError) {
+        console.error('[智能问答] 综合分析失败:', finalError.message);
+        res.write(`data: ${JSON.stringify({
+          type: 'chunk',
+          content: '分析过程中遇到问题，请尝试缩短内容后重试。'
+        })}\n\n`);
+      }
+
+      res.write(`data: ${JSON.stringify({ type: 'done', sources: [] })}\n\n`);
       res.end();
       return;
     }
