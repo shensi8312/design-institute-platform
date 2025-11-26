@@ -3,16 +3,97 @@
  * 处理所有文档相关的HTTP请求
  */
 
-const UnifiedDocumentService = require('../services/document/UnifiedDocumentService');
+const fs = require('fs');
+const path = require('path');
+const knex = require('../config/database');
+const JSZip = require('jszip');
+const htmlToDocx = require('html-to-docx');
 const TemplateService = require('../services/document/TemplateService');
+const CSIFrameworkService = require('../services/document/CSIFrameworkService');
+const UnifiedDocumentService = require('../services/document/UnifiedDocumentService');
 const SectionService = require('../services/document/SectionService');
 const RevisionTrackingService = require('../services/document/RevisionTrackingService');
 const SectionApprovalService = require('../services/document/SectionApprovalService');
 const ArchiveService = require('../services/document/ArchiveService');
 const DocumentAIService = require('../services/document/DocumentAIService');
-const knex = require('../config/database');
-const JSZip = require('jszip');
-const htmlToDocx = require('html-to-docx');
+
+/**
+ * 将嵌套的 tree 结构扁平化为数组（独立函数，避免 this 绑定问题）
+ * @param {Array} tree - 嵌套树结构
+ * @returns {Array} 扁平化的节点数组
+ */
+function flattenTree(tree) {
+  const result = [];
+  const traverse = (nodes) => {
+    for (const node of nodes) {
+      const { children, ...nodeData } = node;
+      result.push(nodeData);
+      if (children && children.length > 0) {
+        traverse(children);
+      }
+    }
+  };
+  traverse(tree);
+  return result;
+}
+
+/**
+ * 将 CSI 解析结果转换为格式化的 HTML（独立函数，避免 this 绑定问题）
+ * @param {Array} flatList - CSI 解析的扁平列表
+ * @returns {string} 格式化的 HTML
+ */
+function convertCSIToHTML(flatList) {
+  let html = '';
+
+  for (const node of flatList) {
+    const levelType = node.level_type;
+    const label = node.level_label || '';
+    const title = node.title_en || '';
+    const content = node.content || '';
+
+    // 根据层级类型设置不同的样式
+    switch (levelType) {
+      case 'SEC':
+        // Section 标题 - 最大标题
+        html += `<h1 style="font-size: 18px; font-weight: bold; color: #1890ff; border-bottom: 2px solid #1890ff; padding-bottom: 8px; margin: 24px 0 16px 0;">SECTION ${node.section_code} - ${title}</h1>\n`;
+        break;
+      case 'PRT':
+        // PART 标题
+        html += `<h2 style="font-size: 16px; font-weight: bold; color: #262626; margin: 20px 0 12px 0;">${label} - ${title}</h2>\n`;
+        break;
+      case 'ART':
+        // Article (1.1, 1.2, 2.1...)
+        html += `<h3 style="font-size: 14px; font-weight: 600; color: #262626; margin: 16px 0 8px 0;">${label} ${title}</h3>\n`;
+        break;
+      case 'PR1':
+        // Paragraph Level 1 (A., B., C.)
+        html += `<p style="margin: 8px 0 8px 24px; line-height: 1.8;">${label ? `<strong>${label}</strong> ` : ''}${content || title}</p>\n`;
+        break;
+      case 'PR2':
+        // Paragraph Level 2 (1., 2., 3.)
+        html += `<p style="margin: 6px 0 6px 48px; line-height: 1.8;">${label ? `${label} ` : ''}${content || title}</p>\n`;
+        break;
+      case 'PR3':
+        // Paragraph Level 3 (a., b., c.)
+        html += `<p style="margin: 4px 0 4px 72px; line-height: 1.8;">${label ? `${label} ` : ''}${content || title}</p>\n`;
+        break;
+      case 'PR4':
+        // Paragraph Level 4 (1), 2), 3))
+        html += `<p style="margin: 4px 0 4px 96px; line-height: 1.8;">${label ? `${label} ` : ''}${content || title}</p>\n`;
+        break;
+      case 'PR5':
+        // Paragraph Level 5 (a), b), c))
+        html += `<p style="margin: 4px 0 4px 120px; line-height: 1.8;">${label ? `${label} ` : ''}${content || title}</p>\n`;
+        break;
+      default:
+        if (content || title) {
+          html += `<p style="margin: 4px 0; line-height: 1.8;">${content || title}</p>\n`;
+        }
+    }
+  }
+
+  return html;
+}
 
 class UnifiedDocumentController {
   // ============================================
@@ -40,6 +121,181 @@ class UnifiedDocumentController {
       res.status(500).json({
         success: false,
         message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 批量导入文件夹为单个模板
+   * 接收多个 docx，按文件夹/文件名生成目录，正文为 docx 内容
+   *
+   * webkitRelativePath: specs_docx/11 - EQUIPMENT/113013 FL - xxx.docx
+   *
+   * 期望目录树（使用 CSI 编号作为 code）：
+   * ├── 11 - EQUIPMENT (code=11, level=1, parent_code=null)  -- 从文件夹名提取
+   * │   ├── 113013 FL - xxx (code=113013, level=2, parent_code=11)  -- 从文件名提取
+   * ├── 12 - FURNISHINGS (code=12, level=1, parent_code=null)
+   */
+  async uploadTemplateFolder(req, res) {
+    try {
+      const files = req.files || [];
+      const {
+        templateName,
+        sourceType,
+        projectType,
+        relativePaths = [],
+        createdBy
+      } = req.body;
+
+      if (!files.length) {
+        return res.status(400).json({ success: false, message: '请上传文件' });
+      }
+
+      // relativePaths 可能是字符串或数组
+      const paths = Array.isArray(relativePaths) ? relativePaths : [relativePaths];
+      if (paths.length !== files.length) {
+        return res.status(400).json({ success: false, message: '文件与路径数量不匹配' });
+      }
+
+      // 创建模板记录（一个模板对应整个文件夹）
+      const firstFile = files[0];
+      const [template] = await knex('document_templates')
+        .insert({
+          code: `TEMPLATE_${Date.now()}`,
+          name: templateName || '批量导入模板',
+          type: 'spec',
+          description: '',
+          file_path: firstFile.path,
+          file_name: firstFile.originalname,
+          file_type: firstFile.mimetype,
+          file_size: firstFile.size,
+          minio_bucket: 'templates',
+          minio_object: firstFile.filename,
+          config: JSON.stringify({}),
+          version: '1.0',
+          status: 'draft',
+          created_by: createdBy || null,
+          source_type: sourceType || null,
+          project_type: projectType || null
+        })
+        .returning('*');
+
+      // 从名称中提取 CSI 编号的辅助函数
+      // 支持格式：
+      // - "11 - EQUIPMENT" -> "11"
+      // - "113013 FL - xxx" -> "113013"
+      // - "115213.19 FL - xxx" -> "115213.19"
+      const extractCSICode = (name) => {
+        const match = name.match(/^(\d+(?:\.\d+)?)/);
+        return match ? match[1] : null;
+      };
+
+      // 生成章节树：使用 CSI 编号作为 code
+      const sections = [];
+      const nodeMap = new Map();
+      // 虚拟根节点（不写入数据库），用于管理顶层节点
+      nodeMap.set('', { code: '', isVirtualRoot: true });
+
+      const ensureNode = (pathParts) => {
+        // 空路径返回虚拟根节点
+        if (!pathParts || pathParts.length === 0) {
+          return nodeMap.get('');
+        }
+        const key = pathParts.join('/');
+        if (nodeMap.has(key)) return nodeMap.get(key);
+
+        // 递归确保父节点存在
+        const parentParts = pathParts.slice(0, -1);
+        const parentNode = ensureNode(parentParts);
+
+        if (!parentNode) {
+          throw new Error(`Failed to resolve parent node for path: ${key}`);
+        }
+
+        // 从文件夹名称提取 CSI 编号作为 code，剩余部分作为 title
+        const folderName = pathParts[pathParts.length - 1];
+        const code = extractCSICode(folderName) || folderName;
+        // 去掉开头的 CSI 编号，保留描述部分
+        // "11 - EQUIPMENT" -> "EQUIPMENT"
+        const folderTitle = folderName.replace(/^\d+(?:\.\d+)?\s*-?\s*/, '').trim() || folderName;
+
+        sections.push({
+          template_id: template.id,
+          code,
+          title: folderTitle,
+          level: pathParts.length, // 顶层 level=1
+          parent_code: parentNode.isVirtualRoot ? null : parentNode.code,
+          description: '',
+          template_content: '',
+          metadata: JSON.stringify({ isFolder: true }),
+          sort_order: sections.length,
+          is_required: false,
+          is_editable: true
+        });
+        const node = { code };
+        nodeMap.set(key, node);
+        return node;
+      };
+
+      // 处理每个文件
+      for (let i = 0; i < files.length; i++) {
+        const rel = paths[i] || files[i].originalname;
+        let parts = rel.split('/').filter(Boolean);
+        if (parts.length > 1) {
+          parts = parts.slice(1);
+        }
+        const fileName = parts.pop();
+        const parentNode = ensureNode(parts);
+
+        const fullTitle = fileName.replace(/\.[^/.]+$/, '');
+        const sectionCode = extractCSICode(fullTitle) || fullTitle;
+        const fileTitle = fullTitle.replace(/^\d+(?:\.\d+)?\s*/, '').trim() || fullTitle;
+
+        // 使用 CSI 解析器解析 docx，生成带正确编号格式的 HTML
+        let htmlContent = '';
+        try {
+          const csiResult = await CSIFrameworkService.parseCSIDocx(files[i].path);
+          // Python 解析器返回 tree（嵌套结构），需要扁平化
+          if (csiResult && csiResult.tree && csiResult.tree.length > 0) {
+            const flatList = flattenTree(csiResult.tree);
+            htmlContent = convertCSIToHTML(flatList);
+          }
+        } catch (e) {
+          console.warn(`[CSI解析] ${fileName}: 解析失败 - ${e.message}`);
+          htmlContent = '';
+        }
+
+        sections.push({
+          template_id: template.id,
+          code: sectionCode,
+          title: fileTitle,
+          level: parts.length + 1,
+          parent_code: parentNode.isVirtualRoot ? null : parentNode.code,
+          description: '',
+          template_content: htmlContent,
+          metadata: JSON.stringify({ isFile: true, originalName: files[i].originalname }),
+          sort_order: sections.length,
+          is_required: false,
+          is_editable: true
+        });
+      }
+
+      // 写入模板章节
+      if (sections.length > 0) {
+        await knex('template_sections').where({ template_id: template.id }).del();
+        await knex.batchInsert('template_sections', sections, 100);
+      }
+
+      res.json({
+        success: true,
+        data: { templateId: template.id, sections: sections.length },
+        message: '批量导入成功'
+      });
+    } catch (error) {
+      console.error('[批量导入文件夹] 失败:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || '批量导入失败'
       });
     }
   }
@@ -261,10 +517,13 @@ class UnifiedDocumentController {
 
   /**
    * 上传模板
+   * @param {string} req.body.sourceType - CSI来源类型: CSI_EN/CSI_ZH/COMPANY (技术规范模板)
+   * @param {string} req.body.sourceProject - 来源项目名（公司SPEC时）
+   * @param {string} req.body.projectType - 项目类型：semiconductor/datacenter/pharmaceutical 等
    */
   async uploadTemplate(req, res) {
     try {
-      const { name, templateType, description } = req.body;
+      const { name, templateType, description, sourceType, sourceProject, projectType } = req.body;
       const file = req.file;
       const userId = req.user.id;
 
@@ -284,12 +543,16 @@ class UnifiedDocumentController {
         fileType: file.mimetype,
         fileSize: file.size,
         createdBy: userId,
+        // CSI 扩展参数
+        sourceType: sourceType || null,
+        sourceProject: sourceProject || null,
+        projectType: projectType || null,
       });
 
       res.json({
         success: true,
         data: template,
-        message: '模板上传成功',
+        message: sourceType ? '模板上传成功，CSI 解析进行中' : '模板上传成功',
       });
     } catch (error) {
       res.status(500).json({
@@ -335,6 +598,28 @@ class UnifiedDocumentController {
       res.json({
         success: true,
         data: template,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * 删除模板
+   */
+  async deleteTemplate(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      await TemplateService.deleteTemplate(id, userId);
+
+      res.json({
+        success: true,
+        message: '模板删除成功',
       });
     } catch (error) {
       res.status(500).json({
